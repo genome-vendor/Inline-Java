@@ -1,0 +1,213 @@
+=head1 NAME
+
+Inline::Java::Callback - Callback into Perl from Java.
+
+=head1 SYNOPSIS
+
+=for comment
+
+
+
+=for comment
+
+
+=head1 DESCRIPTION
+
+C<Inline::Java::Callback> allows you to call Perl functions from Java. To 
+do this you need to create an C<org.perl.inline.java.InlinePerlCaller> 
+object. Here is a example of a typical use:
+
+=for comment
+
+   use Inline Java => <<'END' ;
+      import java.util.* ;
+      import org.perl.inline.java.* ;
+
+      class Pod_regexp extends InlineJavaPerlCaller {
+         public Pod_regexp() throws InlineJavaException {
+         }
+
+         public boolean match(String target, String pattern)
+            throws InlineJavaException {
+            try {
+               String m = (String)CallPerl("main", "regexp",
+                  new Object [] {target, pattern}) ;
+
+               if (m.equals("1")){
+                  return true ;
+               }
+            }
+            catch (InlineJavaPerlException pe){
+               // $@ is in pe.GetObject()
+            }
+
+            return false ;
+         }
+      }
+   END
+
+   my $re = new Pod_regexp() ;
+   my $match = $re->match("Inline::Java", "^Inline") ;
+   print($match . "\n") ; # prints 1
+
+   sub regexp {
+      my $target = shift ;
+      my $pattern = shift ;
+
+      return ($target =~ /$pattern/) ;
+   }
+
+=for comment
+
+
+=head1 CALLBACK API
+
+Here are the various methods that one can use call into
+Perl:
+
+   public Object CallPerlSub(String sub, 
+      Object args[], Class cast)
+      throws InlineJavaException, InlineJavaPerlException
+      
+      Calls the specified subroutine with the supplied arguments and tries
+      to create an object of type 'cast' with the result.
+      Ex: Integer sum = (Integer)CallPerlSub("main::add", 
+             new Object [] {new Integer(5), new Integer}, Integer.class) ;
+      
+   public Object CallPerlStaticMethod(String pkg, String method, 
+      Object args[], Class cast) 
+      throws InlineJavaException, InlineJavaPerlException
+      
+      Calls the specified static package method (using the $pkg->$method()
+      notation) with the supplied arguments and tries to create an object 
+      of type 'cast' with the result.
+      Ex: Integer sum = (Integer)CallPerlStaticMethod("main", "add", 
+             new Object [] {new Integer(5), new Integer}, Integer.class) ;
+
+   public Object eval(String code, Class cast) 
+      throws InlineJavaPerlException, InlineJavaException
+      
+      Evaluates the given Perl code and tries to create an object
+      of type 'cast' with the result.
+      Ex: Interger sum = (Integer)eval("5 + 3", Integer.class) ;
+
+   public Object require(String module_or_file) 
+      throws InlineJavaPerlException, InlineJavaException
+      
+      Requires the specified module/file by using the proper
+      construct.
+      Ex: require("Someting")
+      
+   public Object require_file(String file) 
+      throws InlineJavaPerlException, InlineJavaException
+      
+      Requires the specified file.
+      Ex: require("./my_stuff.pl") ;
+
+   public Object require_module(String module) 
+      throws InlineJavaPerlException, InlineJavaException
+      
+      Requires the specified module.
+      Ex: require("Data::Dumper") ;
+
+
+Note: For all CallPerl* and eval methods, the 'cast' parameter is optional
+and defaults to 'String.class'.
+	
+These methods can throw 2 types of exceptions: C<InlineJavaException> and
+C<InlineJavaPerlException> (both of these belong to the C<org.perl.inline.java>
+package). The former designates an internal C<Inline::Java> error and the 
+latter indicates that the Perl callback threw an exception (die() or croak()).
+The value of $@ (this can be a scalar or any valid "Inline::Java" object) can
+be retreived using the GetObject() method of the C<InlineJavaPerlException> object
+(if you are certain that $@ was a Perl scalar, you can use the GetString() 
+method).
+   Z<>
+
+
+=head1 CALLBACK LOOPS
+
+It is now possible to use callbacks from different Java threads. One of the 
+big advantages of this is that you can now handle, for example, SWING events 
+in Perl. Here's an example:
+
+=for comment
+
+   use Inline Java => <<'END' ;
+      import java.util.* ;
+      import org.perl.inline.java.* ;
+      import javax.swing.* ;
+      import java.awt.event.* ;
+
+      class Pod_Button extends InlineJavaPerlCaller
+                       implements ActionListener {
+         public Pod_Button() throws InlineJavaException {
+            JFrame frame = new JFrame("Pod_Button") ;
+            frame.setSize(100,100) ;
+            JButton button = new JButton("Click Me!") ;
+            frame.getContentPane().add(button) ;
+            button.addActionListener(this) ;
+            frame.show() ;
+         }
+
+         public void actionPerformed(ActionEvent e){
+            try {
+               CallPerl("main", "button_pressed", new Object [] {}) ;
+            }
+            catch (InlineJavaPerlException pe){
+               // $@ is in pe.GetObject()
+			}
+            catch (InlineJavaException pe) {
+               pe.printStackTrace() ;
+            }
+         }
+      }
+   END
+
+   my $b = new Pod_Button() ;
+   $b->StartCallbackLoop() ;
+
+   sub button_pressed {
+      print("click!\n") ; # prints click!
+      $b->StopCallbackLoop() ;
+   }
+
+=for comment
+
+The StartCallbackLoop method can be called on any InlineJavaPerlCaller object
+and will block the current thread and allow the reception of callbacks through
+any InlineJavaPerlCaller that has been created by the same (current) thread.
+The only way to interrupt such a StartCallbackLoop method is to call the
+StopCallbackLoop method on any C<org.perl.inline.java.InlineJavaPerlCaller> 
+object that has been created by that same thread.
+
+Also, only threads that communicate with Perl through C<Inline::Java> are allowed
+to create C<org.perl.inline.java.InlineJavaPerlCaller> objects and invoke their 
+StartCallbackLoop / StopCallbackLoop methods.
+   Z<>
+
+
+=head1 SEE ALSO
+
+L<Inline::Java>, L<Inline::Java::PerlNatives>, L<Inline::Java::PerlInterpreter>.
+   Z<>
+
+
+=head1 AUTHOR
+
+Patrick LeBoutillier <patl@cpan.org> is the author of Inline::Java.
+
+Brian Ingerson <ingy@cpan.org> is the author of Inline.
+   Z<>
+
+
+=head1 COPYRIGHT
+
+Copyright (c) 2001-2004, Patrick LeBoutillier.
+
+All Rights Reserved. This module is free software. It may be used,
+redistributed and/or modified under the terms of the Perl Artistic
+License. See http://www.perl.com/perl/misc/Artistic.html for more
+details.
+
+=cut

@@ -57,7 +57,8 @@ print
 	"allows Inline::Java to run the JVM in the default (separate process)\n" .
 	"fashion.\n" .
 	"Note: You need a C compiler to build the extension.\n" ;
-	"Note: You must build the extension if you wish to use PerlNatives.\n" ;
+	"Note: You must build the extension if you wish to use PerlNatives or\n" .
+	"      PerlInterpreter.\n" ;
 
 if (($build_jni || AskYN("Do you wish to build the JNI extension?", 'y'))){
 	print "\nBuilding JNI extension.\n\n" ;
@@ -116,7 +117,8 @@ if (($build_jni || AskYN("Do you wish to build the JNI extension?", 'y'))){
 				"use the JNI configuration option or set the PERL_INLINE_JAVA_JNI environment\n" .
 				"variable to a true value. You will also need to add the following directories\n" .
 				"to your " . Inline::Java::Portable::portable('SO_LIB_PATH_VAR') . " environment variable:\n" ;
-			map {print "  $_\n"; } keys %so_dirs ;
+			@main::SO_DIRS = keys %so_dirs ;
+			map {print "  $_\n"; } @main::SO_DIRS ;
 			print "See README.JNI for more information.\n\n" ;
 
 			@main::I = (
@@ -136,13 +138,21 @@ on all platforms. See documentation for more details.
 Note: PerlNatives requires J2SDK 1.4 or greater.
 TXT
 			if (AskYN("Do you wish to build the PerlNatives extension?", 'n')){
-				push @{$DIR}, 'Natives' ;
+				push @{$DIR}, 'PerlNatives' ;
 			}
-
-			# Not quite yet...
-			# push @{$DIR}, 'PerlInterpreter' ;
-
 			print "\n" ;
+
+			print <<TXT;
+The PerlInterpreter extension allows Inline::Java to be loaded directly from
+Java using an embedded PerlInterpreter. It is still EXPERIMENTAL and 
+currently builds and works only with gcc under Linux. See documentation for 
+more details.
+TXT
+			if (AskYN("Do you wish to build the PerlInterpreter extension?", 'n')){
+				push @{$DIR}, 'PerlInterpreter' ;
+			}
+			print "\n" ;
+
 			WriteMakefile(
 				NAME => 'Inline::Java::JNI',
 				VERSION_FROM => 'JNI.pm',

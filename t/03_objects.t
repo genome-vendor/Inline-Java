@@ -52,8 +52,8 @@ my $t = new types3() ;
 	# Return a scalar hidden in an object.
 	ok($t->_olong(), 12345) ;
 
-	# Pass a non-Java object.
-	my $d = bless({}, "Inline::Java::dummy") ;
+	# Pass a non-Java object, a hash ref.
+	my $d = {} ;
 	eval {$t->_Object($d)} ; ok($@, qr/Can't convert/) ;
 }
 

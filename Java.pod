@@ -18,7 +18,7 @@ Inline::Java - Write Perl classes in Java.
          public int subtract(int i, int j){
             return i - j ;
          }
-      }   
+      }
    END_OF_JAVA_CODE
 
    my $alu = new Pod_alu() ;
@@ -33,8 +33,8 @@ Inline::Java - Write Perl classes in Java.
 The C<Inline::Java> module allows you to put Java source code
 directly "inline" in a Perl script or module. A Java compiler
 is launched and the Java code is compiled. Then Perl asks the
-Java classes what public methods have been defined. These classes 
-and methods are available to the Perl program as if they had been 
+Java classes what public methods have been defined. These classes
+and methods are available to the Perl program as if they had been
 written in Perl.
 
 The process of interrogating the Java classes for public methods
@@ -46,13 +46,13 @@ cached, and subsequent calls use the cached version.
 =head1 USING THE Inline::Java MODULE
 
 C<Inline::Java> is driven by fundamentally the same idea as other
-C<Inline> language modules, like C<Inline::C> or C<Inline::CPP>. 
-Because Java is both compiled and interpreted, the method of getting 
-your code is different, but overall, using C<Inline::Java> is very similar 
+C<Inline> language modules, like C<Inline::C> or C<Inline::CPP>.
+Because Java is both compiled and interpreted, the method of getting
+your code is different, but overall, using C<Inline::Java> is very similar
 to any other C<Inline> language module.
 
 This section will explain the different ways to C<use> Inline::Java.
-For more details on C<Inline>, see 'perldoc Inline'. 
+For more details on C<Inline>, see 'perldoc Inline'.
 
 B<Basic Usage>
 
@@ -60,7 +60,7 @@ The most basic form for using C<Inline::Java> is:
 
    use Inline Java => 'Java source code' ;
 
-Of course, you can use Perl's "here document" style of quoting to make 
+Of course, you can use Perl's "here document" style of quoting to make
 the code slightly easier to read:
 
    use Inline Java => <<'END';
@@ -74,12 +74,12 @@ reference (sub routine should return source code), or an array
 reference (array contains lines of source code). This information
 is detailed in 'perldoc Inline'.
 
-In order for C<Inline::Java> to function properly, it needs to know 
-where to find a Java 2 SDK on your machine. This is done using one 
+In order for C<Inline::Java> to function properly, it needs to know
+where to find a Java 2 SDK on your machine. This is done using one
 of the following techniques:
 
    - set the J2SDK configuration option to the correct directory
-   - set the PERL_INLINE_JAVA_J2SDK environment variable to the 
+   - set the PERL_INLINE_JAVA_J2SDK environment variable to the
      correct directory
 
 If none of these are specified, C<Inline::Java> will use the Java
@@ -88,40 +88,40 @@ If none of these are specified, C<Inline::Java> will use the Java
 
 =head1 DEFAULT JAVA 2 SDK
 
-When C<Inline::Java> was installed, the path to the Java 2 SDK that was 
+When C<Inline::Java> was installed, the path to the Java 2 SDK that was
 used was stored in a file called default_j2sdk.pl that resides with
 the C<Inline::Java> module. You can find this file by using the following
 command:
 
-    % perl -MInline::Java -e 'print Inline::Java->find_default_j2sdk()'
+    % perl -MInline::Java=j2sdk
 
 If you wish to permanently change the default Java 2 SDK that is used
-by C<Inline::Java>, edit this file and change the value found there. 
-If you wish use a different Java 2 SDK temporarily, see the J2SDK 
+by C<Inline::Java>, edit this file and change the value found there.
+If you wish use a different Java 2 SDK temporarily, see the J2SDK
 configuration option described below.
 
 
 =head1 CONFIGURATION OPTIONS
 
-There are a number of configuration options that dictate the 
+There are a number of configuration options that dictate the
 behavior of C<Inline::Java>:
 
-   J2SDK: 
-      Specifies the path to your Java 2 SDK. 
+   J2SDK:
+      Specifies the path to your Java 2 SDK.
 	  Ex: J2SDK => '/my/java/2/sdk/path'
       Note: This configuration option only has an effect on the first
-      'use Inline Java' call inside a Perl script, since all other calls 
+      'use Inline Java' call inside a Perl script, since all other calls
       make use of the same JVM.
 
    PORT:
-      Specifies the starting port number for the server. If many 
-      C<Inline::Java> blocks are declared, the port number is 
-      incremented each time.	
+      Specifies the starting port number for the server. If many
+      C<Inline::Java> blocks are declared, the port number is
+      incremented each time.
       Default is 0 (next available port number).
       Default for SHARED_JVM mode is 7890.
       Ex: PORT => 4567
       Note: This configuration option only has an effect on the first
-      'use Inline Java' call inside a Perl script, since all other calls 
+      'use Inline Java' call inside a Perl script, since all other calls
       make use of the same JVM.
 
    STARTUP_DELAY:
@@ -131,7 +131,7 @@ behavior of C<Inline::Java>:
       Default is 15 seconds.
       Ex: STARTUP_DELAY => 20
       Note: This configuration option only has an effect on the first
-      'use Inline Java' call inside a Perl script, since all other calls 
+      'use Inline Java' call inside a Perl script, since all other calls
       make use of the same JVM.
 
    CLASSPATH:
@@ -143,7 +143,7 @@ behavior of C<Inline::Java>:
    JNI:
       Toggles the execution mode. The default is to use the client/server
       mode. To use the JNI extension (you must have built it at install 
-      time though. See README and README.JNI for more information), set 
+      time though. See README and README.JNI for more information), set
       JNI to 1. 
       Ex: JNI => 1
       Note: This configuration option only has an effect on the first
@@ -217,7 +217,7 @@ behavior of C<Inline::Java>:
       Ex: STUDY => ['java.lang.HashMap', 'my.class']
 
    AUTOSTUDY:
-      Makes C<Inline::Java> automatically study unknown classes it 
+      Makes C<Inline::Java> automatically study unknown classes it
       encounters them.
       Ex: AUTOSTUDY => 1
 
@@ -464,10 +464,11 @@ using Perl lists:
 
 =for comment
 
+
 =head1 TYPE CASTING
 
-Sometimes when a class as many signatures for the same method, 
-C<Inline::Java> will have to select one of the signatures based on 
+Sometimes when a class as many signatures for the same method,
+C<Inline::Java> will have to select one of the signatures based on
 the arguments that are passed:
 
 =for comment
@@ -502,7 +503,7 @@ following:
    $obj->f(Inline::Java::cast('char', '5')) ;
 
 The cast function forces the selection of the matching signature. Note that
-the cast must match the argument type exactly. Casting to a class that 
+the cast must match the argument type exactly. Casting to a class that
 extends the argument type will not work.
 
 Another case where type casting is need is when one wants to pass an array
@@ -550,7 +551,7 @@ Here is how to construct the array type representations:
 This is described in more detail in most Java books that talk about
 reflection.
 
-But you only need to do this if you have a Perl list. If you already have a 
+But you only need to do this if you have a Perl list. If you already have a
 Java array reference obtained from elsewhere, you don't even need to cast:
 
    $obj->{o} = $obj->{a} ;
@@ -559,8 +560,8 @@ Java array reference obtained from elsewhere, you don't even need to cast:
 =head1 EXCEPTIONS
 
 You can now (as of 0.31) catch exceptions as objects when they are thrown 
-from Java. To do this you use the regular Perl exception tools: eval and 
-$@. A helper function named 'caught' is provided to help determine the 
+from Java. To do this you use the regular Perl exception tools: eval and
+$@. A helper function named 'caught' is provided to help determine the
 type of the exception. Here is a example of a typical use:
 
 =for comment
@@ -599,202 +600,16 @@ What's important to understand is that $@ actually contains a reference
 to the Throwable object that was thrown by Java. The getMessage() function
 is really a method of the java.lang.Exception class. So if Java is throwing
 a custom exception you have in your code, you will have access to that
-exception object's public methods just like any other Java object in 
-C<Inline::Java>. It is also probably a good idea to undef $@ once you have 
-treated a Java exception, or else the object still has a reference until 
+exception object's public methods just like any other Java object in
+C<Inline::Java>. It is also probably a good idea to undef $@ once you have
+treated a Java exception, or else the object still has a reference until
 $@ is reset by the next eval.
    Z<>
 
 
 =head1 CALLBACKS
 
-You can now (as of 0.31), call Perl functions from Java. To do this you 
-need to create an org.perl.inline.java.InlinePerlJavaCaller object. You 
-can then use the CallPerl method to call your Perl function. You pass the
-parameters using an array of Objects. The method will return the result in 
-an Object, which you must then cast as a String (if your Perl method 
-returns a Perl scalar), or anything else if your Perl function returns 
-an "Inline::Java" object. Here is a example of a typical use:
-
-=for comment
-
-   use Inline Java => <<'END' ;
-      import java.util.* ;
-      import org.perl.inline.java.* ;
-
-      class Pod_regexp extends InlineJavaPerlCaller {
-         public Pod_regexp() throws InlineJavaException {
-         }
-
-         public boolean match(String target, String pattern)
-            throws InlineJavaException {
-            try {
-               String m = (String)CallPerl("main", "regexp", 
-                  new Object [] {target, pattern}) ;
-
-               if (m.equals("1")){
-                  return true ;
-               }
-            }
-            catch (InlineJavaPerlException pe){
-               // $@ is in pe.GetObject()
-            }
-
-            return false ;
-         }
-      }
-   END
-
-   my $re = new Pod_regexp() ;
-   my $match = $re->match("Inline::Java", "^Inline") ;
-   print($match . "\n") ; # prints 1
-
-   sub regexp { 
-      my $target = shift ;
-      my $pattern = shift ;
-
-      return ($target =~ /$pattern/) ;
-   }
-
-=for comment
-
-The CallPerl method can throw 2 types of exceptions: InlineJavaException and 
-InlineJavaPerlException (both of these belong to the org.perl.inline.java
-package). The former, which designates an internal C<Inline::Java> error, 
-should never be dealt with and should be thrown back all the way up to the 
-function that was initially called by Perl. The latter indicates that the 
-Perl callback threw an exception (die() or croak()). The value of $@ (this can 
-be a scalar or any valid "Inline::Java" object) can be retreived using the 
-GetObject method of the InlineJavaPerlException object (if you are certain 
-that $@ was a Perl scalar, you can use the GetString method).
-   Z<>
-
-
-=head1 CALLBACK LOOPS
-
-As of 0.44, it is now possible to use callbacks from differents Java threads.
-One of the big advantages of this is that you can now handle, for example,
-SWING events in Perl. Here's an example:
-
-=for comment
-
-   use Inline Java => <<'END' ;
-      import java.util.* ;
-      import org.perl.inline.java.* ;
-      import javax.swing.* ;
-      import java.awt.event.* ;
-
-      class Pod_Button extends InlineJavaPerlCaller
-                       implements ActionListener {
-         public Pod_Button() throws InlineJavaException {
-            JFrame frame = new JFrame("Pod_Button") ;
-            frame.setSize(100,100) ;
-            JButton button = new JButton("Click Me!") ;
-            frame.getContentPane().add(button) ;
-            button.addActionListener(this) ;
-            frame.show() ;
-         }
-
-         public void actionPerformed(ActionEvent e){
-            try {
-               CallPerl("main", "button_pressed", new Object [] {}) ;
-            }
-            catch (InlineJavaPerlException pe){
-               // $@ is in pe.GetObject()
-			}
-            catch (InlineJavaException pe) {
-               pe.printStackTrace() ;
-            }
-         }
-      }
-   END
-
-   my $b = new Pod_Button() ;
-   $b->StartCallbackLoop() ;
-
-   sub button_pressed {
-      print("click!\n") ; # prints click!
-      $b->StopCallbackLoop() ;
-   }
-
-=for comment
-
-The StartCallbackLoop method can be called on any InlineJavaPerlCaller object
-and will block the current thread and allow the reception of callbacks through
-any InlineJavaPerlCaller that has been created by the same (current) thread.
-The only way to interrupt such a StartCallbackLoop method is to call the
-StopCallbackLoop method on any InlineJavaPerlCaller object that has been created
-by that same thread.
-
-Also, only threads that communicate with Perl through C<Inline::Java> are allowed
-to create InlineJavaPerlCaller objects and invoke their StartCallbackLoop /
-StopCallbackLoop methods.
-   Z<>
-
-
-=head1 PerlNatives CALLBACKS (EXPERIMENTAL)
-
-Note: PerlNatives requires J2SDK version >= 1.4
-
-As of 0.45, it is now possible to define your callbacks as native Java methods
-that are automatically linked to Perl subroutines. You implement the Perl
-subroutine directly in the package in which C<Inline::Java> binds your class.
-Let's revisit the example from the previous section:
-
-=for comment
-
-   use Inline Java => <<'END' ;
-      import java.util.* ;
-      import org.perl.inline.java.* ;
-      import javax.swing.* ;
-      import java.awt.event.* ;
-
-      class Pod_Button_PN extends InlineJavaPerlNatives
-                          implements ActionListener {
-         public Pod_Button_PN() throws InlineJavaException {
-            JFrame frame = new JFrame("Pod_Button") ;
-            frame.setSize(100,100) ;
-            JButton button = new JButton("Click Me!") ;
-            frame.getContentPane().add(button) ;
-            button.addActionListener(this) ;
-            frame.show() ;
-         }
-
-         public void actionPerformed(ActionEvent e){
-            button_pressed() ;
-         }
-
-         native public void button_pressed() ;
-      }
-   END
-
-   package Pod_Button_PN ;
-   sub button_pressed {
-      print("click!\n") ; # prints click!
-      $b->StopCallbackLoop() ;
-   }
-
-   package main ;
-   my $b = new Pod_Button_PN() ;
-   $b->StartCallbackLoop() ;
-
-=for comment
-
-Extending InlineJavaPerlNatives tells C<Inline::Java> that all native methods 
-declared in that class should be linked to Perl subroutines implemented in the 
-approriate package. You can then call these methods from Java just like regular 
-methods. You can even call them from Perl if they are public. However, here are 
-a few things to remember:
-
-  - You cannot declare 2 native methods with the same name in a class (even if
-    they have different signatures)
-  - Native methods can have arguments of any type, but they must return either
-    void or an Object (use wrappers like Integer and Double to return primitive
-    types)
-  - Even if you do not declare them, InlineJavaException and 
-    InlineJavaPerlException exceptions (as well as others) may be thrown from
-    within the native methods
-   Z<>
+See L<Inline::Java::Callbacks> for more information on making callbacks.
 
 
 =head1 STUDYING
@@ -885,7 +700,7 @@ previously "used" C<Inline::Java>.
 
 Starting in version 0.20, it is possible to use the JNI (Java Native 
 Interface) extension. This enables C<Inline::Java> to load the Java virtual 
-machine as a shared object instead of running it as a stand-alone server. 
+machine as a shared object instead of running it as a stand-alone server.
 This brings an improvement in performance.
 
 If you have built the JNI extension, you must enable it explicitely by doing
@@ -1010,8 +825,8 @@ Here is an example of how to use C<Inline::Java> under mod_perl:
       my $r = shift ;
 
       my $q = new CGI ;
-      print 
-         $q->start_html() . 
+      print
+         $q->start_html() .
          "This page has been accessed " . $c->{cnt} . " times." .
          $q->end_html() ;
 
@@ -1022,42 +837,11 @@ See USING Inline::Java IN A CGI for more details.
    Z<>
 
 
-=head1 HOW IT WORKS
-
-This is how C<Inline::Java> works. Once the user's code is compiled by the 
-javac binary, C<Inline::Java>'s own Java code is compiled. This code 
-implements a server (or not if you use the JNI mode) that receives requests 
-from Perl to create objects, call methods, destroy objects, etc. It is also 
-capable of analyzing Java code to extract the public symbols. Once this 
-code is compiled, it is executed to extract the symbols from the Java code.
-
-Once this is done, the user's code information is fetched and is bound to 
-Perl namespaces. Then C<Inline::Java>'s code is run to launch the server. The 
-Perl script then connects to the server using a TCP socket (or not if you use 
-the JNI mode). Then each object creation or method invocation on "Java 
-objects" send requests to the server, which processes them and returns 
-object ids to Perl which keeps them the reference te objects in the future.
-   Z<>
-
-
-=head1 SEE ALSO 		   
-
-For information about using C<Inline>, see L<Inline>.
-
-For information about other Inline languages, see L<Inline-Support>.
-
-Inline::Java's mailing list is <inline@perl.org>. 
-To subscribe, send an email to <inline-subscribe@perl.org>
-
-Inline::Java's home page is http://inline.perl.org/java/
-   Z<>
-
-
 =head1 BUGS AND DEFICIENCIES
 
 When reporting a bug, please do the following:
 
- - Put "use Inline REPORTBUG;" at the top of your code, or 
+ - Put "use Inline REPORTBUG;" at the top of your code, or
    use the command line option "perl -MInline=REPORTBUG ...".
  - Run your code.
  - Follow the printed instructions.
@@ -1068,8 +852,8 @@ Here are some things to watch out for:
 
 =item 1
 
-You shouldn't name any of your classes 'B', 'S', 'I', 'J', 'F', 'D', 
-'C', 'Z' or 'L'. These classes seem to be used internally by Java to 
+You shouldn't name any of your classes 'B', 'S', 'I', 'J', 'F', 'D',
+'C', 'Z' or 'L'. These classes seem to be used internally by Java to
 represent the primitive types.
 
 =item 2
@@ -1079,6 +863,23 @@ your _Inline directory so that C<Inline::Java>'s own Java classes get
 rebuilt to match the Perl code.
 
 =back
+
+
+=head1 SEE ALSO
+
+L<Inline::Java::Callback>, L<Inline::Java::PerlNatives>, 
+L<Inline::Java::PerlInterpreter>.
+
+For information about using C<Inline>, see L<Inline>.
+
+For information about other Inline languages, see L<Inline-Support>.
+
+C<Inline::Java>'s mailing list is <inline@perl.org>.
+To subscribe, send an email to <inline-subscribe@perl.org>
+
+C<Inline::Java>'s home page is http://inline.perl.org/java/
+   Z<>
+
 
 =head1 AUTHOR
 

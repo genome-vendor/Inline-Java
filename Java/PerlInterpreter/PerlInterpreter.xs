@@ -46,9 +46,11 @@ JNIEXPORT void JNICALL Java_org_perl_inline_java_InlineJavaPerlInterpreter_const
 
 
 JNIEXPORT void JNICALL Java_org_perl_inline_java_InlineJavaPerlInterpreter_destruct(JNIEnv *env, jclass cls){
-	perl_destruct(interp) ;
-	perl_free(interp) ;
-	interp = NULL ;
+	if (interp != NULL){
+		perl_destruct(interp) ;
+		perl_free(interp) ;
+		interp = NULL ;
+	}
 }
 
 

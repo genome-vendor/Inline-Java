@@ -20,19 +20,3 @@ WriteMakefile(
 	# CCFLAGS => '-D_REENTRANT',
 ) ;
 
-__END__
-
-#!perl
-
-use 5.8.0;
-use strict;
-use Config;
-use ExtUtils::Embed;
-
-my $cmodule = 'PerlInterpreter';
-
-
-my $ar  = "-Wl,--whole-archive";
-my $nar = "-Wl,--no-whole-archive";
-
-run("$Config{cc} -Wall $ar $ccopts $ldopts $nar -o lib$cmodule.so $cmodule.c");

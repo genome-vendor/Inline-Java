@@ -34,7 +34,7 @@ int check_exception_from_java(JNIEnv *env){
 		/* (*(env))->ExceptionDescribe(env) ; */
 		(*(env))->ExceptionClear(env) ;
 		if ((*(env))->Throw(env, exc)){
-			(*(env))->FatalError(env, "Throw if InlineJava*Exception failed: exiting...") ;
+			(*(env))->FatalError(env, "Throw of InlineJava*Exception failed: exiting...") ;
 		}
 		ret = 1 ;
 	}
@@ -219,8 +219,8 @@ JNIEXPORT void JNICALL Java_org_perl_inline_java_InlineJavaPerlNatives_RegisterM
 /*****************************************************************************/
 
 /*
-XS(boot_Inline__Java__Natives); 
-XS(boot_Inline__Java__Natives)
+XS(boot_Inline__Java__PerlNatives); 
+XS(boot_Inline__Java__PerlNatives)
 {
     dXSARGS;
 
@@ -233,8 +233,8 @@ XS(boot_Inline__Java__Natives)
 /* 
 	xsubpp doesn't like it when we don't specify a MODULE=... PACKAGE=...
 	line. But doing this results in calling function from libperl and we 
-	don't want that or else we will need to laod that to. So we simply let
-	xsubpp do it's substitutions and define macros the cancel out the effect.
+	don't want that or else we will need to load that to. So we simply let
+	xsubpp do it's substitutions and define macros that cancel out the effect.
 	Anyways that code will NEVER be called.
 */
 
@@ -248,7 +248,7 @@ void noop(){
 
 #define PERL_UNUSED_VAR(var)	noop()
 
-MODULE = Inline::Java::Natives   PACKAGE = Inline::Java::Natives
+MODULE = Inline::Java::PerlNatives   PACKAGE = Inline::Java::PerlNatives
 
 PROTOTYPES: DISABLE
 

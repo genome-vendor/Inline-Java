@@ -1,5 +1,10 @@
 Revision history for Perl extension Inline::Java
 ------------------------------------------------
+0.48  
+    - Added PerlInterpreter: require/eval Perl code directly from Java
+	- Renamed PerlNatives stuff
+    - Split and updated documentation
+
 0.47  Sat Feb 14 10:00:00 EST 2004
     - Fixed bugs in portability code and added HPUX, AIX and Solaris specifics
     - Tweaked CLASSPATH directory order

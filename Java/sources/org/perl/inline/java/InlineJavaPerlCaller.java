@@ -32,16 +32,16 @@ public class InlineJavaPerlCaller {
 
 
 	synchronized static protected void init() throws InlineJavaException {
-       if (! inited){
-            try {
-                resources = ResourceBundle.getBundle("InlineJava") ;
+		if (! inited){
+			try {
+				resources = ResourceBundle.getBundle("InlineJava") ;
 
-                inited = true ;
-            }
-            catch (MissingResourceException mre){
-                throw new InlineJavaException("Error loading InlineJava.properties: " + mre.getMessage()) ;
-            }
-        }
+				inited = true ;
+			}
+			catch (MissingResourceException mre){
+				throw new InlineJavaException("Error loading InlineJava.properties: " + mre.getMessage()) ;
+			}
+		}
 	}
 
 
@@ -49,19 +49,95 @@ public class InlineJavaPerlCaller {
 		return resources ;
 	}
 
-
+	/* Old interface */
+	/**
+	 * @deprecated  As of 0.48, replaced by {@link #CallPerlSub(String,Object[])}
+	 */
 	public Object CallPerl(String pkg, String method, Object args[]) throws InlineJavaException, InlineJavaPerlException {
 		return CallPerl(pkg, method, args, null) ;
 	}
 
 
+	/* Old interface */
+	/**
+	 * @deprecated  As of 0.48, replaced by {@link #CallPerlSub(String,Object[],Class)}
+	 */
 	public Object CallPerl(String pkg, String method, Object args[], String cast) throws InlineJavaException, InlineJavaPerlException {
-		InlineJavaCallback ijc = new InlineJavaCallback(pkg, method, args, cast) ;
+		InlineJavaCallback ijc = new InlineJavaCallback(
+			(String)null, pkg + "::" + method, args, 
+			(cast == null ? null : InlineJavaClass.ValidateClass(cast))) ; 
 		return CallPerl(ijc) ;
 	}
 
 
-	public Object CallPerl(InlineJavaCallback ijc) throws InlineJavaException, InlineJavaPerlException {
+	/* New interface */
+	public Object CallPerlSub(String sub, Object args[]) throws InlineJavaException, InlineJavaPerlException {
+		return CallPerlSub(sub, args, null) ;
+	}
+	
+	
+	/* New interface */	
+	public Object CallPerlSub(String sub, Object args[], Class cast) throws InlineJavaException, InlineJavaPerlException {
+		InlineJavaCallback ijc = new InlineJavaCallback(
+			(String)null, sub, args, cast) ; 
+		return CallPerl(ijc) ;
+	}
+	
+	
+	/* New interface */
+	Object CallPerlMethod(InlineJavaPerlObject obj, String method, Object args[]) throws InlineJavaException, InlineJavaPerlException {
+		return CallPerlMethod(obj, method, args, null) ;
+	}
+	
+	
+	/* New interface */	
+	Object CallPerlMethod(InlineJavaPerlObject obj, String method, Object args[], Class cast) throws InlineJavaException, InlineJavaPerlException {
+		InlineJavaCallback ijc = new InlineJavaCallback(
+			obj, method, args, cast) ; 
+		return CallPerl(ijc) ;
+	}
+
+
+	/* New interface */
+	public Object CallPerlStaticMethod(String pkg, String method, Object args[]) throws InlineJavaException, InlineJavaPerlException {
+		return CallPerlStaticMethod(pkg, method, args, null) ;
+	}
+	
+	
+	/* New interface */	
+	public Object CallPerlStaticMethod(String pkg, String method, Object args[], Class cast) throws InlineJavaException, InlineJavaPerlException {
+		InlineJavaCallback ijc = new InlineJavaCallback(
+			pkg, method, args, cast) ; 
+		return CallPerl(ijc) ;
+	}
+
+
+	public Object eval(String code) throws InlineJavaPerlException, InlineJavaException {
+		return eval(code, null) ;
+	}
+
+
+	public Object eval(String code, Class cast) throws InlineJavaPerlException, InlineJavaException {
+		return CallPerlSub("Inline::Java::Callback::java_eval", new Object [] {code}, cast) ;
+	}
+
+
+	public Object require(String module_or_file) throws InlineJavaPerlException, InlineJavaException {
+		return CallPerlSub("Inline::Java::Callback::java_require", new Object [] {module_or_file}) ;
+	}
+
+
+	public Object require_file(String file) throws InlineJavaPerlException, InlineJavaException {
+		return CallPerlSub("Inline::Java::Callback::java_require", new Object [] {file, new Boolean("true")}) ;
+	}
+	
+	
+	public Object require_module(String module) throws InlineJavaPerlException, InlineJavaException {
+		return CallPerlSub("Inline::Java::Callback::java_require", new Object [] {module, new Boolean("false")}) ;
+	}
+	
+
+	private Object CallPerl(InlineJavaCallback ijc) throws InlineJavaException, InlineJavaPerlException {
 		Thread t = Thread.currentThread() ;
 		if (t == creator){
 			ijc.Process() ;

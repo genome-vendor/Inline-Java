@@ -215,7 +215,7 @@ class InlineJavaClass {
 					throw new InlineJavaCastException("Can't convert primitive type to " + p.getName()) ;
 				}
 			}
-			else{
+			else if (type.equals("java_object")){
 				// We need an object and we got an object...
 				InlineJavaUtils.debug(4, "class " + p.getName() + " is reference") ;
 
@@ -233,6 +233,21 @@ class InlineJavaClass {
 				}
 				else{
 					throw new InlineJavaCastException("Can't cast a " + c.getName() + " to a " + p.getName()) ;
+				}
+			}
+			else{
+				InlineJavaUtils.debug(4, "class " + p.getName() + " is reference") ;
+
+				String pkg = (String)tokens.get(1) ;
+				String objid = (String)tokens.get(2) ;
+
+				if (DoesExtend(p, org.perl.inline.java.InlineJavaPerlObject.class) > -1){
+					InlineJavaUtils.debug(4, " Perl object is a kind of " + p.getName()) ;
+					int id = Integer.parseInt(objid) ;
+					ret = new InlineJavaPerlObject(pkg, id) ;
+				}
+				else{
+					throw new InlineJavaCastException("Can't cast a Perl object to a " + p.getName()) ;
 				}
 			}
 		}

@@ -11,7 +11,6 @@
 typedef struct {
 	JavaVM *jvm ;
 	jclass ijs_class ;
-	jclass string_class ;
 	jobject	ijs ;
 	jmethodID jni_main_mid ;
 	jmethodID process_command_mid ;
@@ -201,8 +200,7 @@ new(CLASS, classpath, args, embedded, debug)
 	/* Load the classes that we will use */
 	RETVAL->ijs_class = (*(env))->FindClass(env, "org/perl/inline/java/InlineJavaServer") ;
 	check_exception_from_perl(env, "Can't find class InlineJavaServer") ;
-	RETVAL->string_class = (*(env))->FindClass(env, "java/lang/String") ;
-	check_exception_from_perl(env, "Can't find class java.lang.String") ;
+	RETVAL->ijs_class = (*(env))->NewGlobalRef(env, RETVAL->ijs_class) ;
 
 	/* Get the method ids that are needed later */
 	RETVAL->jni_main_mid = (*(env))->GetStaticMethodID(env, RETVAL->ijs_class, "jni_main",
@@ -254,6 +252,7 @@ create_ijs(this)
 	env = get_env(this) ;
 	this->ijs = (*(env))->CallStaticObjectMethod(env, this->ijs_class, this->jni_main_mid, this->debug) ;
 	check_exception_from_perl(env, "Can't call jni_main in class InlineJavaServer") ;
+	this->ijs = (*(env))->NewGlobalRef(env, this->ijs) ;
 
 
 
@@ -274,7 +273,7 @@ process_command(this, data)
 	check_exception_from_perl(env, "Can't create java.lang.String") ;
 
 	resp = (*(env))->CallObjectMethod(env, this->ijs, this->process_command_mid, cmd) ;
-	/* Thanks Dave Blob for spotting this. This is necessary since this codes never really returns to Java
+	/* Thanks Dave Blob for spotting this. This is necessary since this code never really returns to Java
 	   It simply calls into Java and comes back. */
 	(*(env))->DeleteLocalRef(env, cmd);
 	check_exception_from_perl(env, "Can't call ProcessCommand in class InlineJavaServer") ;
@@ -288,4 +287,5 @@ process_command(this, data)
 	RETVAL
 
 	CLEANUP:
+	(*(env))->DeleteLocalRef(env, resp) ;
 	(*(env))->ReleaseStringUTFChars(env, resp, RETVAL) ;

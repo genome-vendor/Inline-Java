@@ -66,12 +66,11 @@ second time you test loading of an already built module.
 -------------------------------------------------------------------------------
 FEATURES FOR THIS VERSION:
 
-Inline::Java version 0.47 is a minor upgrade that includes:
-+ Fixed bugs in portability code and added HPUX and Solaris specifics
-+ Tweaked CLASSPATH directory order
-+ Changed port numbers for SHARED_JVM tests in order to avoid clashes
-  with running installations
-+ Made PerlNatives optional
+Inline::Java version 0.48 is a major upgrade that includes:
+    - Added PerlInterpreter: require/eval Perl code directly from Java
+    - Renamed PerlNatives stuff
+    - Split and updated documentation
+
 
 See CHANGES for a full change list.
 

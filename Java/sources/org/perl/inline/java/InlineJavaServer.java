@@ -287,7 +287,18 @@ public class InlineJavaServer {
 	}
 
 
+	/*
+		With PerlInterpreter this is called twisce, but we don't want to create
+		a new object the second time.
+	*/
 	public static InlineJavaServer jni_main(int debug){
-		return new InlineJavaServer(debug) ;
+		if (instance != null){
+			InlineJavaUtils.debug = debug ;
+			InlineJavaUtils.debug(1, "recycling InlineJavaServer created by PerlInterpreter") ;
+			return instance ;
+		}
+		else{
+			return new InlineJavaServer(debug) ;
+		}
 	}
 }

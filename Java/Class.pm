@@ -3,7 +3,7 @@ package Inline::Java::Class ;
 use strict ;
 use Carp ;
 
-$Inline::Java::Class::VERSION = '0.47' ;
+$Inline::Java::Class::VERSION = '0.48_01' ;
 
 $Inline::Java::Class::MAX_SCORE = 10 ;
 
@@ -158,7 +158,10 @@ sub CastArgument {
 			else{
 				if (ref($arg)){
 					# We got some other type of ref...
-					croak "Can't convert $arg to object $proto" ;
+					if ($arg !~ /^(.*?)=/){
+						# We do not have a blessed reference, so ...
+						croak "Can't convert $arg to object $proto" ;
+					}
 				}
 				else{
 					# Here we got a scalar
@@ -246,26 +249,46 @@ sub CastArgument {
 			# Here the prototype calls for an object of type $proto
 			# We must ask Java if our object extends $proto		
 			if (ref($arg)){
-				my ($msg, $score) = $arg->__isa($proto) ;
-				if ($msg){
-					croak $msg ;
-				}
-				Inline::Java::debug(3, "$arg is a $proto") ;
-
-				# a matching object, pretty good match, except if proto
-				# is java.lang.Object
-				if ($proto eq "java.lang.Object"){	
-					return ($arg, 1) ;
-				}
+				if ((UNIVERSAL::isa($arg, "Inline::Java::Object"))||(UNIVERSAL::isa($arg, "Inline::Java::Array"))){
+					my ($msg, $score) = $arg->__isa($proto) ;
+					if ($msg){
+						croak $msg ;
+					}
+					Inline::Java::debug(3, "$arg is a $proto") ;
+	
+					# a matching object, pretty good match, except if proto
+					# is java.lang.Object
+					if ($proto eq "java.lang.Object"){	
+						return ($arg, 1) ;
+					}
 				
-				# Here we deduce points the more our argument is "far"
-				# from the prototype.
-				if (! UNIVERSAL::isa($arg, "Inline::Java::Array")){
-					return ($arg, 7 - ($score * 0.01)) ;
+					# Here we deduce points the more our argument is "far"
+					# from the prototype.
+					if (! UNIVERSAL::isa($arg, "Inline::Java::Array")){
+						return ($arg, 7 - ($score * 0.01)) ;
+					}
+					else{
+						# We need to keep the array score somewhere...
+						return ($arg, $array_score) ;
+					}
 				}
-				else{
-					# We need to keep the array score somewhere...
-					return ($arg, $array_score) ;
+				else {
+					# We want to send a Perl object to the Java side.
+					my $ijp = new Inline::Java::Protocol(undef, $inline) ;
+					my ($msg, $score) = $ijp->__ISA($proto, 'org.perl.inline.java.InlineJavaPerlObject') ;
+					if ($msg){
+						croak $msg ;
+					}
+					Inline::Java::debug(3, "$arg is a $proto") ;
+					
+					# a matching object, pretty good match, except if proto
+					# is java.lang.Object
+					if ($proto eq "java.lang.Object"){	
+						return ($arg, 1) ;
+					}
+					else{
+						return ($arg, 7 - ($score * 0.01)) ;
+					}
 				}
 			}
 

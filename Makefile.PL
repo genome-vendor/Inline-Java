@@ -71,8 +71,9 @@ use strict ;
 sub Inline::Java::get_default_j2sdk {
 	return '$perl_jdk_dir' ;
 }
-
 1 ;
+
+
 J2SDK_PL
 close(J2SDK) ;
 
@@ -121,7 +122,7 @@ sub MY::postamble {
 # Added by Inline::Java installation
 java ::
 	\@\$(MKPATH) $obj_dir
-	"$javac" -g -d $obj_dir $src
+	"$javac" -deprecation -g -d $obj_dir $src
 	"$jar" cf $server_arch -C $obj_dir org -C $obj_dir InlineJava.properties
 	"$jar" cf $user_arch -C $obj_dir InlineJavaUserClassLink.class
 MAKE
@@ -147,6 +148,8 @@ sub expand_macros {
 
 
 # Write the Makefile
+my $natives_test = File::Spec->catdir('Java', 'Natives', '_Inline_test') ;
+my $perlinterp_test = File::Spec->catdir('Java', 'PerlInterpreter', '_Inline_test') ;
 WriteMakefile(
 	NAME => 'Inline::Java',
 	VERSION_FROM => 'Java.pm',
@@ -161,17 +164,39 @@ WriteMakefile(
 		$server_arch => File::Spec->catfile('$(INST_LIBDIR)', $server_arch),
 		$user_arch => File::Spec->catfile('$(INST_LIBDIR)', $user_arch),
 	},
-	clean => {FILES => "$def_jdk _Inline_test $obj_dir $server_arch $user_arch"},
+	clean => {FILES => "$def_jdk _Inline_test $natives_test $perlinterp_test $obj_dir $server_arch $user_arch"},
 ) ;
 
 
+# Add the so_dirs to the default_j2sdk.pl file.
+open(J2SDK, ">>$def_jdk") or
+	die("Can't open '$def_jdk' for appending: $!") ;
+print J2SDK <<J2SDK_PL;
+sub Inline::Java::get_default_j2sdk_so_dirs {
+	return (
+J2SDK_PL
+foreach my $d (@main::SO_DIRS){
+	$d =~ s/'/\'/g ;
+	print J2SDK "\t\t'$d',\n" ;
+}
+print J2SDK <<J2SDK_PL;
+	) ;
+}
+
+
+1 ;
+J2SDK_PL
+close(J2SDK) ;
+
+
+
 # Create the properties that will be included in the jar.
-my @natives_so_parts = ("auto", "Inline", "Java", "Natives", 
-	"Natives." . Inline::Java::Portable::portable('SO_EXT')) ;
-my $install_natives_so = File::Spec->catfile($INSTALLSITEARCH, @natives_so_parts) ;
-$install_natives_so =~ s/\\/\\\\/g ;
-my $test_natives_so = File::Spec->rel2abs(File::Spec->catfile($INST_ARCHLIB, @natives_so_parts)) ;
-$test_natives_so =~ s/\\/\\\\/g ;
+my @perlnatives_so_parts = ("auto", "Inline", "Java", "PerlNatives", 
+	"PerlNatives." . Inline::Java::Portable::portable('SO_EXT')) ;
+my $install_perlnatives_so = File::Spec->catfile($INSTALLSITEARCH, @perlnatives_so_parts) ;
+$install_perlnatives_so =~ s/\\/\\\\/g ;
+my $test_perlnatives_so = File::Spec->rel2abs(File::Spec->catfile($INST_ARCHLIB, @perlnatives_so_parts)) ;
+$test_perlnatives_so =~ s/\\/\\\\/g ;
 
 my @perlinterpreter_so_parts = ("auto", "Inline", "Java", "PerlInterpreter",
     "PerlInterpreter." . Inline::Java::Portable::portable('SO_EXT')) ;
@@ -192,8 +217,8 @@ open(PROP, ">$prop") or
 	die("Can't open '$prop' for writing: $!") ;
 print PROP <<PROP;
 # This file is created by the Makefile.PL for Inline::Java
-inline_java_natives_so_install = $install_natives_so
-inline_java_natives_so_test    = $test_natives_so
+inline_java_perlnatives_so_install = $install_perlnatives_so
+inline_java_perlnatives_so_test    = $test_perlnatives_so
 inline_java_perlinterpreter_so_install = $install_perlinterpreter_so
 inline_java_perlinterpreter_so_test    = $test_perlinterpreter_so
 inline_java_libperl_so	= $libperl_so

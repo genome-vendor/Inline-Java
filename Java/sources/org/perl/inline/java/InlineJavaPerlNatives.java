@@ -26,11 +26,11 @@ public class InlineJavaPerlNatives extends InlineJavaPerlCaller {
 		InlineJavaPerlCaller.init() ;
 		if (! inited){
 			try {
-				String natives_so = GetBundle().getString("inline_java_natives_so_" + mode) ;
-				File f = new File(natives_so) ;
+				String perlnatives_so = GetBundle().getString("inline_java_perlnatives_so_" + mode) ;
+				File f = new File(perlnatives_so) ;
 				if (! f.exists()){
 					throw new InlineJavaException("Can't initialize PerlNatives " +
-						"functionnality: Natives extension (" + natives_so + 
+						"functionnality: PerlNatives extension (" + perlnatives_so + 
 						") can't be found") ;
 				}
 
@@ -44,8 +44,8 @@ public class InlineJavaPerlNatives extends InlineJavaPerlCaller {
 				}      	
 
 				// Load the Natives shared object
-				InlineJavaUtils.debug(2, "loading shared library " + natives_so) ;
-				System.load(natives_so) ;
+				InlineJavaUtils.debug(2, "loading shared library " + perlnatives_so) ;
+				System.load(perlnatives_so) ;
 
 				inited = true ;
 			}                                   
@@ -158,19 +158,22 @@ public class InlineJavaPerlNatives extends InlineJavaPerlCaller {
 
 		// Transform the Java class name into the Perl package name
 		StringTokenizer st = new StringTokenizer(pkg, ".") ;
-		StringBuffer perl_pkg = new StringBuffer() ;
+		StringBuffer perl_sub = new StringBuffer() ;
 		// Starting with "::" means that the package is relative to the caller package
 		while (st.hasMoreTokens()){
-			perl_pkg.append("::" + st.nextToken()) ;
+			perl_sub.append("::" + st.nextToken()) ;
 		}
+		perl_sub.append("::" + method) ;
 
 		for (int i = 0 ; i < args.length ; i++){
 			InlineJavaUtils.debug(3, "InvokePerlMethod argument " + i + " = " + args[i]) ;
 		}
 
+		Object ret = CallPerlSub(perl_sub.toString(), args) ;
+
 		InlineJavaUtils.debug(3, "exiting InvokePerlMethod") ;
 
-		return CallPerl(perl_pkg.toString(), method, args) ;
+		return ret ;
 	}
 
 

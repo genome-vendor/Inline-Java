@@ -38,7 +38,7 @@ public class InlineJavaPerlInterpreter extends InlineJavaPerlCaller {
 	}
 
 
-	synchronized static public InlineJavaPerlInterpreter getInstance() throws InlineJavaPerlException, InlineJavaException {
+	synchronized static public InlineJavaPerlInterpreter create() throws InlineJavaPerlException, InlineJavaException {
 		if (instance == null){
 			// Here we create a temporary InlineJavaServer instance in order to be able to instanciate
 			// ourselves. When we create InlineJavaPerlInterpreter, the instance will be overriden.
@@ -91,18 +91,10 @@ public class InlineJavaPerlInterpreter extends InlineJavaPerlCaller {
 	synchronized static private native void destruct() ;
 
 
-	public Object eval(String code) throws InlineJavaPerlException, InlineJavaException {
-		return CallPerl("Inline::Java::PerlInterpreter", "java_eval", new Object [] {code}) ;
-	}
-
-
-	public Object require(String module) throws InlineJavaPerlException, InlineJavaException {
-		return CallPerl("Inline::Java::PerlInterpreter", "java_require", new Object [] {module}) ;
-	}
-
-
 	synchronized public void destroy() {
-		destruct() ;
-		instance = null ;
+		if (instance != null){
+			destruct() ;
+			instance = null ;
+		}
 	}
 }

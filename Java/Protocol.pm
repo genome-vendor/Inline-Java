@@ -5,7 +5,7 @@ use Inline::Java::Object ;
 use Inline::Java::Array ;
 use Carp ;
 
-$Inline::Java::Protocol::VERSION = '0.47' ;
+$Inline::Java::Protocol::VERSION = '0.48_01' ;
 
 my %CLASSPATH_ENTRIES = () ;
 
@@ -78,6 +78,15 @@ sub ISA {
 	my $proto = shift ;
 
 	my $class = $this->{obj_priv}->{java_class} ;
+
+	return $this->__ISA($proto, $class) ;
+}
+
+
+sub __ISA {
+	my $this = shift ;
+	my $proto = shift ;
+	my $class = shift ;
 
 	Inline::Java::debug(3, "checking if $class is a $proto") ;
 
@@ -255,22 +264,27 @@ sub ValidateArgs {
 			push @ret, "undef:" ;
 		}
 		elsif (ref($arg)){
-			if ((! UNIVERSAL::isa($arg, "Inline::Java::Object"))&&(! UNIVERSAL::isa($arg, "Inline::Java::Array"))){
+			if ((UNIVERSAL::isa($arg, "Inline::Java::Object"))||(UNIVERSAL::isa($arg, "Inline::Java::Array"))){
+				my $obj = $arg ;
+				if (UNIVERSAL::isa($arg, "Inline::Java::Array")){
+					$obj = $arg->__get_object() ; 
+				}
+				my $class = $obj->__get_private()->{java_class} ;
+				my $id = $obj->__get_private()->{id} ;
+				push @ret, "java_object:$class:$id" ;
+			}
+			elsif ($arg =~ /^(.*?)=/){
+				my $id = Inline::Java::Callback::PutObject($arg) ;
+				push @ret, "perl_object:$1:$id" ;
+			}
+			else {
 				if (! $callback){
-					croak "A Java method or member can only have Java objects, Java arrays or scalars as arguments" ;
+					croak "A Java method or member can only have Java objects, Java arrays, Perl objects or scalars as arguments" ;
 				}
 				else{
-					croak "A Java callback function can only return Java objects, Java arrays or scalars" ;
+					croak "A Java callback function can only return Java objects, Java arrays, Perl objects or scalars" ;
 				}
 			}
-
-			my $obj = $arg ;
-			if (UNIVERSAL::isa($arg, "Inline::Java::Array")){
-				$obj = $arg->__get_object() ; 
-			}
-			my $class = $obj->__get_private()->{java_class} ;
-			my $id = $obj->__get_private()->{id} ;
-			push @ret, "object:$class:$id" ;
 		}
 		else{
 			push @ret, "scalar:" . encode($arg) ;
@@ -324,7 +338,7 @@ sub DeserializeObject {
 	elsif ($resp =~ /^undef:$/){
 		return undef ;
 	}
-	elsif ($resp =~ /^object:([01]):(\d+):(.*)$/){
+	elsif ($resp =~ /^java_object:([01]):(\d+):(.*)$/){
 		# Create the Perl object wrapper and return it.
 		my $thrown = $1 ;
 		my $id = $2 ;
@@ -403,6 +417,12 @@ sub DeserializeObject {
 				return $obj ;
 			}
 		}
+	}
+	elsif ($resp =~ /^perl_object:(\d+):(.*)$/){
+		my $id = $1 ;
+		my $pkg = $2 ;
+
+		return Inline::Java::Callback::GetObject($id) ;
 	}
 	else{
 		croak "Malformed response from server: $resp" ;

@@ -3,8 +3,8 @@ use ExtUtils::MakeMaker ;
 use strict ;
 
 WriteMakefile(
-	NAME => 'Inline::Java::Natives',
-	VERSION_FROM => 'Natives.pm',
+	NAME => 'Inline::Java::PerlNatives',
+	VERSION_FROM => 'PerlNatives.pm',
 	INC => join(' ', @main::I),
 	LIBS => [join(' ', @main::L) . " -ljvm"],
 	# CCFLAGS => '-D_REENTRANT',

@@ -16,6 +16,7 @@ class InlineJavaProtocol {
 	private String response = null ;
 
 	static private HashMap member_cache = new HashMap() ;
+	static private String report_version = "V2" ;
 
 	InlineJavaProtocol(InlineJavaServer _ijs, String _cmd) {
 		ijs = _ijs ;
@@ -77,7 +78,7 @@ class InlineJavaProtocol {
 		and members
 	*/
 	void Report(StringTokenizer st) throws InlineJavaException {
-		StringBuffer pw = new StringBuffer() ;
+		StringBuffer pw = new StringBuffer(report_version + "\n") ;
 
 		StringTokenizer st2 = new StringTokenizer(st.nextToken(), ":") ;
 		st2.nextToken() ;
@@ -623,16 +624,22 @@ class InlineJavaProtocol {
 			return "scalar:" + Encode((b.equals("true") ? "1" : "0")) ;
 		}
 		else {
-			// Here we need to register the object in order to send
-			// it back to the Perl script.
-			boolean thrown = false ;
-			if (o instanceof InlineJavaThrown){ 
-				thrown = true ;
-				o = ((InlineJavaThrown)o).GetThrowable() ;
-			}			
-			int id = ijs.PutObject(o) ;
-			return "object:" + (thrown ? "1" : "0") + ":" + String.valueOf(id) +
-				":" + o.getClass().getName() ;
+			if (! (o instanceof org.perl.inline.java.InlineJavaPerlObject)){
+				// Here we need to register the object in order to send
+				// it back to the Perl script.
+				boolean thrown = false ;
+				if (o instanceof InlineJavaThrown){ 
+					thrown = true ;
+					o = ((InlineJavaThrown)o).GetThrowable() ;
+				}			
+				int id = ijs.PutObject(o) ;
+				return "java_object:" + (thrown ? "1" : "0") + ":" + String.valueOf(id) +
+					":" + o.getClass().getName() ;
+			}
+			else {
+				return "perl_object:" + ((InlineJavaPerlObject)o).GetId() +
+					":" + ((InlineJavaPerlObject)o).GetPkg() ;
+			}
 		}
 	}
 

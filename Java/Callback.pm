@@ -3,10 +3,13 @@ package Inline::Java::Callback ;
 use strict ;
 use Carp ;
 
-$Inline::Java::Callback::VERSION = '0.47' ;
+$Inline::Java::Callback::VERSION = '0.48_01' ;
 
 $Inline::Java::Callback::OBJECT_HOOK = undef ;
 
+
+my %OBJECTS = () ;
+my $next_id = 1 ;
 
 
 sub InterceptCallback {
@@ -19,18 +22,21 @@ sub InterceptCallback {
 		$inline = $Inline::Java::JNI::INLINE_HOOK ;
 	}
 
-	if ($resp =~ s/^callback ([^ ]+) (\w+) ([^ ]+)//){
-		my $module = $1 ;
+	if ($resp =~ s/^callback ([^ ]+) ([\w:]+) ([^ ]+)//){
+		my $via = $1 ;
 		my $function = $2 ;
 		my $cast_return = $3 ;
 		my @args = split(' ', $resp) ;
 
 		# "Relative" namespace...
-		if ($module =~ /^::/){
-			$module = $inline->get_api('pkg') . $module ;
+		if ($via =~ /^::/){
+			$via = $inline->get_api('pkg') . $via ;
 		}
-
-		return Inline::Java::Callback::ProcessCallback($inline, $module, $function, $cast_return, @args) ;
+		if ($function =~ /^::/){
+			$function = $inline->get_api('pkg') . $function ;
+		}
+		
+		return Inline::Java::Callback::ProcessCallback($inline, $via, $function, $cast_return, @args) ;
 	}
 
 	croak "Malformed callback request from server: $resp" ;
@@ -39,7 +45,7 @@ sub InterceptCallback {
 
 sub ProcessCallback {
 	my $inline = shift ;
-	my $module = shift ;
+	my $via = shift ;
 	my $function = shift ;
 	my $cast_return = shift ;
 	my @sargs = @_ ;
@@ -53,12 +59,30 @@ sub ProcessCallback {
 			$a ;
 		} @sargs ;
 
-		Inline::Java::debug(2, "processing callback $module" . "::" . "$function(" . 
-			join(", ", @args) . ")") ;
-
 		no strict 'refs' ;
-		my $sub = "$module" . "::" . $function ;
-		$ret = $sub->(@args) ;
+		if ($via =~ /^(\d+)$/){
+			# Call via object
+			my $id = $1 ;
+			Inline::Java::debug(2, "processing callback $id" . "->" . "$function(" . 
+				join(", ", @args) . ")") ;
+			my $obj = Inline::Java::Callback::GetObject($id) ;
+			$ret = $obj->$function(@args) ;
+		}
+		elsif ($via ne 'null'){
+			# Call via package
+			Inline::Java::debug(2, "processing callback $via" . "->" . "$function(" . 
+				join(", ", @args) . ")") ;
+			$ret = $via->$function(@args) ;
+		}
+		else {
+			# Straight call
+			Inline::Java::debug(2, "processing callback $function(" . 
+				join(", ", @args) . ")") ;
+			if ($function !~ /::/){
+				$function = 'main' . '::' . $function ;
+			}
+			$ret = $function->(@args) ;
+		}
 	} ;
 	if ($@){
 		$ret = $@ ;
@@ -69,12 +93,7 @@ sub ProcessCallback {
 		}
 	}
 
-	my $proto = 'java.lang.Object' ;
-	if ($cast_return ne "null"){
-		$ret = Inline::Java::cast($proto, $ret, $cast_return) ;
-	}
-
-	($ret) = Inline::Java::Class::CastArgument($ret, $proto, $inline) ;
+	($ret) = Inline::Java::Class::CastArgument($ret, $cast_return, $inline) ;
 	
 	# Here we must keep a reference to $ret or else it gets deleted 
 	# before the id is returned to Java...
@@ -85,6 +104,88 @@ sub ProcessCallback {
 	return ("callback $thrown $ret", $ref) ;
 }
 
+
+sub GetObject {
+	my $id = shift ;
+
+	my $obj = $OBJECTS{$id} ;
+	if (! defined($obj)){
+		croak("Can't find object $id") ;
+	}
+
+	return $obj ;
+}
+
+
+sub PutObject {
+	my $obj = shift ;
+
+	my $id = $next_id ;
+	$next_id++ ;
+
+	$OBJECTS{$id} = $obj ;
+
+	return $id ;
+}
+
+
+sub DeleteObject {
+	my $id = shift ;
+	my $quiet = shift || 0 ;
+
+	my $obj = delete $OBJECTS{$id} ;
+	if ((! $quiet)&&(! defined($obj))){
+		croak("Can't find object $id") ;
+	}
+}
+
+
+sub ObjectCount {
+	return scalar(keys %OBJECTS) ;
+}
+
+
+########## Utility methods used by Java to access Perl objects #################
+
+
+sub java_eval {
+    my $code = shift ;
+
+	Inline::Java::debug(3, "evaling Perl code: $code") ; 
+    my $ret = eval $code ;
+    if ($@){
+        die($@) ;
+    }
+
+    return $ret ;
+}
+
+
+sub java_require {
+    my $module = shift ;
+	my $is_file = shift ;
+
+	if (! defined($is_file)){
+		if (-e $module){
+			$module = "\"$module\"" ;
+		}
+	}
+
+	if ($is_file){
+		$module = "\"$module\"" ;
+	}
+
+	Inline::Java::debug(3, "requiring Perl module/file: $module") ; 
+    return java_eval("require $module ;") ;
+}
+
+
+sub java_finalize {
+	my $id = shift ;
+	my $gc = shift ;
+
+	Inline::Java::Callback::DeleteObject($id, $gc) ;
+}
 
 
 1 ;

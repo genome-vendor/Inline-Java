@@ -2,13 +2,13 @@ package Inline::Java ;
 @Inline::Java::ISA = qw(Inline Exporter) ;
 
 # Export the cast function if wanted
-@EXPORT_OK = qw(cast study_classes caught jar) ;
+@EXPORT_OK = qw(cast study_classes caught jar j2sdk) ;
 
 
 use strict ;
 require 5.006 ;
 
-$Inline::Java::VERSION = '0.47' ;
+$Inline::Java::VERSION = '0.48_01' ;
 
 
 # DEBUG is set via the DEBUG config
@@ -48,6 +48,7 @@ my $JVM = undef ;
 # This list will store the $o objects...
 my @INLINES = () ;
 
+my $report_version = "V2" ;
 
 # This stuff is to control the termination of the Java Interpreter
 sub done {
@@ -83,6 +84,17 @@ sub import {
 	foreach my $a (@_){
 		if ($a eq 'jar'){
 			print Inline::Java::Portable::get_server_jar() ;
+			exit() ;
+		}
+		elsif ($a eq 'j2sdk'){
+			print Inline::Java->find_default_j2sdk() . " says '" .
+				Inline::Java::get_default_j2sdk() . "'\n" ;
+			exit() ;
+		}
+		elsif ($a eq 'so_dirs'){
+			print portable('SO_LIB_PATH_VAR') . "=" . 
+				join(portable('ENV_VAR_PATH_SEP'), 
+				Inline::Java::get_default_j2sdk_so_dirs()) ;
 			exit() ;
 		}
 	}
@@ -334,16 +346,20 @@ sub build {
 		my $cp = $ENV{CLASSPATH} || '' ;
 		$ENV{CLASSPATH} = make_classpath($server_jar, @prev_install_dirs, $o->get_java_config('CLASSPATH')) ;
 		Inline::Java::debug(2, "classpath: $ENV{CLASSPATH}") ;
-		my $args = $o->get_java_config('EXTRA_JAVAC_ARGS') ;
+		my $args = "-deprecation " . $o->get_java_config('EXTRA_JAVAC_ARGS') ;
 		my $cmd = portable("SUB_FIX_CMD_QUOTES", "\"$javac\" $args -d \"$install_dir\" $source > cmd.out $redir") ;
 		if ($o->get_config('UNTAINT')){
 			($cmd) = $cmd =~ /(.*)/ ;
 		}
 		Inline::Java::debug(2, "$cmd") ;
 		my $res = system($cmd) ;
-		$res and do {
-			croak $o->compile_error_msg($cmd) ;
+		my $msg = $o->get_compile_error_msg() ;
+		if ($res){
+			croak $o->compile_error_msg($cmd, $msg) ;
 		} ;
+		if ($msg){
+			warn("\n$msg\n") ;
+		}
 		$ENV{CLASSPATH} = $cp ;
 		Inline::Java::debug(2, "classpath: $ENV{CLASSPATH}") ;
 
@@ -384,16 +400,25 @@ sub build {
 }
 
 
+sub get_compile_error_msg {
+	my $o = shift ;
+
+	my $msg = '' ;
+	if (open(Inline::Java::CMD, "<cmd.out")){
+		$msg = join("", <Inline::Java::CMD>) ;
+		close(Inline::Java::CMD) ;
+	}
+
+	return $msg ;
+}
+
+
 sub compile_error_msg {
 	my $o = shift ;
 	my $cmd = shift ;
+	my $error = shift ;
 
 	my $build_dir = $o->get_api('build_dir') ;
-	my $error = '' ;
-	if (open(Inline::Java::CMD, "<cmd.out")){
-		$error = join("", <Inline::Java::CMD>) ;
-		close(Inline::Java::CMD) ;
-	}
 
 	my $lang = $o->get_api('language') ;
 	return <<MSG
@@ -596,6 +621,13 @@ sub load_jdat {
 
 	my $idx = 0 ;
 	my $current_class = undef ;
+	if (scalar(@{$lines})){
+		my $vline = shift @{$lines} ;
+		chomp($vline) ;
+		if ($vline ne $report_version){
+			croak("Report version mismatch ($vline != $report_version). Delete your '_Inline' and try again.") ; 
+		}
+	}
 	foreach my $line (@{$lines}){
 		chomp($line) ;
 		if ($line =~ /^class ($re) ($re|null)$/){

@@ -14,7 +14,7 @@ use Inline::Java qw(caught) ;
 
 
 BEGIN {
-	my $cnt = 23 ;
+	my $cnt = 24 ;
 	plan(tests => $cnt) ;
 }
 
@@ -41,6 +41,8 @@ my $t = new t15() ;
 		ok(t15->add_via_perl_via_java_t($t, 6, 9), 15) ;
 
 		ok($t->cat_via_perl("Inline", "Java"), "InlineJava") ;
+
+		ok($t->perl_static(), 'main->static') ;
 
 		ok(twister(20, 0, 0), "return perl twister") ;
 		ok($t->twister(20, 0, 0), "return java twister") ;
@@ -195,6 +197,13 @@ sub mt_callback {
 }
 
 
+sub static_method {
+	my $class = shift ;
+
+	return 'main->static' ;
+}
+
+
 __END__
 
 __Java__
@@ -223,7 +232,7 @@ class t15 extends InlineJavaPerlCaller {
 		public void run(){
 			try {
 				if (! error){
-					pc.CallPerl("main", "mt_callback", new Object [] {pc}) ;
+					pc.CallPerlSub("main::mt_callback", new Object [] {pc}) ;
 				}
 				else {
 					new InlineJavaPerlCaller() ;
@@ -266,22 +275,22 @@ class t15 extends InlineJavaPerlCaller {
 	}
 
 	public int add_via_perl(int a, int b) throws InlineJavaException, InlineJavaPerlException {
-		String val = (String)CallPerl("main", "add", 
+		String val = (String)CallPerlSub("main::add", 
 			new Object [] {new Integer(a), new Integer(b)}) ;
 
 		return new Integer(val).intValue() ;
 	}
 
 	public int [] incr_via_perl(int a[]) throws InlineJavaException, InlineJavaPerlException {
-		int [] r = (int [])CallPerl("main", "incr", 
-			new Object [] {a}, "[I") ;
+		int [] r = (int [])CallPerlSub("main::incr", 
+			new Object [] {a}, a.getClass()) ;
 
 		return r ;
 	}
 
 	public void death_via_perl() throws InlineJavaException, InlineJavaPerlException {
 		InlineJavaPerlCaller c = new InlineJavaPerlCaller() ;
-		c.CallPerl("main", "death", null) ;
+		c.CallPerlSub("main::death", null) ;
 	}
 
 	public void except() throws InlineJavaException, InlineJavaPerlException {
@@ -289,14 +298,14 @@ class t15 extends InlineJavaPerlCaller {
 	}
 
 	public int mul_via_perl(int a, int b) throws InlineJavaException, InlineJavaPerlException {
-		String val = (String)CallPerl("main", "mul", 
+		String val = (String)CallPerlSub("main::mul", 
 			new Object [] {new Integer(a), new Integer(b)}) ;
 
 		return new Integer(val).intValue() ;
 	}
 
 	public int add_via_perl_via_java(int a, int b) throws InlineJavaException, InlineJavaPerlException {
-		String val = (String)CallPerl("main", "add_via_java", 
+		String val = (String)CallPerlSub("main::add_via_java", 
 			new Object [] {new Integer(a), new Integer(b)}) ;
 
 		return new Integer(val).intValue() ;
@@ -304,7 +313,7 @@ class t15 extends InlineJavaPerlCaller {
 
 	static public int add_via_perl_via_java_t(t15 t, int a, int b) throws InlineJavaException, InlineJavaPerlException {
 		InlineJavaPerlCaller c = new InlineJavaPerlCaller() ;
-		String val = (String)c.CallPerl("main", "add_via_java_t", 
+		String val = (String)c.CallPerlSub("main::add_via_java_t", 
 			new Object [] {t, new Integer(a), new Integer(b)}) ;
 
 		return new Integer(val).intValue() ;
@@ -314,7 +323,7 @@ class t15 extends InlineJavaPerlCaller {
 	public int silly_mul_via_perl_via_java(int a, int b) throws InlineJavaException, InlineJavaPerlException {
 		int ret = 0 ;
 		for (int i = 0 ; i < b ; i++){
-			String val = (String)CallPerl("main", "add_via_java", 
+			String val = (String)CallPerlSub("add_via_java", 
 				new Object [] {new Integer(ret), new Integer(a)}) ;
 			ret = new Integer(val).intValue() ;
 		}
@@ -323,7 +332,7 @@ class t15 extends InlineJavaPerlCaller {
 
 
 	public String cat_via_perl(String a, String b) throws InlineJavaException, InlineJavaPerlException {
-		String val = (String)CallPerl("main", "cat", 
+		String val = (String)CallPerlSub("cat", 
 			new Object [] {a, b}) ;
 
 		return val ;
@@ -339,7 +348,7 @@ class t15 extends InlineJavaPerlCaller {
 			}
 		}
 		else{
-			return (String)CallPerl("main", "twister", 
+			return (String)CallPerlSub("twister", 
 				new Object [] {new Integer(max), new Integer(cnt+1), new Integer(explode)}) ;
 		}
 	}
@@ -351,12 +360,17 @@ class t15 extends InlineJavaPerlCaller {
 
 
 	public Object perlt() throws InlineJavaException, InlineJavaPerlException, OwnException {
-		return CallPerl("main", "t", null) ;
+		return CallPerlSub("t", null) ;
+	}
+
+
+	public Object perl_static() throws InlineJavaException, InlineJavaPerlException, OwnException {
+		return CallPerlStaticMethod("main", "static_method", null) ;
 	}
 
 
 	public Object perldummy() throws InlineJavaException, InlineJavaPerlException, OwnException {
-		return CallPerl("main", "dummy", null) ;
+		return CallPerlSub("dummy", null) ;
 	}
 
 	public void mtc_callbacks(int n){

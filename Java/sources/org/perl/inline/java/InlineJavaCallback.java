@@ -10,26 +10,55 @@ import java.io.* ;
 class InlineJavaCallback {
 	private InlineJavaServer ijs = InlineJavaServer.GetInstance() ;
 	private String pkg = null ;
+	private InlineJavaPerlObject obj = null ;
 	private String method = null ;
 	private Object args[] = null ;
-	private String cast = null ;
+	private Class cast = null ;
 	private Object response = null ;
 	private boolean response_set = false ;
 
 
-	InlineJavaCallback(String _pkg, String _method, Object _args[], String _cast) {
+	InlineJavaCallback(String _pkg, String _method, Object _args[], Class _cast) {
+		this(null, _pkg, _method, _args, _cast) ;
+	}
+	
+	
+	InlineJavaCallback(InlineJavaPerlObject _obj, String _method, Object _args[], Class _cast) {
+		this(_obj, null, _method, _args, _cast) ;
+		if (obj == null){
+			throw new NullPointerException() ;
+		}
+	}
+	
+	
+	private InlineJavaCallback(InlineJavaPerlObject _obj, String _pkg, String _method, Object _args[], Class _cast) {
+		obj = _obj ;
 		pkg = _pkg ;
 		method = _method ;
 		args = _args ;
-		cast = _cast ;	
+		cast = _cast ;
+				
+		if (method == null){
+			throw new NullPointerException() ;
+		}
+		if (cast == null){
+			cast = java.lang.Object.class ;
+		}
 	}
 
 
 	private String GetCommand(InlineJavaProtocol ijp) throws InlineJavaException {
-		StringBuffer cmdb = new StringBuffer("callback " + pkg + " " + method + " " + cast) ;
+		String via = null ;
+		if (obj != null){
+			via = "" + obj.GetId() ;
+		}
+		else if (pkg != null){
+			via = pkg ;
+		}
+		StringBuffer cmdb = new StringBuffer("callback " + via + " " + method + " " + cast.getName()) ;
 		if (args != null){
 			for (int i = 0 ; i < args.length ; i++){
-				 cmdb.append(" " + ijp.SerializeObject(args[i])) ;
+				cmdb.append(" " + ijp.SerializeObject(args[i])) ;
 			}
 		}
 		return cmdb.toString() ;
@@ -102,7 +131,7 @@ class InlineJavaCallback {
 					boolean thrown = new Boolean(st.nextToken()).booleanValue() ;
 					String arg = st.nextToken() ;
 					InlineJavaClass ijc = new InlineJavaClass(ijs, ijp) ;
-					ret = ijc.CastArgument(java.lang.Object.class, arg) ;
+					ret = ijc.CastArgument(cast, arg) ;
 
 					if (thrown){
 						throw new InlineJavaPerlException(ret) ;
