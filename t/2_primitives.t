@@ -10,7 +10,7 @@ use Inline(
 
 
 BEGIN {
-	plan(tests => 100) ;
+	plan(tests => 106) ;
 }
 
 
@@ -109,6 +109,16 @@ ok($t->_Double("$min") == $min) ;
 eval {$t->_Double($max + $max)} ; ok($@, qr/out of range/) ;
 eval {$t->_Double($min + $min)} ; ok($@, qr/out of range/) ;
 
+# Number is forced to Double
+$max = 3.4028235e38 ;
+$min = -3.4028235e38 ;
+ok($t->_Number(undef) == 0) ;
+ok($t->_Number(0) == 0) ;
+ok($t->_Number($max) == $max) ;
+ok($t->_Number("$min") == $min) ;
+eval {$t->_Number($max + $max)} ; ok($@, qr/out of range/) ;
+eval {$t->_Number($min + $min)} ; ok($@, qr/out of range/) ;
+
 ok(! $t->_boolean(undef)) ;
 ok(! $t->_boolean(0)) ;
 ok(! $t->_boolean("")) ;
@@ -200,6 +210,10 @@ class types {
 
 	public Double _Double(Double d){
 		return d ;
+	}
+
+	public Number _Number(Number n){
+		return n ;
 	}
 
 	public boolean _boolean(boolean b){

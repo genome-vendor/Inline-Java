@@ -384,7 +384,9 @@ following:
    # or
    $obj->f(Inline::Java::cast('char', '5')) ;
 
-The cast function forces the selection of the matching signature.
+The cast function forces the selection of the matching signature. Note that
+the cast must match the argument type exactly. Casting to a class that 
+extends the argument type will not work.
 
 Another case where type casting is need is when one wants to pass an array
 as a java.lang.Object:

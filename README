@@ -36,7 +36,7 @@ See README.JNI for more information on building the JNI extension.
 -------------------------------------------------------------------------------
 INSTALLATION:
 
-- This module requires Inline version 0.31 or higher to be installed.
+- This module requires Inline version 0.41 or higher to be installed.
 - It also requires a version of the Java SDK 1.2 or higher to be 
   installed. You can get the latest Java SDK from Sun Microsystems
   at http://java.sun.com. Follow the provided instructions in order
@@ -82,6 +82,11 @@ FEATURES:
 WARNING: THIS IS ALPHA SOFTWARE. It is incomplete and possibly unreliable. 
          It is also possible that some elements of the interface (API) will 
          change in future releases.
+
+Inline::Java version 0.22 is a minor upgrade that includes:
++ Support for Inline 0.41
++ Addition of java.lang.Number as primitive numeric type
++ Other minor bug fixes
 
 Inline::Java version 0.21 is a minor upgrade that includes:
 + 'Studying' of external classes

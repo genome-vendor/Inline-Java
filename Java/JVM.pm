@@ -3,11 +3,11 @@ package Inline::Java::JVM ;
 
 use strict ;
 
-$Inline::Java::JVM::VERSION = '0.20' ;
+$Inline::Java::JVM::VERSION = '0.22' ;
 
 use Carp ;
 use IPC::Open3 ;
-
+use IO::File ;
 
 sub new {
 	my $class = shift ;
@@ -21,7 +21,7 @@ sub new {
 
 	Inline::Java::debug("Starting JVM...") ;
 
-	if ($o->{Java}->{JNI}){
+	if ($o->get_java_config('JNI')){
 		Inline::Java::debug("  JNI mode") ;
 
 		require Inline::Java::JNI ;
@@ -39,20 +39,20 @@ sub new {
 
 		my $debug = (Inline::Java::get_DEBUG() ? "true" : "false") ;
 
-		my $port = $o->{Java}->{PORT} ;
-		my $java = $o->{Java}->{BIN} . "/java" . Inline::Java::portable("EXE_EXTENSION") ;
+		my $port = $o->get_java_config('PORT') ;
+		my $java = $o->get_java_config('BIN') . "/java" . Inline::Java::portable("EXE_EXTENSION") ;
 		my $pjava = Inline::Java::portable("RE_FILE", $java) ;
 
 		my $cmd = "\"$pjava\" InlineJavaServer $debug $port" ;
 		Inline::Java::debug($cmd) ;
 
-		if ($o->{config}->{UNTAINT}){
+		if ($o->get_config('UNTAINT')){
 			($cmd) = $cmd =~ /(.*)/ ;
 		}
 
 		my $pid = 0 ;
 		eval {
-			my $in = '' ;
+			my $in = new IO::File() ;
 			$pid = open3($in, ">&STDOUT", ">&STDERR", $cmd) ;
 			# We won't be sending anything to the child in this fashion...
 			close($in) ;
@@ -60,7 +60,10 @@ sub new {
 		croak "Can't exec JVM: $@" if $@ ;
 
 		$this->{pid} = $pid ;
-		$this->{socket}	= $this->setup_socket($port, $o->{Java}->{STARTUP_DELAY}) ;
+		$this->{socket}	= $this->setup_socket(
+			$port, 
+			$o->get_java_config('STARTUP_DELAY')
+		) ;
 	}
 
 	return $this ;
@@ -113,6 +116,12 @@ sub setup_socket {
 		if ($got_alarm){
 			alarm($timeout) ;
 		}
+
+		# ignore expected "connection refused" warnings
+		# Thanks binkley!
+		local $SIG{__WARN__} = sub { 
+			warn($@) unless ($@ =~ /Connection refused/i) ; 
+		} ;
 
 		while (1){
 			$socket = new IO::Socket::INET(

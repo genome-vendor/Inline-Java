@@ -3,7 +3,7 @@ package Inline::Java::Protocol ;
 
 use strict ;
 
-$Inline::Java::Protocol::VERSION = '0.21' ;
+$Inline::Java::Protocol::VERSION = '0.22' ;
 
 use Inline::Java::Object ;
 use Inline::Java::Array ;
@@ -17,7 +17,7 @@ sub new {
 
 	my $this = {} ;
 	$this->{obj_priv} = $obj || {} ;
-	$this->{module} = $inline->{modfname} ;
+	$this->{module} = $inline->get_api('modfname') ;
 
 	bless($this, $class) ;
 	return $this ;
@@ -274,27 +274,45 @@ sub Send {
 		}
 		else{
 			my $inline = Inline::Java::get_INLINE($this->{module}) ;
-			my $perl_class = Inline::Java::java2perl($inline->{pkg}, $class) ;
-			if (! Inline::Java::known_to_perl($inline->{pkg}, $class)){
-				if ($inline->{Java}->{AUTOSTUDY}){
-					$inline->_study([$class]) ;
-				}
-				else{
-					$perl_class = "Inline::Java::Object" ;
-				}
-			}
+			my $pkg = $inline->get_api('pkg') ;
 
-			my $obj = $perl_class->__new($class, $inline, $id) ;
+			my $obj = undef ;
+			my $elem_class = $class ;
 
 			Inline::Java::debug("checking if stub is array...") ;
 			if (Inline::Java::Class::ClassIsArray($class)){
+				my @d = Inline::Java::Class::ValidateClassSplit($class) ;
+				$elem_class = $d[2] ;
+			}
+
+			my $perl_class = Inline::Java::java2perl($pkg, $elem_class) ;
+			if (Inline::Java::Class::ClassIsReference($elem_class)){
+				if (! Inline::Java::known_to_perl($pkg, $elem_class)){
+					if ($inline->get_java_config('AUTOSTUDY')){
+						$inline->_study([$elem_class]) ;
+					}
+					else{
+						$perl_class = "Inline::Java::Object" ;
+					}
+			 	}
+			}
+			else{
+				# We should only get here if an array of primitives types
+				# was returned, and there is nothing to do since
+				# the block below will handle it.
+			}
+
+			if (Inline::Java::Class::ClassIsArray($class)){
 				Inline::Java::debug("creating array object...") ;
+				$obj = Inline::Java::Object->__new($class, $inline, $id) ;
 				$obj = new Inline::Java::Array($obj) ;
 				Inline::Java::debug("array object created...") ;
 			}
+			else{
+				$obj = $perl_class->__new($class, $inline, $id) ;
+			}
 
 			Inline::Java::debug("returning stub...") ;
-
 			return $obj ;
 		}
 	}

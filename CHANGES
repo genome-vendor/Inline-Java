@@ -1,6 +1,12 @@
 Revision history for Perl extension Inline::Java
 ------------------------------------------------
 
+0.22  Fri Jun  1 13:31:35 EDT 2001
+    - Fixed up Inline::Java to work with Inline 0.41
+    - Added support for java.lang.Number as a primitive numeric type. Any
+      Perl scalar passed as a java.lang.Number will instantiate
+      a java.lang.Double on the Java side.
+
 0.21  Tue May  8 11:32:28 EDT 2001
     - Added 'studying' of external Java classes
     - Added support for default no-arg constructors for public classes

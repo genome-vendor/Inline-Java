@@ -49,10 +49,20 @@ Then use this Perl version to build and run Inline::Java.
 
 LINUX
 -----
-The JNI extension has not been run successfully yet on Linux, although
-it builds fine. It is believed, although not yet proven, that JNI extension 
-might work on Linux if Perl is built following the same instructions a 
-for Solaris.
+The JNI extension has been run successfully on Linux. For this you need 
+to use Java with native threads. To do this you need to inspect your
+Java 2 SDK distribution tree, and put in your LD_LIBRARY_PATH the directories
+that contain 'native_threads' instead of those that contain 'green_threads'.
+
+You should also use any directory that says 'classic' instead of the others.
+The Classic VM seems to run better under Linux.
+
+On my Linux box, here's what I used as LD_LIBRARY_PATH:
+
+  LD_LIBRARY_PATH=/home/patrickl/apps/jdk1.2.2/jre/lib/i386:
+    /home/patrickl/apps/jdk1.2.2/jre/lib/i386/classic:
+    /home/patrickl/apps/jdk1.2.2/jre/lib/i386/native_threads
+
 
 
 BUILDING THE JNI EXTENSION

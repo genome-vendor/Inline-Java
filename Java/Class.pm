@@ -3,7 +3,7 @@ package Inline::Java::Class ;
 
 use strict ;
 
-$Inline::Java::Class::VERSION = '0.20' ;
+$Inline::Java::Class::VERSION = '0.22' ;
 
 use Carp ;
 
@@ -58,6 +58,9 @@ $RANGE->{long} = $RANGE->{'java.lang.Long'} ;
 $RANGE->{float} = $RANGE->{'java.lang.Float'} ;
 $RANGE->{double} = $RANGE->{'java.lang.Double'} ;
 
+# java.lang.Number support. We allow the widest range
+# i.e. Double
+$RANGE->{'java.lang.Number'} = $RANGE->{'java.lang.Double'} ;
 
 
 # This method makes sure that the class we are asking for
@@ -124,44 +127,44 @@ sub CastArgument {
 
 	my $sub = sub {
 		my $array_type = undef ;
-		if (UNIVERSAL::isa($arg, "Inline::Java::Class::Cast")){
+		if ((defined($arg))&&(UNIVERSAL::isa($arg, "Inline::Java::Class::Cast"))){
 			my $v = $arg->get_value() ;
 			$proto = $arg->get_type() ;
 			$array_type = $arg->get_array_type() ;
 			$arg = $v ;
 		}
 
-		if ((ClassIsReference($proto))&&(! UNIVERSAL::isa($arg, "Inline::Java::Object"))){
+		if ((ClassIsReference($proto))&&
+			(defined($arg))&&
+			(! UNIVERSAL::isa($arg, "Inline::Java::Object"))){
 			# Here we allow scalars to be passed in place of java.lang.Object
 			# They will wrapped on the Java side.
-			if (defined($arg)){
-				if (UNIVERSAL::isa($arg, "ARRAY")){
-					if (! UNIVERSAL::isa($arg, "Inline::Java::Array")){
-						my $an = new Inline::Java::Array::Normalizer($array_type || $proto, $arg) ;
-						my $flat = $an->FlattenArray() ; 
-						my $inline = Inline::Java::get_INLINE($module) ;
-						my $obj = Inline::Java::Object->__new($array_type || $proto, $inline, -1, $flat->[0], $flat->[1]) ;
+			if (UNIVERSAL::isa($arg, "ARRAY")){
+				if (! UNIVERSAL::isa($arg, "Inline::Java::Array")){
+					my $an = new Inline::Java::Array::Normalizer($array_type || $proto, $arg) ;
+					my $flat = $an->FlattenArray() ; 
+					my $inline = Inline::Java::get_INLINE($module) ;
+					my $obj = Inline::Java::Object->__new($array_type || $proto, $inline, -1, $flat->[0], $flat->[1]) ;
 
-						# We need to create the array on the Java side, and then grab 
-						# the returned object.
-						$arg = new Inline::Java::Array($obj) ;
-					}
-					else{
-						Inline::Java::debug("argument is already an Inline::Java array") ;
-					}
+					# We need to create the array on the Java side, and then grab 
+					# the returned object.
+					$arg = new Inline::Java::Array($obj) ;
 				}
 				else{
-					if (ref($arg)){
-						# We got some other type of ref...
+					Inline::Java::debug("argument is already an Inline::Java array") ;
+				}
+			}
+			else{
+				if (ref($arg)){
+					# We got some other type of ref...
+					croak "Can't convert $arg to object $proto" ;
+				}
+				else{
+					# Here we got a scalar
+					# Here we allow scalars to be passed in place of java.lang.Object
+					# They will wrapped on the Java side.
+					if ($proto ne "java.lang.Object"){
 						croak "Can't convert $arg to object $proto" ;
-					}
-					else{
-						# Here we got a scalar
-						# Here we allow scalars to be passed in place of java.lang.Object
-						# They will wrapped on the Java side.
-						if ($proto ne "java.lang.Object"){
-							croak "Can't convert $arg to object $proto" ;
-						}
 					}
 				}
 			}
@@ -267,11 +270,17 @@ sub CastArgument {
 
 	my @ret = $sub->() ;
 	
-	if (UNIVERSAL::isa($arg_ori, "Inline::Java::Class::Cast")){
+	if ((defined($arg_ori))&&(UNIVERSAL::isa($arg_ori, "Inline::Java::Class::Cast"))){
 		# It seems we had casted the variable to a specific type
 		if ($arg_ori->matches($proto_ori)){
 			Inline::Java::debug("Type cast match!") ;
 			$ret[1] = 10 ;
+		}
+		else{
+			# We have casted to something that doesn't exactly match
+			# any of the available types. 
+			# For now we don't allow this.
+			croak "Cast ($proto) doesn't exactly match prototype ($proto_ori)" ;
 		}
 	}
 
@@ -289,6 +298,7 @@ sub ClassIsNumeric {
 		java.lang.Long
 		java.lang.Float
 		java.lang.Double
+		java.lang.Number
 		byte
 		short
 		int
@@ -525,28 +535,33 @@ class InlineJavaClass {
 		// reference types.
 		boolean num = ClassIsNumeric(p) ;
 		if ((num)||(ClassIsString(p))){
+			Class ap = p ;
+			if (ap == java.lang.Number.class){
+				ijs.debug(" specializing java.lang.Number to java.lang.Double") ;
+				ap = java.lang.Double.class ;
+			}
+
 			if (type.equals("undef")){
 				if (num){
-					ijs.debug("  args is undef -> forcing to " + p.getName() + " 0") ;
-					ret = ijp.CreateObject(p, new Object [] {"0"}, new Class [] {String.class}) ;
+					ijs.debug("  args is undef -> forcing to " + ap.getName() + " 0") ;
+					ret = ijp.CreateObject(ap, new Object [] {"0"}, new Class [] {String.class}) ;
 					ijs.debug("    result is " + ret.toString()) ;
 				}
 				else{
 					ret = null ;
-					ijs.debug("  args is undef -> forcing to " + p.getName() + " " + ret) ;
+					ijs.debug("  args is undef -> forcing to " + ap.getName() + " " + ret) ;
 					ijs.debug("    result is " + ret) ;
-					// ijp.CreateObject(p, new Object [] {""}, new Class [] {String.class}) ;
 				}
 			}
 			else if (type.equals("scalar")){
 				String arg = ijp.pack((String)tokens.get(1)) ;
-				ijs.debug("  args is scalar -> forcing to " + p.getName()) ;
-				try	{							
-					ret = ijp.CreateObject(p, new Object [] {arg}, new Class [] {String.class}) ;
+				ijs.debug("  args is scalar -> forcing to " + ap.getName()) ;
+				try	{
+					ret = ijp.CreateObject(ap, new Object [] {arg}, new Class [] {String.class}) ;
 					ijs.debug("    result is " + ret.toString()) ;
 				}
 				catch (NumberFormatException e){
-					throw new InlineJavaCastException("Can't convert " + arg + " to " + p.getName()) ;
+					throw new InlineJavaCastException("Can't convert " + arg + " to " + ap.getName()) ;
 				}
 			}
 			else{
@@ -776,6 +791,7 @@ class InlineJavaClass {
 			java.lang.Long.class,
 			java.lang.Float.class,
 			java.lang.Double.class,
+			java.lang.Number.class,
 			byte.class,
 			short.class,
 			int.class,

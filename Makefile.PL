@@ -25,7 +25,7 @@ WriteMakefile(
 	NAME => 'Inline::Java',
 	VERSION_FROM => 'Java.pm',
 	PREREQ_PM => {
-		Inline	=> 0.31
+		Inline	=> 0.41
 	},
 	clean => {FILES => '_Inline_test/'},
 ) ;

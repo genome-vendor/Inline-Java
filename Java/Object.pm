@@ -3,7 +3,7 @@ package Inline::Java::Object ;
 
 use strict ;
 
-$Inline::Java::Object::VERSION = '0.20' ;
+$Inline::Java::Object::VERSION = '0.22' ;
 
 use Inline::Java::Protocol ;
 use Carp ;
@@ -37,7 +37,7 @@ sub __new {
 	my $knot = tie %this, $class ;
 	my $this = bless(\%this, $class) ;
 
-	my $pkg = $inline->{pkg} ;
+	my $pkg = $inline->get_api('pkg') ;
 	if ($class ne "Inline::Java::Object"){
 		$class = Inline::Java::java2perl($pkg, $java_class) ;
 	}
@@ -96,11 +96,11 @@ sub __validate_prototype {
 		my $new_args = undef ;
 		my $score = undef ;
 
-		my $s = Inline::Java::Protocol->CreateSignature($proto) ;
-		Inline::Java::debug("Matching arguments to $method$s") ;
+		my $sig = Inline::Java::Protocol->CreateSignature($proto) ;
+		Inline::Java::debug("Matching arguments to $method$sig") ;
 		
 		eval {
-			($new_args, $score) = Inline::Java::Class::CastArguments($args, $proto, $inline->{modfname}) ;
+			($new_args, $score) = Inline::Java::Class::CastArguments($args, $proto, $inline->get_api('modfname')) ;
 		} ;
 		if ($@){
 			if ($nb_proto == 1){
@@ -136,8 +136,8 @@ sub __validate_prototype {
 			my $proto = $s->{SIGNATURE} ;	
 			my $static = ($s->{STATIC} ? "static " : "") ;
 
-			my $s = Inline::Java::Protocol->CreateSignature($proto) ;
-			$msg .= "\t$static$method$s\n" ;
+			my $sig = Inline::Java::Protocol->CreateSignature($proto) ;
+			$msg .= "\t$static$method$sig\n" ;
 			$msg .= "\t\terror was: $errors[$i]" ;
 			$i++ ;
 		}
@@ -172,7 +172,7 @@ sub __validate_prototype {
 
 	# Here we will be polite and warn the user if we had to choose a 
 	# method by ourselves.
-	if ($inline->{Java}->{WARN_METHOD_SELECT}){
+	if ($inline->get_java_config('WARN_METHOD_SELECT')){
 		if (($nb_matched > 1)&&
 			($chosen->{SCORE} < ($chosen->{NB_ARGS} * 10))){
 			my $msg = "Based on the arguments passed, I had to choose between " .
@@ -471,7 +471,7 @@ sub new {
 	my $this = {} ;
 	$this->{class} = $obj_class ;
 	$this->{java_class} = $java_class ;
-	$this->{module} = $inline->{modfname} ;
+	$this->{module} = $inline->get_api('modfname') ;
 	$this->{proto} = new Inline::Java::Protocol($this, $inline) ;
 
 	bless($this, $class) ;
