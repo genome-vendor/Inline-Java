@@ -7,7 +7,7 @@ package Inline::Java ;
 
 use strict ;
 
-$Inline::Java::VERSION = '0.41' ;
+$Inline::Java::VERSION = '0.42' ;
 
 
 # DEBUG is set via the DEBUG config
@@ -123,6 +123,9 @@ sub validate {
 	$o->set_option('WARN_METHOD_SELECT',	0,		'b', 1, \%opts) ;
 	$o->set_option('STUDY',					undef,	'a', 0, \%opts) ;
 	$o->set_option('AUTOSTUDY',				0,		'b', 1, \%opts) ;
+
+	$o->set_option('EXTRA_JAVA_ARGS',		'',		's', 1, \%opts) ;
+	$o->set_option('EXTRA_JAVAC_ARGS',		'',		's', 1, \%opts) ;
 
 	my @left_overs = keys(%opts) ;
 	if (scalar(@left_overs)){
@@ -305,7 +308,8 @@ sub build {
 		my $cp = $ENV{CLASSPATH} || '' ;
 		$ENV{CLASSPATH} = make_classpath($o->get_java_config('CLASSPATH'), $server_jar, @prev_install_dirs) ;
 		Inline::Java::debug(2, "classpath: $ENV{CLASSPATH}") ;
-		my $cmd = portable("SUB_FIX_CMD_QUOTES", "\"$javac\" -d \"$install_dir\" $source > cmd.out $redir") ;
+		my $args = $o->get_java_config('EXTRA_JAVAC_ARGS') ;
+		my $cmd = portable("SUB_FIX_CMD_QUOTES", "\"$javac\" $args -d \"$install_dir\" $source > cmd.out $redir") ;
 		if ($o->get_config('UNTAINT')){
 			($cmd) = $cmd =~ /(.*)/ ;
 		}
@@ -399,18 +403,16 @@ sub load {
 		'auto', $o->get_api('modpname')) ;
 
 	# If the JVM is not running, we need to start it here.
+	my $cp = $ENV{CLASSPATH} || '' ;
 	if (! $JVM){
-		my $cp = $ENV{CLASSPATH} || '' ;
-		$ENV{CLASSPATH} = portable("SUB_FIX_CLASSPATH", get_server_jar()) ;
+		$ENV{CLASSPATH} = make_classpath(get_server_jar()) ;
 		Inline::Java::debug(2, "classpath: $ENV{CLASSPATH}") ;
 		$JVM = new Inline::Java::JVM($o) ;
 		$ENV{CLASSPATH}	= $cp ;
 		Inline::Java::debug(2, "classpath: $ENV{CLASSPATH}") ;
 
-		# Add CLASSPATH entries + user jar + $install_dir to the JVM classpath
-		my @cp = make_classpath($o->get_java_config('CLASSPATH'), get_user_jar()) ;
 		my $pc = new Inline::Java::Protocol(undef, $o) ;
-		$pc->AddClassPath(@cp, portable("SUB_FIX_CLASSPATH", $install_dir)) ;
+		$pc->AddClassPath(portable("SUB_FIX_CLASSPATH", get_user_jar())) ;
 
 		my $st = $pc->ServerType() ;
 		if ((($st eq "shared")&&(! $o->get_java_config('SHARED_JVM')))||
@@ -418,11 +420,14 @@ sub load {
 			croak "JVM type mismatch on port " . $JVM->{port} ;
 		}
 	}
-	else{
-		# Add $install_dir entry to the JVM classpath.
-		my $pc = new Inline::Java::Protocol(undef, $o) ;
-		$pc->AddClassPath(portable("SUB_FIX_CLASSPATH", $install_dir)) ;
-	}
+
+	$ENV{CLASSPATH}	= '' ;
+	my @cp = make_classpath(
+		$o->get_java_config('CLASSPATH'), $install_dir) ;
+	$ENV{CLASSPATH}	= $cp ;
+	
+	my $pc = new Inline::Java::Protocol(undef, $o) ;
+	$pc->AddClassPath(@cp) ;
 
 	# Add our Inline object to the list.
 	push @INLINES, $o ;
@@ -997,42 +1002,30 @@ sub cast {
 
 sub study_classes {
 	my $classes = shift ;
+	my $package = shift || caller() ;
 
-	# Here we will look to find an Inline object that is in the same 
-	# package as the caller. That way the classes can be used directly
-	# without having to use symbolic references.
-	my ($cur_pkg) = caller() ;
 	my $o = undef ;
+	my %pkgs = () ;
 	foreach (@INLINES){
 		my $i = $_ ;
-		my $pkg = $i->get_api('pkg') ;
-		if ($pkg eq $cur_pkg){
+		my $pkg = $i->get_api('pkg') || 'main' ;
+		$pkgs{$pkg} = 1 ;
+		if ($pkg eq $package){
 			$o = $i ;
 			last ;
 		}
 	}
 
-	my $no_pkg = 1 ;
-	if (! defined($o)){
-		srand() ;
-		$o = @INLINES[int(rand(@INLINES))] ;
-		$no_pkg = 0 ;
+	if (defined($o)){
+		$o->_study($classes, 0) ;
 	}
-
-	$o->_study($classes, 0) ;
-
-	my $pkg = undef ;
-	if ($no_pkg){
-		return $pkg ;
-	}
-	else{
-		my $pkg = $o->get_api('pkg') ;
-		if (! $pkg){
-			$pkg = "main" ;
+	else {
+		my $msg = "Can't place studied classes under package '$package' since Inline::Java was not used there. Valid packages are:\n" ;
+		foreach my $pkg (keys %pkgs){
+			$msg .= "  $pkg\n" ;
 		}
+		croak($msg) ;
 	}
-
-	return $pkg ;
 }
 
 

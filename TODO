@@ -1,6 +1,5 @@
 CODE:
-- Check John's bug #5. It seems if two modules have the same
-  module name some stuff gets screwed up.
+- Do more test for CLASSPATH combinations
 
 TEST:
 - Alpha

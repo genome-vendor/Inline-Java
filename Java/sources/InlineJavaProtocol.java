@@ -15,6 +15,7 @@ class InlineJavaProtocol {
 	private String cmd ;
 	private String response = null ;
 
+	static private HashMap member_cache = new HashMap() ;
 
 	InlineJavaProtocol(InlineJavaServer _ijs, String _cmd) {
 		ijs = _ijs ;
@@ -423,7 +424,6 @@ class InlineJavaProtocol {
 		Makes sure a method exists
 	*/
 	ArrayList ValidateMethod(boolean constructor, Class c, String name, StringTokenizer st) throws InlineJavaException {
-		Member ma[] = (constructor ? (Member [])c.getConstructors() : (Member [])c.getMethods()) ;
 		ArrayList ret = new ArrayList() ;
 
 		// Extract signature
@@ -435,34 +435,45 @@ class InlineJavaProtocol {
 			args.add(args.size(), st.nextToken()) ;
 		}
 
-		ArrayList ml = new ArrayList(ma.length) ;
+		String key = c.getName() + "." + name + signature ;
+		ArrayList ml = new ArrayList() ;
 		Class params[] = null ;
-		for (int i = 0 ; i < ma.length ; i++){
-			Member m = ma[i] ;
 
-			if (m.getName().equals(name)){
-				InlineJavaUtils.debug(3, "found a " + name + (constructor ? " constructor" : " method")) ;
+		Member cached = (Member)member_cache.get(key) ;
+		if (cached != null){
+				InlineJavaUtils.debug(3, "method was cached") ;
+				ml.add(ml.size(), cached) ;
+		}
+		else{
+			Member ma[] = (constructor ? (Member [])c.getConstructors() : (Member [])c.getMethods()) ;
+			for (int i = 0 ; i < ma.length ; i++){
+				Member m = ma[i] ;
 
-				if (constructor){
-					params = ((Constructor)m).getParameterTypes() ;
-				}
-				else{
-					params = ((Method)m).getParameterTypes() ;
-				}
+				if (m.getName().equals(name)){
+					InlineJavaUtils.debug(3, "found a " + name + (constructor ? " constructor" : " method")) ;
+	
+					if (constructor){
+						params = ((Constructor)m).getParameterTypes() ;
+					}
+					else{
+						params = ((Method)m).getParameterTypes() ;
+					}
 
-				// Now we check if the signatures match
-				String sign = InlineJavaUtils.CreateSignature(params, ",") ;
-				InlineJavaUtils.debug(3, sign + " = " + signature + "?") ;
+					// Now we check if the signatures match
+					String sign = InlineJavaUtils.CreateSignature(params, ",") ;
+					InlineJavaUtils.debug(3, sign + " = " + signature + "?") ;
 
-				if (signature.equals(sign)){
-					InlineJavaUtils.debug(3, "has matching signature " + sign) ;
-					ml.add(ml.size(), m) ;
-					break ;
+					if (signature.equals(sign)){
+						InlineJavaUtils.debug(3, "has matching signature " + sign) ;
+						ml.add(ml.size(), m) ;
+						member_cache.put(key, m) ;
+						break ;
+					}
 				}
 			}
 		}
 
-		// Now we got a list of matching methods. 
+		// Now we got a list of matching methods (actually 0 or 1). 
 		// We have to figure out which one we will call.
 		if (ml.size() == 0){
 			// Nothing matched. Maybe we got a default constructor
@@ -511,7 +522,6 @@ class InlineJavaProtocol {
 		Makes sure a member exists
 	*/
 	ArrayList ValidateMember(Class c, String name, StringTokenizer st) throws InlineJavaException {
-		Field fa[] = c.getFields() ;
 		ArrayList ret = new ArrayList() ;
 
 		// Extract member type
@@ -520,19 +530,29 @@ class InlineJavaProtocol {
 		// Extract the argument
 		String arg = st.nextToken() ;
 
-		ArrayList fl = new ArrayList(fa.length) ;
+		String key = type + " " + c.getName() + "." + name ;
+		ArrayList fl = new ArrayList() ;
 		Class param = null ;
-		for (int i = 0 ; i < fa.length ; i++){
-			Field f = fa[(InlineJavaUtils.ReverseMembers() ? (fa.length - 1 - i) : i)] ;
 
-			if (f.getName().equals(name)){
-				InlineJavaUtils.debug(3, "found a " + name + " member") ;
+		Member cached = (Member)member_cache.get(key) ;
+		if (cached != null){
+			InlineJavaUtils.debug(3, "member was cached") ;
+			fl.add(fl.size(), cached) ;
+		}
+		else {
+			Field fa[] = c.getFields() ;
+			for (int i = 0 ; i < fa.length ; i++){
+				Field f = fa[(InlineJavaUtils.ReverseMembers() ? (fa.length - 1 - i) : i)] ;
 
-				param = f.getType() ;
-				String t = param.getName() ;
-				if (type.equals(t)){
-					InlineJavaUtils.debug(3, "has matching type " + t) ;
-					fl.add(fl.size(), f) ;
+				if (f.getName().equals(name)){
+					InlineJavaUtils.debug(3, "found a " + name + " member") ;
+
+					param = f.getType() ;
+					String t = param.getName() ;
+					if (type.equals(t)){
+						InlineJavaUtils.debug(3, "has matching type " + t) ;
+						fl.add(fl.size(), f) ;
+					}
 				}
 			}
 		}
@@ -551,6 +571,7 @@ class InlineJavaProtocol {
 			// If we have more that one, we use the last one, which is the most
 			// specialized
 			Field f = (Field)fl.get(fl.size() - 1) ;
+			member_cache.put(key, f) ;
 			param = f.getType() ;
 
 			String msg = "For member " + name + " of class " + c.getName() + ": " ;

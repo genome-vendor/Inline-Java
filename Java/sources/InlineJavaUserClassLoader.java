@@ -35,6 +35,7 @@ class InlineJavaUserClassLoader extends URLClassLoader {
 			if (urls.get(u) == null){
 	            urls.put(u, "1") ;
 	            addURL(u) ;
+				InlineJavaUtils.debug(2, "added " + u + " to classpath") ;
 	        }
 		}
 		catch (MalformedURLException e){

@@ -39,11 +39,13 @@ sub new {
 		Inline::Java::debug(1, "starting JVM...") ;
 	}
 
+	my $args = $o->get_java_config('EXTRA_JAVA_ARGS') ;
 	if ($o->get_java_config('JNI')){
 		Inline::Java::debug(1, "JNI mode") ;
 
 		my $jni = new Inline::Java::JNI(
 			$ENV{CLASSPATH} || '',
+			$args || '',
 			$this->{embedded},
 			Inline::Java::get_DEBUG(),
 		) ;
@@ -101,7 +103,7 @@ sub new {
 			"java" . Inline::Java::portable("EXE_EXTENSION")) ;
 
 		my $shared = ($this->{shared} ? "true" : "false") ;
-		my $cmd = Inline::Java::portable("SUB_FIX_CMD_QUOTES", "\"$java\" org.perl.inline.java.InlineJavaServer $debug $this->{port} $shared") ;
+		my $cmd = Inline::Java::portable("SUB_FIX_CMD_QUOTES", "\"$java\" $args org.perl.inline.java.InlineJavaServer $debug $this->{port} $shared") ;
 		Inline::Java::debug(2, $cmd) ;
 		if ($o->get_config('UNTAINT')){
 			($cmd) = $cmd =~ /(.*)/ ;

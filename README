@@ -70,6 +70,15 @@ WARNING: THIS IS ALPHA SOFTWARE. It is incomplete and possibly unreliable.
          It is also possible that some elements of the interface (API) will 
          change in future releases.
 
+Inline::Java version 0.42 is a minor upgrade that includes:
++ Fixed more CLASSPATH issues. CLASSPATH now works like this:
+   * CLASSPATH environment variable is global
+   * CLASSPATH configuration option is local to the user class loader
++ Added method cache to increase performance and decrease reflection 
+  API calls
++ Altered and documented the study_classes() function
++ Added EXTRA_JAVA_ARGS and EXTRA_JAVAC_ARGS config options
+
 Inline::Java version 0.41 is a minor upgrade that includes:
 + Fixed CLASSPATH bug
 + Possibly (!) fixed test suite problems under heavy load

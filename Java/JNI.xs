@@ -117,9 +117,10 @@ PROTOTYPES: DISABLE
 
 
 InlineJavaJNIVM * 
-new(CLASS, classpath, embedded, debug)
+new(CLASS, classpath, args, embedded, debug)
 	char * CLASS
 	char * classpath
+	char * args
 	int	embedded
 	int	debug
 
@@ -141,15 +142,19 @@ new(CLASS, classpath, embedded, debug)
 	RETVAL->debug = debug ;
 	RETVAL->destroyed = 0 ;
 
-	options[0].optionString = ((RETVAL->debug > 5) ? "-verbose" : "-verbose:") ;
-	cp = (char *)malloc((strlen(classpath) + 128) * sizeof(char)) ;
-	sprintf(cp, "-Djava.class.path=%s", classpath) ;
-	options[1].optionString = cp ;
-
 	vm_args.version = JNI_VERSION_1_2 ;
 	vm_args.options = options ;
 	vm_args.nOptions = 2 ;
 	vm_args.ignoreUnrecognized = JNI_FALSE ;
+
+	options[0].optionString = ((RETVAL->debug > 5) ? "-verbose" : "-verbose:") ;
+	cp = (char *)malloc((strlen(classpath) + 128) * sizeof(char)) ;
+	sprintf(cp, "-Djava.class.path=%s", classpath, args) ;
+	options[1].optionString = cp ;
+	if (strlen(args) > 0){
+		options[2].optionString = args ;
+		vm_args.nOptions++ ;
+	}
 
 	/* Embedded patch and idea by Doug MacEachern */
 	if (RETVAL->embedded) {

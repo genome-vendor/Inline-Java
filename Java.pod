@@ -142,11 +142,10 @@ behavior of C<Inline::Java>:
       make use of the same JVM.
 
    CLASSPATH:
-      Adds the specified CLASSPATH to the environment CLASSPATH.
+      Adds the specified CLASSPATH. This CLASSPATH will only be available
+      threw the use classloader. To set the CLASSPATH globally, use the 
+      CLASSPATH environment variable.
       Ex: CLASSPATH => '/my/other/java/classses'
-      Note: This configuration option only has an effect on the first
-      'use Inline Java' call inside a Perl script, since all other calls 
-      make use of the same JVM.
 
    JNI:
       Toggles the execution mode. The default is to use the client/server
@@ -154,9 +153,17 @@ behavior of C<Inline::Java>:
       time though. See README and README.JNI for more information), set 
       JNI to 1. 
       Ex: JNI => 1
-      Note: This can also be set globally by setting the 
-      PERL_INLINE_JAVA_JNI environment variable to 1.
       Note: This configuration option only has an effect on the first
+      'use Inline Java' call inside a Perl script, since all other calls 
+      make use of the same JVM.
+
+   EXTRA_JAVA_ARGS:
+   EXTRA_JAVAC_ARGS:
+      Specify extra command line parameters to be passed to, respectively,  
+      the JVM and the Java compiler. Use with caution as some options may 
+      alter normal C<Inline::Java> behavior.
+      Ex: EXTRA_JAVA_ARGS => '-Xmx96m'
+      Note: EXTRA_JAVA_ARGS only has an effect on the first
       'use Inline Java' call inside a Perl script, since all other calls 
       make use of the same JVM.
 
@@ -166,8 +173,6 @@ behavior of C<Inline::Java>:
       script. This is an advanced feature that should only be need in
       very specific circumstances.
       Ex: EMBEDDED_JNI => 1
-      Note: This can also be set globally by setting the 
-      PERL_INLINE_JAVA_EMBEDDED_JNI environment variable to 1.
       Note: The EMBEDDED_JNI option sets the JNI option.
       Note: This configuration option only has an effect on the first
       'use Inline Java' call inside a Perl script, since all other calls 
@@ -716,6 +721,32 @@ In this case C<Inline::Java> intercepts the return value of the get_hm()
 method, sees that it's of a type that it doesn't know about 
 (java.lang.HashMap), and immediately studies the class. After that call 
 the java::lang::HashMap class is available to use through Perl.
+
+In some cases you may not know which classes to study until runtime. In 
+these cases you can use the study_classes() function:
+
+=for comment
+
+   use Inline (
+      Java => 'STUDY',
+      STUDY => [],
+   ) ;
+   use Inline::Java qw(study_classes) ;
+
+   study_classes(['java.util.HashMap'], undef) ;
+   my $hm = new java::util::HashMap() ;
+   $hm->put("key", "value") ;
+   my $val = $hm->get("key") ;
+   print($val . "\n") ; # prints value
+
+=for comment
+
+The study_classes() function takes 2 arguments, a reference to an array of
+class names (like the STUDY configuration option) and the name of the 
+package in which to bind those classes. If the name of the package is 
+undefined, the classes will be bound to the current (caller) package.
+Note: You can only specify the names of packages in which you have 
+previously "used" C<Inline::Java>.
    Z<>
 
 

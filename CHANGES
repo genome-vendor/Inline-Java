@@ -1,6 +1,15 @@
 Revision history for Perl extension Inline::Java
 ------------------------------------------------
 
+0.42  Fri Sep  5 13:18:25 EDT 200
+    - Fixed more CLASSPATH issues. CLASSPATH now works like this:
+      * CLASSPATH environment variable is global
+      * CLASSPATH configuration option is local to the user class loader
+    - Added method cache to increase performance and decrease reflection 
+      API calls
+    - Altered and documented the study_classes() function
+    - Added EXTRA_JAVA_ARGS and EXTRA_JAVAC_ARGS config options
+
 0.41  Mon Jul 14 13:18:25 EDT 200
     - Fixed CLASSPATH bug
     - Possibly (!) fixed test suite problems under heavy load

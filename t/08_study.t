@@ -43,16 +43,12 @@ use Inline::Java qw(study_classes) ;
 
 
 BEGIN {
-	plan(tests => 10) ;
+	plan(tests => 9) ;
 }
 
-my $pkg = study_classes([
+study_classes([
 	't.no_const'
 ]) ;
-
-# There is a 'use Inline Java' somewhere in the current 
-# package, so we can call the classes directly.
-ok(! defined($pkg)) ;
 
 my $t = new study::t::types() ;
 
