@@ -66,6 +66,9 @@ second time you test loading of an already built module.
 -------------------------------------------------------------------------------
 FEATURES:
 
+Inline::Java version 0.46 is a minor upgrade that includes:
++ Fixed Natives.xs to work with ExtUtils::ParseXS
+
 Inline::Java version 0.45 is a major upgrade that includes:
 + Fixed Makefile.PL arguments that were getting lost
 + Fixed deprecated require call

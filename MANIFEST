@@ -61,3 +61,4 @@ t/types.class
 t/no_const.java
 t/no_const.class
 t/shared.java
+META.yml                                 Module meta-data (added by MakeMaker)

@@ -8,7 +8,7 @@ package Inline::Java ;
 use strict ;
 require 5.006 ;
 
-$Inline::Java::VERSION = '0.45' ;
+$Inline::Java::VERSION = '0.46' ;
 
 
 # DEBUG is set via the DEBUG config

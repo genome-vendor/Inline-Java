@@ -1,7 +1,6 @@
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
-#include "stdarg.h"
 
 
 /* Include the JNI header file */

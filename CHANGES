@@ -1,5 +1,8 @@
 Revision history for Perl extension Inline::Java
 ------------------------------------------------
+0.46  Web Feb 04 20:00:00 EST 2004
+    - Fixed Natives.xs to work with ExtUtils::ParseXS
+
 0.45  Fri Jan 30 20:00:00 EST 2004
     - Fixed Makefile.PL arguments that were getting lost
     - Fixed deprecated require call

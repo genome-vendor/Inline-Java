@@ -4,6 +4,7 @@
 #include "stdarg.h"
 
 
+
 /* Include the JNI header file */
 #include "jni.h"
 
@@ -69,8 +70,6 @@ jobject create_primitive_object(JNIEnv *env, char f, char *cls_name, jvalue val)
 jobject extract_va_arg(JNIEnv *env, va_list *list, char f){
 	jobject ret = NULL ;
 	jvalue val ;
-	int fi ;
-	jfloat *ff ;
 
 	/*
 		A bit of voodoo going on for J and F, but the rest I think is pretty
@@ -219,9 +218,37 @@ JNIEXPORT void JNICALL Java_org_perl_inline_java_InlineJavaPerlNatives_RegisterM
 
 /*****************************************************************************/
 
+/*
+XS(boot_Inline__Java__Natives); 
+XS(boot_Inline__Java__Natives)
+{
+    dXSARGS;
 
+    XS_VERSION_BOOTCHECK ;
 
-void boot_Inline__Java__Natives(){
+    XSRETURN_YES;
+}
+*/
+
+/* 
+	xsubpp doesn't like it when we don't specify a MODULE=... PACKAGE=...
+	line. But doing this results in calling function from libperl and we 
+	don't want that or else we will need to laod that to. So we simply let
+	xsubpp do it's substitutions and define macros the cancel out the effect.
+	Anyways that code will NEVER be called.
+*/
+
+void noop(){
 }
 
+#define XS(n)					void n()
+#define dXSARGS					noop()
+#define XS_VERSION_BOOTCHECK	noop()
+#define XSRETURN_YES			noop()
+
+#define PERL_UNUSED_VAR(var)	noop()
+
+MODULE = Inline::Java::Natives   PACKAGE = Inline::Java::Natives
+
+PROTOTYPES: DISABLE
 
