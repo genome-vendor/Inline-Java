@@ -2,13 +2,13 @@ package Inline::Java ;
 @Inline::Java::ISA = qw(Inline Exporter) ;
 
 # Export the cast function if wanted
-@EXPORT_OK = qw(cast study_classes caught) ;
+@EXPORT_OK = qw(cast study_classes caught jar) ;
 
 
 use strict ;
 require 5.006 ;
 
-$Inline::Java::VERSION = '0.46' ;
+$Inline::Java::VERSION = '0.47' ;
 
 
 # DEBUG is set via the DEBUG config
@@ -80,6 +80,12 @@ END {
 
 # To export the cast function and others.
 sub import {
+	foreach my $a (@_){
+		if ($a eq 'jar'){
+			print Inline::Java::Portable::get_server_jar() ;
+			exit() ;
+		}
+	}
     Inline::Java->export_to_level(1, @_) ;
 }
 
@@ -326,7 +332,7 @@ sub build {
 		}
 
 		my $cp = $ENV{CLASSPATH} || '' ;
-		$ENV{CLASSPATH} = make_classpath($o->get_java_config('CLASSPATH'), $server_jar, @prev_install_dirs) ;
+		$ENV{CLASSPATH} = make_classpath($server_jar, @prev_install_dirs, $o->get_java_config('CLASSPATH')) ;
 		Inline::Java::debug(2, "classpath: $ENV{CLASSPATH}") ;
 		my $args = $o->get_java_config('EXTRA_JAVAC_ARGS') ;
 		my $cmd = portable("SUB_FIX_CMD_QUOTES", "\"$javac\" $args -d \"$install_dir\" $source > cmd.out $redir") ;
@@ -442,8 +448,7 @@ sub load {
 	}
 
 	$ENV{CLASSPATH}	= '' ;
-	my @cp = make_classpath(
-		$o->get_java_config('CLASSPATH'), $install_dir) ;
+	my @cp = make_classpath($install_dir, $o->get_java_config('CLASSPATH')) ;
 	$ENV{CLASSPATH}	= $cp ;
 	
 	my $pc = new Inline::Java::Protocol(undef, $o) ;

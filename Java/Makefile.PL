@@ -3,7 +3,6 @@ use File::Find ;
 
 use strict ;
 use File::Spec ;
-use Config ;
 
 require "Portable.pm" ;
 # The file we just produced in the parent Makefile.PL
@@ -129,10 +128,25 @@ if (($build_jni || AskYN("Do you wish to build the JNI extension?", 'y'))){
 				Inline::Java::Portable::portable('SUB_FIX_MAKE_QUOTES', 
 					"-L" . $files->{$jvm_lib}->{selected})) ;
 
+			my $DIR = [] ;
+			print <<TXT;
+The PerlNatives extension allows for callbacks to be defined as native
+Java methods. It is still EXPERIMENTAL and may not build or work properly
+on all platforms. See documentation for more details.
+Note: PerlNatives requires J2SDK 1.4 or greater.
+TXT
+			if (AskYN("Do you wish to build the PerlNatives extension?", 'n')){
+				push @{$DIR}, 'Natives' ;
+			}
+
+			# Not quite yet...
+			# push @{$DIR}, 'PerlInterpreter' ;
+
+			print "\n" ;
 			WriteMakefile(
 				NAME => 'Inline::Java::JNI',
 				VERSION_FROM => 'JNI.pm',
-				DIR => ['Natives'],
+				DIR => $DIR,
 				PMLIBDIRS => [File::Spec->catdir('sources', 'org', 'perl', 'inline', 'java')],
 				INC => join(' ', @main::I),
 				LIBS => [join(' ', @main::L) . " -ljvm"],

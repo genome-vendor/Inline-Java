@@ -8,5 +8,6 @@ WriteMakefile(
 	INC => join(' ', @main::I),
 	LIBS => [join(' ', @main::L) . " -ljvm"],
 	# CCFLAGS => '-D_REENTRANT',
+    clean => {FILES => "_Inline_test"},
 ) ;
 

@@ -64,122 +64,16 @@ second time you test loading of an already built module.
 
 
 -------------------------------------------------------------------------------
-FEATURES:
+FEATURES FOR THIS VERSION:
 
-Inline::Java version 0.46 is a minor upgrade that includes:
-+ Fixed Natives.xs to work with ExtUtils::ParseXS
+Inline::Java version 0.47 is a minor upgrade that includes:
++ Fixed bugs in portability code and added HPUX and Solaris specifics
++ Tweaked CLASSPATH directory order
++ Changed port numbers for SHARED_JVM tests in order to avoid clashes
+  with running installations
++ Made PerlNatives optional
 
-Inline::Java version 0.45 is a major upgrade that includes:
-+ Fixed Makefile.PL arguments that were getting lost
-+ Fixed deprecated require call
-+ Fixed support for symbolic links in J2SDK directory
-+ Basic support for J2SDK 1.5
-+ Added new experimental feature: PerlNatives
-
-Inline::Java version 0.44 is a major upgrade that includes:
-+ Callbacks from multiple threads are now supported
-+ Refactored (again...) studying/.jdat/cache stuff
-+ Added PRIVATE mode for use with SHARED_JVM
-+ Added DEBUGGER mode that launches jdb
-+ Fixed memory leak in JNI code (patch submitted by Dave Blob)
-
-Inline::Java version 0.43 is a minor upgrade that includes:
-+ Restored $VERSION in each .pm file
-+ Inline::Java now formerly requires Perl 5.6
-
-Inline::Java version 0.42 is a minor upgrade that includes:
-+ Fixed more CLASSPATH issues. CLASSPATH now works like this:
-   * CLASSPATH environment variable is global
-   * CLASSPATH configuration option is local to the user class loader
-+ Added method cache to increase performance and decrease reflection 
-  API calls
-+ Altered and documented the study_classes() function
-+ Added EXTRA_JAVA_ARGS and EXTRA_JAVAC_ARGS config options
-
-Inline::Java version 0.41 is a minor upgrade that includes:
-+ Fixed CLASSPATH bug
-+ Possibly (!) fixed test suite problems under heavy load
-
-Inline::Java version 0.40 is a major upgrade that includes:
-+ Patch by Doug MacEachern to allow running under servlet engines.
-+ Patch by John Kinsley for handling empty arrays.
-+ Custom ClassLoader allows for better isolation of user code and
-  dynamic 'CLASSPATH' (multiple sections/clients are now totally
-  independant).
-+ Core Java code is now compiled separately (at install time) instead
-  of with the user code (for each script). This dramatically improves
-  build time.
-+ Default port number changed to 0 (next available port number). 
-  This allows many multiple users to run concurrently without 
-  clashes.
-  Note: The default port on systems where this feature is not 
-        available has remained 7890.
-  Note: The default port for SHARED_JVM mode is now 7891.
-+ SHARED_JVM mode now calls release_JVM() automatically.
-+ UTF8 support
-+ User code can now be a public class and (optionally) inside a package.
-+ Callback classes have changed.
-  Note: These classes are now in the org.perl.inline.java package.
-  Note: PerlException has been renamed InlineJavaPerlException.
-  Note: If you presently use callbacks, your code may now no longer compile.
-        You will need to apply the changes listed above to fix it.
-+ study_classes now returns the package in which the studied classes
-  have been put.
-+ Many bug fixes and documentation corrections.
-
-Inline::Java version 0.33 is a minor upgrade that includes:
-+ Improved and more flexible debug output
-+ Auto loading of thread libraries under Solaris
-+ Basic support for J2SDK 1.4
-+ Other minor bug fixes
-
-Inline::Java version 0.32 is a minor upgrade that includes:
-+ Restored compatibiity with Perl 5.005_03
-+ Other minor bug fixes
-
-Inline::Java version 0.31 is a major upgrade that includes:
-+ Exception handling (Perl can 'catch' Java exceptions)
-+ Callbacks to Perl from Java
-+ More complete test suite
-+ Improved documentation and related examples
-+ Improved installation script and directions
-+ Other minor bug fixes
-
-Inline::Java version 0.30 is a major upgrade that includes:
-+ Multi-threaded JVM
-+ Shared JVM mode for forking programs, i.e. mod_perl
-+ Optional test script to simulate forking programs
-+ Fixed some memory leaks and made test suite 'leak aware'
-
-Inline::Java version 0.23 is a minor upgrade that includes:
-+ Support for multiple Inline::Java sections
-+ Other minor bug fixes
-
-Inline::Java version 0.22 is a minor upgrade that includes:
-+ Support for Inline 0.41
-+ Addition of java.lang.Number as primitive numeric type
-+ Other minor bug fixes
-
-Inline::Java version 0.21 is a minor upgrade that includes:
-+ 'Studying' of external classes
-+ Default no-arg constructors for public ('studied') classes
-+ Caching of class information increases performance
-
-Inline::Java version 0.20 is a major upgrade that includes:
-+ All public member variables are now exported to Perl.
-+ Arrays can now be passed as method parameters and assigned to 
-  member variables.
-+ Type casting is now available to force the selection of specific
-  method signatures.
-+ Optional JNI (Java Native Interface) extension improves performance.
-+ Increased stability on Win32.
-
-Inline::Java version 0.01 includes:
-+ All classes and their public methods are exported to Perl, relative
-  to your current package.
-+ All objects (except arrays) and primitive Java types are supported as
-  method parameters.
-
+See CHANGES for a full change list.
 
 -------------------------------------------------------------------------------
 INFORMATION:

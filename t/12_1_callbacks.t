@@ -6,7 +6,6 @@ use Inline Config =>
 
 use Inline (
 	Java => 'DATA',
-	PORT => 17890,
 	STUDY => ['org.perl.inline.java.InlineJavaPerlCaller'],
 	STARTUP_DELAY => 20,	
 ) ;

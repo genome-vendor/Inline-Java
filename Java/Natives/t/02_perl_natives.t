@@ -2,40 +2,19 @@ use strict ;
 use Test ;
 
 
+BEGIN {
+	plan(tests => 5) ;
+}
+
+
 use Inline Config =>
            DIRECTORY => './_Inline_test' ;
-
 
 use Inline::Java qw(caught) ;
 
 use Inline (
 	Java => 'DATA',
 ) ;
-
-BEGIN {
-	print STDERR 
-		"\nNote: PerlNatives is still experimental and errors here can safely\n" .
-		"be ignored if you don't plan on using this feature. However, the\n" .
-		"author would appreciate if errors encountered here were reported\n" .
-		"to the mailing list (inline\@perl.org) along with your hardware/OS\n". 
-		"detail. Thank you.\n" ;
-} ;
-
-eval {
-	t121->init() ;
-} ;
-if ($@){
-	if ($@ =~ /Can\'t initialize PerlNatives/){
-		plan(tests => 0) ;
-		exit ;
-	}
-	else{
-		die($@) ;
-	}
-}
-
-
-plan(tests => 5) ;
 
 
 eval {
@@ -70,7 +49,6 @@ sub types {
 	my $sum = 0 ;
 	map {$sum += $_} @_ ;
 	return $sum ;
-
 }
 
 
@@ -91,7 +69,7 @@ sub callback {
 
 
 package main ;
-__END__
+__DATA__
 
 __Java__
 

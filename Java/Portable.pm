@@ -10,7 +10,7 @@ use Config ;
 use File::Find ;
 use File::Spec ;
 
-$Inline::Java::Portable::VERSION = '0.46' ;
+$Inline::Java::Portable::VERSION = '0.47' ;
 
 # Here is some code to figure out if we are running on command.com
 # shell under Windows.
@@ -147,7 +147,7 @@ sub portable {
 		PREFIX				=>	$Config{prefix},
 		LIBPERL				=>	$Config{libperl},
 		DETACH_OK			=>	1,
-		SO_LIB_PATH_VAR		=>	'LD_LIBRARY_PATH',
+		SO_LIB_PATH_VAR		=>	$Config{ldlibpthname},
 		ENV_VAR_PATH_SEP_CP	=>	':',
 		IO_REDIR			=>  '2>&1',
 		MAKE				=>	'make',
@@ -156,8 +156,8 @@ sub portable {
 		SUB_FIX_CLASSPATH	=>	undef,
 		SUB_FIX_CMD_QUOTES	=>	undef,
 		SUB_FIX_MAKE_QUOTES	=>	undef,
-		JVM_LIB				=>	'libjvm.so',
-		JVM_SO				=>	'libjvm.so',
+		JVM_LIB				=>	"libjvm.$Config{dlext}",
+		JVM_SO				=>	"libjvm.$Config{dlext}",
 	} ;
 
 	my $map = {
@@ -199,6 +199,16 @@ sub portable {
 			JVM_LIB				=>	'jvm.lib',
 			JVM_SO				=>	'jvm.dll',
 		},
+		hpux => {
+			GOT_NEXT_FREE_PORT  =>  0,
+		},
+		solaris => {
+			GOT_NEXT_FREE_PORT  =>  0,
+		},
+		aix => {
+			JVM_LIB				=>	"libjvm$Config{lib_ext}",
+			JVM_SO				=>	"libjvm$Config{lib_ext}",
+		}
 	} ;
 
 	if (! exists($defmap->{$key})){

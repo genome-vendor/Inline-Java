@@ -1,5 +1,12 @@
 Revision history for Perl extension Inline::Java
 ------------------------------------------------
+0.47  Sat Feb 14 10:00:00 EST 2004
+    - Fixed bugs in portability code and added HPUX, AIX and Solaris specifics
+    - Tweaked CLASSPATH directory order
+	- Changed port numbers for SHARED_JVM tests in order to avoid clashes
+      with running installations
+    - Made PerlNatives optional
+    
 0.46  Web Feb 04 20:00:00 EST 2004
     - Fixed Natives.xs to work with ExtUtils::ParseXS
 

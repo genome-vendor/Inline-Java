@@ -2,8 +2,8 @@ use ExtUtils::MakeMaker ;
 
 use strict ;
 use File::Spec ;
-use Config ;
 use Cwd ;
+use Config ;
 
 require "Java/Portable.pm" ;
 
@@ -15,6 +15,7 @@ for (my $i = 0 ; $i < scalar(@ARGV) ; $i++){
 	if ($ARGV[$i] =~ /^J2SDK=(.+)$/){
 		$jdk_dir = $1 ;
 		splice(@ARGV, $i, 1) ;
+		$i-- ;
 	}
 }
 
@@ -126,24 +127,22 @@ java ::
 MAKE
 
 	# Used for PerlNatives
-	$INSTALLSITEARCH = $this->{INSTALLSITEARCH} ;
-	$INSTALLSITEARCH =~ s/\\/\\\\/g ;
-	
-	$INST_ARCHLIB = $this->{INST_ARCHLIB} ;
-	$INST_ARCHLIB =~ s/\\/\\\\/g ;
+	$INSTALLSITEARCH = expand_macros($this, 'INSTALLSITEARCH') ;
+	$INST_ARCHLIB = expand_macros($this, 'INST_ARCHLIB') ;
 
 	return $make ;
 }
 
 
-# Skip the tests for the Java directory
-sub MY::test {
-  my $this = shift ;
+sub expand_macros { 
+	my $mm = shift ;
+	my $var = shift ;
 
-  my $hold = delete $this->{DIR} ;
-  my $ret = $this->MM::test(@_) ;
-  $this->{DIR} = $hold if defined($hold) ;
-  return $ret ;
+	my $val = $mm->{$var} ;
+	while ($val =~ s/\$\((.*?)\)/$mm->{$1}/){}
+	$val =~ s/\\/\\\\/g ;
+
+	return $val ;
 }
 
 
@@ -173,6 +172,21 @@ my $install_natives_so = File::Spec->catfile($INSTALLSITEARCH, @natives_so_parts
 $install_natives_so =~ s/\\/\\\\/g ;
 my $test_natives_so = File::Spec->rel2abs(File::Spec->catfile($INST_ARCHLIB, @natives_so_parts)) ;
 $test_natives_so =~ s/\\/\\\\/g ;
+
+my @perlinterpreter_so_parts = ("auto", "Inline", "Java", "PerlInterpreter",
+    "PerlInterpreter." . Inline::Java::Portable::portable('SO_EXT')) ;
+my $install_perlinterpreter_so = File::Spec->catfile($INSTALLSITEARCH, @perlinterpreter_so_parts) ;
+$install_perlinterpreter_so =~ s/\\/\\\\/g ;
+my $test_perlinterpreter_so = File::Spec->rel2abs(File::Spec->catfile($INST_ARCHLIB, @perlinterpreter_so_parts)) ;
+$test_perlinterpreter_so =~ s/\\/\\\\/g ;
+
+my $libperl = $Config{libperl} ;
+my $dlext = $Config{dlext} ;
+my $libperl_so = '' ;
+if ($libperl =~ /\.$dlext$/){
+	$libperl_so = File::Spec->catfile($Config{installarchlib}, 'CORE', $libperl) ;
+}
+
 my $prop = File::Spec->catfile($obj_dir, 'InlineJava.properties') ;
 open(PROP, ">$prop") or
 	die("Can't open '$prop' for writing: $!") ;
@@ -180,6 +194,9 @@ print PROP <<PROP;
 # This file is created by the Makefile.PL for Inline::Java
 inline_java_natives_so_install = $install_natives_so
 inline_java_natives_so_test    = $test_natives_so
+inline_java_perlinterpreter_so_install = $install_perlinterpreter_so
+inline_java_perlinterpreter_so_test    = $test_perlinterpreter_so
+inline_java_libperl_so	= $libperl_so
 PROP
 close(PROP) ;
 

@@ -6,7 +6,13 @@ public class InlineJavaPerlException extends Exception {
 
 
 	public InlineJavaPerlException(Object o){
+		super(o.toString()) ;
 		obj = o ;
+	}
+
+	public InlineJavaPerlException(String s){
+		super(s) ;
+		obj = s ;
 	}
 
 	public Object GetObject(){
