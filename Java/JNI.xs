@@ -9,19 +9,20 @@
 
 /* JNI structure */
 typedef struct {
-	JavaVM 	*jvm ;
-	jclass	ijs_class ;
-	jclass	string_class ;
+	JavaVM *jvm ;
+	jclass ijs_class ;
+	jclass string_class ;
 	jobject	ijs ;
 	jmethodID jni_main_mid ;
 	jmethodID process_command_mid ;
 	jint debug ;
+	int embedded ;
 	int destroyed ;
 } InlineJavaJNIVM ;
 
 
 void shutdown_JVM(InlineJavaJNIVM *this){
-	if (! this->destroyed){
+	if ((! this->embedded)&&(! this->destroyed)){
 		(*(this->jvm))->DestroyJavaVM(this->jvm) ;
 		this->destroyed = 1 ;
 	}
@@ -116,9 +117,10 @@ PROTOTYPES: DISABLE
 
 
 InlineJavaJNIVM * 
-new(CLASS, classpath, debug)
+new(CLASS, classpath, embedded, debug)
 	char * CLASS
 	char * classpath
+	int	embedded
 	int	debug
 
 	PREINIT:
@@ -135,6 +137,7 @@ new(CLASS, classpath, debug)
 		croak("Can't create InlineJavaJNIVM") ;
 	}
 	RETVAL->ijs = NULL ;
+	RETVAL->embedded = embedded ;
 	RETVAL->debug = debug ;
 	RETVAL->destroyed = 0 ;
 
@@ -148,24 +151,45 @@ new(CLASS, classpath, debug)
 	vm_args.nOptions = 2 ;
 	vm_args.ignoreUnrecognized = JNI_FALSE ;
 
-	/* Create the Java VM */
-	res = JNI_CreateJavaVM(&(RETVAL->jvm), (void **)&(env), &vm_args) ;
-	if (res < 0) {
-		croak("Can't create Java interpreter using JNI") ;
+	/* Embedded patch and idea by Doug MacEachern */
+	if (RETVAL->embedded) {
+		/* We are already inside a JVM */
+		jint n = 0 ;
+
+		res = JNI_GetCreatedJavaVMs(&(RETVAL->jvm), 1, &n) ;
+		if (n <= 0) {
+			/* res == 0 even if no JVMs are alive */
+			res = -1;
+		}
+		if (res < 0) {
+			croak("Can't find any created Java JVMs") ;
+		}
+
+		env = get_env(RETVAL) ;
 	}
+	else {
+		/* Create the Java VM */
+		res = JNI_CreateJavaVM(&(RETVAL->jvm), (void **)&(env), &vm_args) ;
+		if (res < 0) {
+			croak("Can't create Java JVM using JNI") ;
+		}
+	}
+
 	free(cp) ;
 
 
 	/* Load the classes that we will use */
-	RETVAL->ijs_class = (*(env))->FindClass(env, "InlineJavaServer") ;
+	RETVAL->ijs_class = (*(env))->FindClass(env, "org/perl/inline/java/InlineJavaServer") ;
 	check_exception(env, "Can't find class InlineJavaServer") ;
 	RETVAL->string_class = (*(env))->FindClass(env, "java/lang/String") ;
 	check_exception(env, "Can't find class java.lang.String") ;
 	
 	/* Get the method ids that are needed later */
-	RETVAL->jni_main_mid = (*(env))->GetStaticMethodID(env, RETVAL->ijs_class, "jni_main", "(I)LInlineJavaServer;") ;
+	RETVAL->jni_main_mid = (*(env))->GetStaticMethodID(env, RETVAL->ijs_class, "jni_main", 
+		"(I)Lorg/perl/inline/java/InlineJavaServer;") ;
 	check_exception(env, "Can't find method jni_main in class InlineJavaServer") ;
-	RETVAL->process_command_mid = (*(env))->GetMethodID(env, RETVAL->ijs_class, "ProcessCommand", "(Ljava/lang/String;)Ljava/lang/String;") ;
+	RETVAL->process_command_mid = (*(env))->GetMethodID(env, RETVAL->ijs_class, "ProcessCommand", 
+		"(Ljava/lang/String;)Ljava/lang/String;") ;
 	check_exception(env, "Can't find method ProcessCommand in class InlineJavaServer") ;
 
 	/* Register the callback function */

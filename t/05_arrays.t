@@ -9,7 +9,7 @@ use Inline(
 ) ;
 
 BEGIN {
-	plan(tests => 50) ;
+	plan(tests => 55) ;
 }
 
 
@@ -112,6 +112,7 @@ my $t = new types5() ;
 	eval {pop @{$b}} ; ok($@, qr/Operation POP/) ;
 	eval {shift @{$b}} ; ok($@, qr/Operation SHIFT/) ;
 	eval {splice(@{$b}, 0, 1)} ; ok($@, qr/Operation SPLICE/) ;
+	eval {$b->[10] = 5} ; ok($@, qr/out of bounds/) ;
 
 	# Cool stuff on arrays
 	$a = $t->_byte([12, 34, 56]) ;
@@ -119,6 +120,14 @@ my $t = new types5() ;
 	foreach my $e (@{$a}){
 		ok($e =~ /^(123|34|56)$/) ;
 	}
+
+	# Zero length arrays
+	$a = $t->_Byte([]) ;
+	ok(scalar(@$a), 0) ;
+	$a = $t->_StringString([[], []]) ;
+	ok(scalar(@{$a}), 2) ;
+	ok(scalar(@{$a->[0]}), 0) ;
+	ok(scalar(@{$a->[1]}), 0) ;
 }
 
 ok($t->__get_private()->{proto}->ObjectCount(), 1) ;

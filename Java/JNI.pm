@@ -4,7 +4,7 @@ package Inline::Java::JNI ;
 
 use strict ;
 
-$Inline::Java::JNI::VERSION = '0.31' ;
+$Inline::Java::JNI::VERSION = '0.40' ;
 
 use DynaLoader ;
 use Carp ;
@@ -21,7 +21,7 @@ sub load_lib {
 	my $lib = (DynaLoader::dl_findfile($l))[0] ;	
 	
     if ((! $lib)||(! defined(DynaLoader::dl_load_file($lib, 0x01)))){
-		carp("Couldn't load $l.") ;
+		carp("Couldn't find or load $l.") ;
 	}
 }
 

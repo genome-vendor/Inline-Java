@@ -1,11 +1,7 @@
 package Inline::Java::Array ;
 @Inline::Java::Array::ISA = qw(Inline::Java::Array::Tie) ;
 
-
 use strict ;
-
-$Inline::Java::Array::VERSION = '0.31' ;
-
 use Carp ;
 
 
@@ -122,7 +118,7 @@ sub __set_element {
 
 	my $ret = undef ;
 	eval {
-		my ($new_args, $score) = Inline::Java::Class::CastArguments([$s], [$elem_class], $obj->__get_private()->{module}) ;
+		my ($new_args, $score) = Inline::Java::Class::CastArguments([$s], [$elem_class], $obj->__get_private()->{inline}) ;
 		$ret = $obj->__get_private()->{proto}->SetJavaMember($idx, [$elem_class], $new_args) ;
 	} ;
 	croak $@ if $@ ;
@@ -155,8 +151,6 @@ sub DESTROY {
 		$OBJECTS->{$this} = undef ;
 	}
 	else{
-		# Here we can't untie because we still have a reference in $OBJECTS
-		# untie @{$this} ;
 		Inline::Java::debug(4, "destroying Inline::Java::Array") ;
 	}
 }
@@ -439,9 +433,12 @@ sub ValidateArray {
 		croak "'$ref' is not an array reference" ;
 	}
 
+	my $map = $this->{map} ;
+	if (! exists($map->{$level}->{max})){
+		$map->{$level}->{max} = 0 ;
+	}
 	$this->ValidateElements($ref, $array, $level) ;
 
-	my $map = $this->{map} ;
 	foreach my $elem (@{$ref}){
 		if ((defined($elem))&&(UNIVERSAL::isa($elem, "ARRAY"))){
 			# All the elements at this level are sub-arrays.
@@ -461,7 +458,7 @@ sub ValidateArray {
 		my @dims = () ;
 		my $max_cells = 1 ;
 		foreach my $l (@levels){
-			push @dims, ($map->{$l}->{max} || 0) ;
+			push @dims, $map->{$l}->{max} ;
 			$max_cells *= $map->{$l}->{max} ;
 		}
 		my $nb_cells = ($map->{$last}->{count} || 0) ;
@@ -489,10 +486,8 @@ sub ValidateElements {
 	my $level = shift ;
 
 	my $map = $this->{map} ;
-
 	my $cnt = scalar(@{$ref}) ;
-	my $max = $map->{$level}->{max} || 0 ;
-
+	my $max = $map->{$level}->{max} ;
 	if ($cnt > $max){
 		$map->{$level}->{max} = $cnt ;
 	}
@@ -517,8 +512,7 @@ sub ValidateElements {
 		}
 		$map->{$level}->{count}++ ;
 	}
-}
-
+}	
 
 sub CheckMap {
 	my $this = shift ;
@@ -559,7 +553,9 @@ sub FillArray {
 	my $max = $map->{$level}->{max} ;
 	my $nb = scalar(@{$array}) ;
 
-	if ($map->{$level}->{type} eq "SUB_ARRAY"){
+	my $type = $map->{$level}->{type} ;
+	# Type can be undefined when array is zero length.
+	if ((defined($type))&&($type eq "SUB_ARRAY")){
 		foreach my $elem (@{$array}){
 			if (! defined($elem)){
 				$elem = [] ;
@@ -571,7 +567,7 @@ sub FillArray {
 	if ($nb < $max){
 		# We must stuff...
 		for (my $i = $nb ; $i < $max ; $i++){
-			if ($map->{$level}->{type} eq "SUB_ARRAY"){
+			if ((defined($type))&&($type eq "SUB_ARRAY")){
 				my $elem = [] ;
 				$this->FillArray($elem, $level + 1) ;
 				push @{$array}, $elem ;
@@ -631,112 +627,4 @@ sub MakeElementList {
 }
 
 
-
-package Inline::Java::Array ;
-
-
 1 ; 
-
-
-__DATA__
-
-
-class InlineJavaArray {
-	private InlineJavaServer ijs ;
-	private InlineJavaClass ijc ;
-
-
-	InlineJavaArray(InlineJavaServer _ijs, InlineJavaClass _ijc){
-		ijs = _ijs ;
-		ijc = _ijc ;
-	}
-
-
-	Object CreateArray(Class c, StringTokenizer st) throws InlineJavaException {
-		StringBuffer sb = new StringBuffer(st.nextToken()) ;
-		sb.replace(0, 1, "") ;
-		sb.replace(sb.length() - 1, sb.length(), "") ;
-
-		StringTokenizer st2 = new StringTokenizer(sb.toString(), ",") ;
-		ArrayList al = new ArrayList() ;
-		while (st2.hasMoreTokens()){
-			al.add(al.size(), st2.nextToken()) ;
-		}
-
-		int size = al.size() ;
-		int dims[] = new int[size] ;
-		for (int i = 0 ; i < size ; i++){
-			dims[i] = Integer.parseInt((String)al.get(i)) ;
-			ijs.debug(4, "array dimension: " + (String)al.get(i)) ;
-		}
-
-		Object array = null ;
-		try {
-			array = Array.newInstance(c, dims) ;
-
-			ArrayList args = new ArrayList() ;
-			while (st.hasMoreTokens()){
-				args.add(args.size(), st.nextToken()) ;
-			}
-
-			// Now we need to fill it. Since we have an arbitrary number
-			// of dimensions, we can do this recursively.
-
-			PopulateArray(array, c, dims, args) ;
-		}
-		catch (IllegalArgumentException e){
-			throw new InlineJavaException("Arguments to array constructor for class " + c.getName() + " are incompatible: " + e.getMessage()) ;
-		}
-
-		return array ;
-	}
-
-
-	void PopulateArray (Object array, Class elem, int dims[], ArrayList args) throws InlineJavaException {
-		if (dims.length > 1){
-			int nb_args = args.size() ;
-			int nb_sub_dims = dims[0] ;
-			int nb_args_per_sub_dim = nb_args / nb_sub_dims ;
-
-			int sub_dims[] = new int[dims.length - 1] ;
-			for (int i = 1 ; i < dims.length ; i++){
-				sub_dims[i - 1] = dims[i] ;
-			}
-	
-			for (int i = 0 ; i < nb_sub_dims ; i++){
-				// We want the args from i*nb_args_per_sub_dim -> 
-				ArrayList sub_args = new ArrayList() ; 
-				for (int j = (i * nb_args_per_sub_dim) ; j < ((i + 1) * nb_args_per_sub_dim) ; j++){
-					sub_args.add(sub_args.size(), (String)args.get(j)) ;
-				}
-				PopulateArray(((Object [])array)[i], elem, sub_dims, sub_args) ;
-			}
-		}
-		else{
-			String msg = "In creation of array of " + elem.getName() + ": " ;
-			try {
-				for (int i = 0 ; i < dims[0] ; i++){
-					String arg = (String)args.get(i) ;
-
-					Object o = ijc.CastArgument(elem, arg) ;
-					Array.set(array, i, o) ;
-					if (o != null){
-						ijs.debug(4, "setting array element " + String.valueOf(i) + " to " + o.toString()) ;
-					}
-					else{
-						ijs.debug(4, "setting array element " + String.valueOf(i) + " to " + o) ;
-					}
-		 		}
-			}
-			catch (InlineJavaCastException e){
-				throw new InlineJavaCastException(msg + e.getMessage()) ;
-			}
-			catch (InlineJavaException e){
-				throw new InlineJavaException(msg + e.getMessage()) ;
-			}
-		}
-	}
-}
-	
-	
-

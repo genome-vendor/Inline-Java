@@ -8,7 +8,7 @@ BEGIN {
 		exit ;
 	}
 	else{
-		plan(tests => 3) ;
+		plan(tests => 4) ;
 	}
 }
 
@@ -26,6 +26,8 @@ my $t = new t10() ;
 
 {
 	ok($t->{i}, 5) ;
+	ok(! Inline::Java::i_am_JVM_owner()) ;
+	Inline::Java::capture_JVM() ;
 	ok(Inline::Java::i_am_JVM_owner()) ;
 }
 

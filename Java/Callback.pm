@@ -1,13 +1,7 @@
 package Inline::Java::Callback ;
 
-
 use strict ;
-
-$Inline::Java::Callback::VERSION = '0.31' ;
-
-
 use Carp ;
-
 
 $Inline::Java::Callback::OBJECT_HOOK = undef ;
 
@@ -71,7 +65,7 @@ sub ProcessCallback {
 		$ret = Inline::Java::cast($proto, $ret, $cast_return) ;
 	}
 
-	($ret) = Inline::Java::Class::CastArgument($ret, $proto, $inline->get_api('modfname')) ;
+	($ret) = Inline::Java::Class::CastArgument($ret, $proto, $inline) ;
 	
 	# Here we must keep a reference to $ret or else it gets deleted 
 	# before the id is returned to Java...
@@ -85,65 +79,3 @@ sub ProcessCallback {
 
 
 1 ;
-
-
-__DATA__
-
-/*
-	Callback to Perl...
-*/
-public class InlineJavaPerlCaller {
-	public InlineJavaPerlCaller(){
-	}
-
-
-	class InlineJavaException extends Exception {
-		private InlineJavaServer.InlineJavaException ije = null ;
-		
-		InlineJavaException(InlineJavaServer.InlineJavaException e) {
-			ije = e ;
-		}
-
-		public InlineJavaServer.InlineJavaException GetException(){
-			return ije ;
-		}
-	}
-
-
-	class PerlException extends Exception {
-		private Object obj = null ;
-
-		PerlException(Object o) {
-			obj = o ;
-		}
-
-		public Object GetObject(){
-			return obj ;
-		}
-	}
-
-
-	public Object CallPerl(String pkg, String method, Object args[]) throws InlineJavaException, PerlException {
-		return CallPerl(pkg, method, args, null) ;
-	}
-
-
-	public Object CallPerl(String pkg, String method, Object args[], String cast) throws InlineJavaException, PerlException {
-		if (InlineJavaServer.instance == null){
-			System.err.println("Can't use InlineJavaPerlCaller outside of an Inline::Java context") ;
-			System.err.flush() ;
-			System.exit(1) ;
-		}
-
-		try {
-			return InlineJavaServer.instance.Callback(pkg, method, args, cast) ;
-		}
-		catch (InlineJavaServer.InlineJavaException e){
-			throw new InlineJavaException(e) ;
-		}
-		catch (InlineJavaServer.InlineJavaPerlException e){
-			throw new PerlException(e.GetObject()) ;
-		}
-	}
-}
-

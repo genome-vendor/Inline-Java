@@ -2,13 +2,10 @@ package Inline::Java::JVM ;
 
 
 use strict ;
-
-$Inline::Java::JVM::VERSION = '0.31' ;
-
 use Carp ;
 use IPC::Open3 ;
 use IO::File ;
-use IO::Pipe ;
+use IO::Socket ;
 use POSIX qw(setsid) ;
 
 my %SIGS = () ;
@@ -31,17 +28,23 @@ sub new {
 
 	$this->{socket} = undef ;
 	$this->{JNI} = undef ;
-
+	$this->{embedded} = $o->get_java_config('EMBEDDED_JNI') ;
+	$this->{owner} = 1 ;
 	$this->{destroyed} = 0 ;
 
-	Inline::Java::debug(1, "starting JVM...") ;
+	if ($this->{embedded}){
+		Inline::Java::debug(1, "using embedded JVM...") ;
+	}
+	else{
+		Inline::Java::debug(1, "starting JVM...") ;
+	}
 
-	$this->{owner} = 1 ;
 	if ($o->get_java_config('JNI')){
 		Inline::Java::debug(1, "JNI mode") ;
 
 		my $jni = new Inline::Java::JNI(
-			$ENV{CLASSPATH} || "",
+			$ENV{CLASSPATH} || '',
+			$this->{embedded},
 			Inline::Java::get_DEBUG(),
 		) ;
 		$jni->create_ijs() ;
@@ -57,6 +60,32 @@ sub new {
 		$this->{port} = $o->get_java_config('PORT') ;
 		$this->{host} = "localhost" ;
 
+		# Grab the next free port number and release it.
+		if ((! $this->{shared})&&($this->{port} < 0)){
+			if (Inline::Java::portable("GOT_NEXT_FREE_PORT")){
+				my $sock = IO::Socket::INET->new(
+					Listen => 0, Proto => 'tcp',
+					LocalAddr => 'localhost', LocalPort => 0) ;
+				if ($sock){
+					$this->{port} = $sock->sockport() ;
+					Inline::Java::debug(2, "next available port number is $this->{port}") ;
+					close($sock) ;
+				}
+				else{
+					# Revert to the default.
+					$this->{port} = - $this->{port} ;
+					carp(
+						"Could not get next available port number, using port " .
+						"$this->{port} instead. Use the PORT configuration " .
+						"option to suppress this warning.\n Error: $!\n") ;
+				}
+			}
+			else{
+				# Revert to the default.
+				$this->{port} = - $this->{port} ;
+			}
+		}
+
 		# Check if JVM is already running
 		if ($this->{shared}){
 			eval {
@@ -67,15 +96,13 @@ sub new {
 				return $this ;
 			}
 		}
-		$this->capture(1) ;
 
-		my $java = File::Spec->catfile($o->get_java_config('BIN'), 
+		my $java = File::Spec->catfile($o->get_java_config('J2SDK'), 'bin',
 			"java" . Inline::Java::portable("EXE_EXTENSION")) ;
 
-		my $shared_arg = ($this->{shared} ? "true" : "false") ;
-		my $cmd = "\"$java\" InlineJavaServer $debug $this->{port} $shared_arg" ;
-		Inline::Java::debug(1, $cmd) ;
-
+		my $shared = ($this->{shared} ? "true" : "false") ;
+		my $cmd = Inline::Java::portable("SUB_FIX_CMD_QUOTES", "\"$java\" org.perl.inline.java.InlineJavaServer $debug $this->{port} $shared") ;
+		Inline::Java::debug(2, $cmd) ;
 		if ($o->get_config('UNTAINT')){
 			($cmd) = $cmd =~ /(.*)/ ;
 		}
@@ -86,11 +113,19 @@ sub new {
 		} ;
 		croak "Can't exec JVM: $@" if $@ ;
 
+		if ($this->{shared}){
+			# As of 0.40, we release by default.
+			$this->release() ;
+		}
+		else{
+			$this->capture() ;
+		}
+
 		$this->{pid} = $pid ;
 		$this->{socket}	= $this->setup_socket(
 			$this->{host}, 
 			$this->{port}, 
-			$o->get_java_config('STARTUP_DELAY'),
+			int($o->get_java_config('STARTUP_DELAY')),
 			0
 		) ;
 	}
@@ -137,6 +172,11 @@ sub DESTROY {
 
 sub shutdown {
 	my $this = shift ;
+
+	if ($this->{embedded}){
+		Inline::Java::debug(1, "embedded JVM, skipping shutdown.") ;
+		return ;
+	}
 
 	if (! $this->{destroyed}){
 		if ($this->am_owner()){
@@ -322,10 +362,17 @@ sub process_command {
 	my $data = shift ;
 
 	my $resp = undef ;
+
+	# Patch by Simon Cozens for perl -wle 'use Our::Module; do_stuff()'
+	local $/ = "\n" ;
+	local $\ = "" ;
+	# End Patch
+
 	while (1){
 		Inline::Java::debug(3, "packet sent is $data") ;
 
 		if ($this->{socket}){
+
 			my $sock = $this->{socket} ;
 			print $sock $data . "\n" or
 				croak "Can't send packet to JVM: $!" ;

@@ -1,10 +1,12 @@
 CODE:
-- Check INFO flag vs. PRINT_INFO (shortcuts not working?)
-- Fix for Java 1.4 (reflection inverting method/member order)
+- Check John's bug #5. It seems if two modules have the same
+  module name some stuff gets screwed up.
 
 TEST:
 - Alpha
 - Cygwin
 
 DOCUMENTATION:
+- Recheck all and complete.
+- Comment new code.
 

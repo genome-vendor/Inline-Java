@@ -5,6 +5,9 @@ use strict ;
 use File::Spec ;
 
 require "Portable.pm" ;
+# The file we just produced in the parent Makefile.PL
+require "default_j2sdk.pl" ;
+
 
 # Some shortcuts while developing
 my $jdk_dir = undef ;
@@ -23,6 +26,7 @@ my @files = (
 if ($jvm_so ne $jvm_lib){
 	push @files, $jvm_so ;
 }
+push @files, 'jvm.cfg' ;
 
 my $files = {
 	'jni.h'		=> {
@@ -33,6 +37,8 @@ my $files = {
 	},
 	$jvm_lib	=> {
 	},
+	'jvm.cfg'	=> {
+	},
 	$jvm_so		=> {
 	},
 } ;
@@ -40,29 +46,37 @@ my $files = {
 foreach my $f (@files){
 	$files->{$f}->{selected} = undef ;
 	$files->{$f}->{choices} = [] ;
+	$files->{$f}->{default_choice} = 1 ;
 }
 
 
-print "\n" ;
 print
-	"Inline::Java can use a JNI extension that allows the Java Virtual Machine\n" .
+	"\nInline::Java can use a JNI extension that allows the Java Virtual Machine\n" .
 	"(JVM) to be dynamically linked with Perl instead of running as a separate\n" .
 	"process. The use of this extension is optional, and building it still\n" .
 	"allows Inline::Java to run the JVM in the default (separate process)\n" .
-	"fashion.\n\n" ;
+	"fashion. Note: You need a C compiler to build the extension.\n\n" ;
 
-if (($build_jni || AskYN("Do you wish to build the JNI extension?"))){
+if (($build_jni || AskYN("Do you wish to build the JNI extension?", 'y'))){
 	print "\nBuilding JNI extension.\n\n" ;
 
-	rename("JNI.xs_", "JNI.xs") ;
-
-	$jdk_dir = ($jdk_dir || AskSub("Enter the path to your Java 2 SDK installation",
-		sub {((-d $_[0]) ? 1 : (print("Directory '$_[0]' does not exist.\n") && 0))})) ;
-	print "\n" ;
-
-	my $type = FindDefaultVMType() ;
+	$jdk_dir = Inline::Java::get_default_j2sdk() ;
 
 	find(\&search, $jdk_dir) ;
+
+	my $type = FindDefaultVMType() ;
+	if (defined($type)){
+		my $cnt = 1 ;
+		foreach my $c (@{$files->{$jvm_so}->{choices}}){
+			if ($c =~ /$type/){
+				$files->{$jvm_so}->{default_choice} = $cnt ;
+			}
+			$cnt++ ;
+		}
+	}
+
+	# We no longer need jvm.cfg from now on...
+	pop @files ;
 
 	my $done = 0 ;
 	foreach my $f (@files){
@@ -76,7 +90,7 @@ if (($build_jni || AskYN("Do you wish to build the JNI extension?"))){
 			$files->{$f}->{selected} = $files->{$f}->{choices}->[0] ;
 		}
 		else{
-			Choose($f, $type) ;
+			Choose($f) ;
 		}
 	}
 	if (! $done){
@@ -85,47 +99,45 @@ if (($build_jni || AskYN("Do you wish to build the JNI extension?"))){
 		CleanSoDirs() ;
 
 		print "Building with:\n" ;
-		foreach my $f (@files){
-			print File::Spec->catfile($files->{$f}->{selected}, $f) . "\n" ;
-		}
-		print "\n" ;
+		map { print "  " . File::Spec->catfile($files->{$_}->{selected}, $_) . "\n" ;} @files ;
 
 		$done = 0 ;
 		if (! $done){
+			print
+				"\nNote: In order for Inline::Java to use the JNI extension, you will need to\n" . 			    
+				"use the JNI configuration option or set the PERL_INLINE_JAVA_JNI environment\n" .
+				"variable to a true value. You will also need to add the following directories\n" .
+				"to your " . Inline::Java::Portable::portable('SO_LIB_PATH_VAR') . " environment variable:\n" ;
+			map {print "  $_\n"; } keys %so_dirs ;
+			print "See README.JNI for more information.\n\n" ;
+
+			my @I = (
+				Inline::Java::Portable::portable('SUB_FIX_MAKE_QUOTES', 
+					"-I" . $files->{'jni.h'}->{selected}), 
+				Inline::Java::Portable::portable('SUB_FIX_MAKE_QUOTES', 
+					"-I" . $files->{'jni_md.h'}->{selected})) ; 
+			my @L = (
+				Inline::Java::Portable::portable('SUB_FIX_MAKE_QUOTES', 
+					"-L" . $files->{$jvm_lib}->{selected})) ;
 			WriteMakefile(
 				NAME => 'Inline::Java::JNI',
 				VERSION_FROM => 'JNI.pm',
-				INC => "-I" . $files->{'jni.h'}->{selected} . " -I" . $files->{'jni_md.h'}->{selected},
-				LIBS => ["-L" . $files->{$jvm_lib}->{selected} . " -ljvm"],
+				DIR => [],
+				INC => join(' ', @I),
+				LIBS => [join(' ', @L) . " -ljvm"],
 				# CCFLAGS => '-D_REENTRANT',
 			) ;
-
-			print
-				"\nNote: In order for Inline::Java to use the JNI extension, you\n" .
-				"will need to use the JNI configuration option or set the\n" .
-				"PERL_INLINE_JAVA_JNI environment variable to a true value.\n" .
-				"You will also need to add the following directories to your\n" .
-				Inline::Java::Portable::portable('SO_LIB_PATH_VAR') . " environment variable:\n" ;
-
-			foreach my $d (keys %so_dirs){
-				print "  $d\n" ;
-			}
-
-			print 
-				"See README.JNI for more information.\n" ;
-
-			print "\n" ;
 		}
 	}
 }
 else{
 	print "\n" ;
-
-	rename("JNI.xs", "JNI.xs_") ;
-
 	WriteMakefile(
 		NAME => 'Inline::Java::JNI',
-		VERSION_FROM => 'JNI.pm') ;
+		VERSION_FROM => 'JNI.pm',
+		DIR => [],
+		XS => {},
+		C => []) ;
 }
 
 
@@ -178,27 +190,30 @@ sub CleanSoDirs {
 
 sub FindDefaultVMType {
 	my $type = undef ;
-	my $cfg = File::Spec->catfile($jdk_dir, "jre", "lib", "jvm.cfg") ;
-	if (open(CFG, "<$cfg")){
-		while (<CFG>){
-			my $line = $_ ;
-			chomp($line) ;
-			$line =~ s/^\s+// ;
-			$line =~ s/\s+$// ;
+	my $choices = $files->{'jvm.cfg'}->{choices} ;
+	if (scalar(@{$choices})){
+		my $cfg = File::Spec->catfile($choices->[0], 'jvm.cfg') ;
+		if (open(CFG, "<$cfg")){
+			while (<CFG>){
+				my $line = $_ ;
+				chomp($line) ;
+				$line =~ s/^\s+// ;
+				$line =~ s/\s+$// ;
 
-			if (! $line){
-				next ;
+				if (! $line){
+					next ;
+				}
+				elsif ($line =~ /^#/){
+					next ;
+				}
+				else{
+					($type) = split(/\s+/, $line) ;
+					$type =~ s/^-// ;
+					last ;
+				}
 			}
-			elsif ($line =~ /^#/){
-				next ;
-			}
-			else{
-				$type = $line ;
-				$type =~ s/^-// ;
-				last ;
-			}
+			close(CFG) ;
 		}
-		close(CFG) ;
 	}
 
 	return $type ;
@@ -207,20 +222,16 @@ sub FindDefaultVMType {
 
 sub Choose {
 	my $f = shift ;
-	my $type = shift ;
 
 	my $o = $files->{$f} ;
 	my $cnt = 0 ;
+	my $def = undef ;
 	foreach my $f (@{$o->{choices}}){
 		$cnt++ ;
-		my $hint = '' ;
-		if ($f =~ /$type/){
-			$hint = "[your system default]" ;
-		}
-		print "[$cnt] $f $hint\n" ;
+		print "$cnt) $f\n" ;
 	}
-	my $idx = AskSub("Please select from the above list which '$f' to use [1-$cnt]",
-		sub {(($_[0] >= 1)&&($_[0] <= $cnt))}) ;
+	my $idx = AskSub("Please select from the above list which '$f' to use:",
+		$o->{default_choice}, sub {(($_[0] >= 1)&&($_[0] <= $cnt))}) ;
 
 	$o->{selected} = $o->{choices}->[int($idx) - 1] ;
 	print "\n" ;
@@ -230,40 +241,35 @@ sub Choose {
 # Gets string from stdin
 sub Ask {
 	my $ques = shift ;
+	my $def = shift ;
 
-	return AskSub($ques, undef) ;
+	return AskSub($ques, $def, undef) ;
 }
 
 
 # Gets yes/no from stdin
 sub AskYN {
 	my $ques = shift ;
+	my $def = shift ;
 
-	$ques .= " [yn]" ;
+	my $ans = AskSub($ques, $def, sub {((! $_[0])||($_[0] =~ /^(y|n)$/i))}) ;
 
-	my $ans = AskSub($ques, sub {$_[0] =~ /^(y|n)$/i}) ;
-
-	return (($ans eq "y") ? 1 : 0) ;
+	return (($ans =~ /^y$/i) ? 1 : 0) ;
 }
 
 
 sub AskSub {
 	my $ques = shift ;
+	my $def = shift ;
 	my $sub = shift ;
 
-	my $str = $ques . ": " ;
-	print $str ;
-
-	while (<STDIN>){
-		my $ans = $_ ;
-		chomp($ans) ;
+	while (1){
+		my $ans = prompt($ques, $def) ;
 		if (! $sub){
 			return $ans ;
 		}
 		elsif ($sub->($ans)){
 			return $ans ;
 		}
-
-		print $str ;
 	}
 }

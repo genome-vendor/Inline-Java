@@ -7,12 +7,12 @@ Inline::Java lets you write Perl classes in Java.
 Example:
 
     use Inline Java => <<'END';
-	    class JAxH {
-			public JAxH(String x){
-				System.out.println("Just Another " + x + " Hacker") ;
-			}
-	    }
-	END
+        class JAxH {
+            public JAxH(String x){
+                System.out.println("Just Another " + x + " Hacker") ;
+            }
+        }
+    END
     
     new JAxH('Inline') ;
 
@@ -33,7 +33,7 @@ See README.JNI for more information on building the JNI extension.
 -------------------------------------------------------------------------------
 INSTALLATION:
 
-- This module requires Inline version 0.43 or higher to be installed.
+- This module requires Inline version 0.44 or higher to be installed.
 - It also requires a version of the Java SDK 1.2 or higher to be 
   installed. You can get the latest Java SDK from Sun Microsystems
   at http://java.sun.com. Follow the provided instructions in order
@@ -41,20 +41,18 @@ INSTALLATION:
 
 To install Inline::Java do this:
 
-perl Makefile.PL
-make                     (see Note 1)
-make test                (see Note 2, 3, 4)
-make install
+  % perl Makefile.PL J2SDK=/your/java/dir   (see Note 1)
+  % make java                               (see Note 2)
+  % make
+  % make test                               (see Note 3, 4)
+  % make install
 
 You have to 'make install' before you can run it successfully. 
 
+Note 1: Under Win95/98/Me, you may need to do 'cd ..' to get back to the
+your original directory after the command has completed.
 
-Note 1: Use nmake on Windows systems.
-
-Note 2: In order for 'make test' to run properly, you should put the 
-directory to your Java binaries in either your PATH environment variable 
-or in the PERL_INLINE_JAVA_BIN environment variable. 'make test' will remind 
-you if you don't do this.
+Note 2: Use nmake on Win32.
 
 Note 3: If you have built the JNI extension and want the test suite to use 
 it, you will need to set the PERL_INLINE_JAVA_JNI environment variable to 1 
@@ -71,6 +69,33 @@ FEATURES:
 WARNING: THIS IS ALPHA SOFTWARE. It is incomplete and possibly unreliable. 
          It is also possible that some elements of the interface (API) will 
          change in future releases.
+
+Inline::Java version 0.40 is a major upgrade that includes:
++ Patch by Doug MacEachern to allow running under servlet engines.
++ Patch by John Kinsley for handling empty arrays.
++ Custom ClassLoader allows for better isolation of user code and
+  dynamic 'CLASSPATH' (multiple sections/clients are now totally
+  independant).
++ Core Java code is now compiled separately (at install time) instead
+  of with the user code (for each script). This dramatically improves
+  build time.
++ Default port number changed to 0 (next available port number). 
+  This allows many multiple users to run concurrently without 
+  clashes.
+  Note: The default port on systems where this feature is not 
+        available has remained 7890.
+  Note: The default port for SHARED_JVM mode is now 7891.
++ SHARED_JVM mode now calls release_JVM() automatically.
++ UTF8 support
++ User code can now be a public class and (optionally) inside a package.
++ Callback classes have changed.
+  Note: These classes are now in the org.perl.inline.java package.
+  Note: PerlException has been renamed InlineJavaPerlException.
+  Note: If you presently use callbacks, your code may now no longer compile.
+        You will need to apply the changes listed above to fix it.
++ study_classes now returns the package in which the studied classes
+  have been put.
++ Many bug fixes and documentation corrections.
 
 Inline::Java version 0.33 is a minor upgrade that includes:
 + Improved and more flexible debug output
@@ -131,13 +156,13 @@ INFORMATION:
 
 = For more information on Inline::Java, see 'perldoc Inline::Java'.
 = For information about Inline, see 'perldoc Inline'.
-= For information on using Java, visit http://java.sun.org
+= For information on using Java, visit http://java.sun.org.
 
 Inline::Java's mailing list is inline@perl.org. 
-To subscribe, send an email to inline-subscribe@perl.org
+To subscribe, send an email to inline-subscribe@perl.org.
 
-Inline::Java's home page is http://inline.perl.org/java/
+Inline::Java's home page is http://inline.perl.org/java/.
 
-Please send questions and comments to Patrick LeBoutillier <patl@cpan.org>
+Please send questions and comments to Patrick LeBoutillier <patl@cpan.org>.
 
-Copyright (c) 2001-2002, Patrick LeBoutillier. All Rights Reserved.  
+Copyright (c) 2001-2003, Patrick LeBoutillier. All Rights Reserved.  

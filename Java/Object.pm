@@ -2,12 +2,8 @@ package Inline::Java::Object ;
 @Inline::Java::Object::ISA = qw(Inline::Java::Object::Tie) ;
 
 use strict ;
-
-$Inline::Java::Object::VERSION = '0.31' ;
-
 use Inline::Java::Protocol ;
 use Carp ;
-
 
 # Here we store as keys the knots and as values our blessed private objects
 my $PRIVATES = {} ;
@@ -100,7 +96,7 @@ sub __validate_prototype {
 		Inline::Java::debug(3, "matching arguments to $method$sig") ;
 		
 		eval {
-			($new_args, $score) = Inline::Java::Class::CastArguments($args, $proto, $inline->get_api('modfname')) ;
+			($new_args, $score) = Inline::Java::Class::CastArguments($args, $proto, $inline) ;
 		} ;
 		if ($@){
 			if ($nb_proto == 1){
@@ -239,7 +235,7 @@ sub __get_member {
 
 	Inline::Java::debug(3, "fetching member variable '$key'") ;
 
-	my $inline = Inline::Java::get_INLINE($this->__get_private()->{module}) ;
+	my $inline = $this->__get_private()->{inline} ;
 	my $fields = $inline->get_fields($this->__get_private()->{class}) ;
 
 	my $types = $fields->{$key} ;
@@ -276,7 +272,7 @@ sub __set_member {
 		croak "Can't set member '$key' for an object that is not bound to Perl" ;
 	}
 
-	my $inline = Inline::Java::get_INLINE($this->__get_private()->{module}) ;
+	my $inline = $this->__get_private()->{inline} ;
 	my $fields = $inline->get_fields($this->__get_private()->{class}) ;
 
 	my $types = $fields->{$key} ;
@@ -294,7 +290,7 @@ sub __set_member {
 		my $new_args = undef ;
 		my $score = undef ;
 
-		($new_args, $score) = Inline::Java::Class::CastArguments([$value], [$proto], $this->__get_private()->{module}) ;
+		($new_args, $score) = Inline::Java::Class::CastArguments([$value], [$proto], $this->__get_private()->{inline}) ;
 		$this->__get_private()->{proto}->SetJavaMember($key, [$proto], $new_args) ;
 	}
 	else{
@@ -333,53 +329,46 @@ sub DESTROY {
 		Inline::Java::debug(4, "destroying Inline::Java::Object::Tie") ;
 		
 		if (! Inline::Java::get_DONE()){
-			if (! $this->__get_private()->{weak_ref}){
-				# This one is very tricky:
-				# Here we want to be carefull since this can be called
-				# at scope end, but the scope end might be triggered
-				# by another croak, so we need to record and propagate 
-				# the current $@
-				my $prev_dollar_at = $@ ;
-				eval {
-					$this->__get_private()->{proto}->DeleteJavaObject($this) ;
-				} ;
-				if ($@){
-					# We croaked here. Was there already a pending $@?
-					my $name = $this->__get_private()->{class} ;
-					my $msg = "In method DESTROY of class $name: $@" ;
-					if ($prev_dollar_at){
-						$msg = "$prev_dollar_at\n$msg" ;
-					}
-					croak $msg ;
-				}
-				else{
-					# Put back the previous $@
-					$@ = $prev_dollar_at ;
-				}
 
-				# Here we have a circular reference so we need to break it
-				# so that the memory is collected.
-				my $priv = $this->__get_private() ;
-				my $proto = $priv->{proto} ;
-				$priv->{proto} = undef ;
-				$proto->{obj_priv} = undef ;
-				$PRIVATES->{$this} = undef ;
+			my $class = $this->__get_private()->{class} ;
+			Inline::Java::debug(2, "destroying object in java ($class):") ;
+
+			# This one is very tricky:
+			# Here we want to be careful since this can be called
+			# at scope end, but the scope end might be triggered
+			# by another croak, so we need to record and propagate 
+			# the current $@
+			my $prev_dollar_at = $@ ;
+			eval {
+				$this->__get_private()->{proto}->DeleteJavaObject($this) ;
+			} ;
+			if ($@){
+				# We croaked here. Was there already a pending $@?
+				my $name = $this->__get_private()->{class} ;
+				my $msg = "In method DESTROY of class $name: $@" ;
+				if ($prev_dollar_at){
+					$msg = "$prev_dollar_at\n$msg" ;
+				}
+				croak $msg ;
 			}
 			else{
-				Inline::Java::debug(4, "object marked as weak reference, object destruction not propagated to Java") ;
+				# Put back the previous $@
+				$@ = $prev_dollar_at ;
 			}
+
+			# Here we have a circular reference so we need to break it
+			# so that the memory is collected.
+			my $priv = $this->__get_private() ;
+			my $proto = $priv->{proto} ;
+			$priv->{proto} = undef ;
+			$proto->{obj_priv} = undef ;
+			$PRIVATES->{$this} = undef ;
 		}
 		else{
 			Inline::Java::debug(4, "script marked as DONE, object destruction not propagated to Java") ;
 		}
 	}
 	else{
-		# Here we can't untie because we still have a reference in $PRIVATES
-		# untie %{$this} ;
-
-		my $class = $this->__get_private()->{class} ;
-		Inline::Java::debug(2, "destroying object in java ($class):") ;
-
 		Inline::Java::debug(4, "destroying Inline::Java::Object") ;
 	}
 }
@@ -437,7 +426,7 @@ sub EXISTS {
  	my $this = shift ;
  	my $key = shift ;
 
-	my $inline = Inline::Java::get_INLINE($this->__get_private()->{module}) ;
+	my $inline = $this->__get_private()->{inline} ;
 	my $fields = $inline->get_fields($this->__get_private()->{class}) ;
 
 	if ($fields->{$key}){
@@ -531,7 +520,7 @@ sub new {
 	my $this = {} ;
 	$this->{class} = $obj_class ;
 	$this->{java_class} = $java_class ;
-	$this->{module} = $inline->get_api('modfname') ;
+	$this->{inline} = $inline ;
 	$this->{proto} = new Inline::Java::Protocol($this, $inline) ;
 
 	bless($this, $class) ;
@@ -548,12 +537,4 @@ sub DESTROY {
 
 
 
-
-package Inline::Java::Object ;
-
-
 1 ;
-
-
-__DATA__
-

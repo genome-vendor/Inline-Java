@@ -1,6 +1,33 @@
 Revision history for Perl extension Inline::Java
 ------------------------------------------------
 
+0.40  Fri Apr 11 11:00:00 EST 2003
+    - Patch by Doug MacEachern to allow running under servlet engines.
+    - Patch by John Kinsley for handling empty arrays.
+    - Custom ClassLoader allows for better isolation of user code and
+      dynamic 'CLASSPATH' (multiple sections/clients are now totally
+      independant).
+    - Core Java code is now compiled separately (at install time) instead
+      of with the user code (for each script). This dramatically improves
+      build time.
+    - Default port number changed to 0 (next available port number). 
+      This allows many multiple users to run concurrently without 
+      clashes.
+      Note: The default port on systems where this feature is not 
+            available has remained 7890.
+      Note: The default port for SHARED_JVM mode is now 7891.
+    - SHARED_JVM mode now calls release_JVM() automatically.
+    - UTF8 support
+    - User code can now be a public class and (optionally) inside a package.
+    - Callback classes have changed.
+      Note: These classes are now in the org.perl.inline.java package.
+      Note: PerlException has been renamed InlineJavaPerlException.
+      Note: If you presently use callbacks, your code may now no longer compile.
+            You will need to apply the changes listed above to fix it.
+    - study_classes now returns the package in which the studied classes
+	  have been put.
+    - Many bug fixes and documentation corrections.
+
 0.33  Mon Jun 17 13:50:14 EDT 2002
     - Improved and more flexible debug output
     - Auto loading of thread libraries under Solaris

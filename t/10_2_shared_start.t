@@ -15,7 +15,7 @@ BEGIN {
 		exit ;
 	}
 	else{		
-		plan(tests => 4) ;
+		plan(tests => 3) ;
 	}
 }
 
@@ -33,8 +33,6 @@ use Inline (
 my $t = new t10::t10() ;
 {
 	ok($t->{i}++, 5) ;
-	ok(Inline::Java::i_am_JVM_owner()) ;
-	Inline::Java::release_JVM() ;
 	ok(! Inline::Java::i_am_JVM_owner()) ;
 }
 

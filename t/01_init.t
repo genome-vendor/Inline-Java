@@ -13,11 +13,18 @@ use Inline (
 	Java => 'DATA'
 ) ;
 
-
+my $ij = $types1::INLINE ;
+$ij = $types1::INLINE ; # Stupid warning...
+my $jdk = $ij->get_java_config("J2SDK") ;
 my $ver = types1->version() ;
-print STDERR "\nJ2SDK version is $ver\n" ;
+print STDERR "\nInline version is $Inline::VERSION\n" ;
+print STDERR "Inline::Java version is $Inline::Java::VERSION\n" ;
+print STDERR "J2SDK version is $ver, from $jdk\n" ;
 
-if ($ENV{PERL_INLINE_JAVA_JNI}){
+if ($ENV{PERL_INLINE_JAVA_EMBEDDED_JNI}){
+	print STDERR "Using JNI extension (embedded).\n" ;
+}
+elsif ($ENV{PERL_INLINE_JAVA_JNI}){
 	print STDERR "Using JNI extension.\n" ;
 }
 

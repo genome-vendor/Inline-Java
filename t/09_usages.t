@@ -22,7 +22,6 @@ use Inline(
 			}
 		}
 	|,
-	CLASSPATH => '[PERL_INLINE_JAVA=t09::p1, t09::p2, t09::p3]',
 	NAME => 't09::p1',
 ) ;
 

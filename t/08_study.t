@@ -9,21 +9,50 @@ use Inline Config =>
 
 use Inline(
 	Java => 'DATA',
+) ;
+
+# There once was a bug with importing code twice.
+use Inline(
+	Java => 'STUDY',
 	AUTOSTUDY => 1,
+	STUDY => ['t.types'],
 	CLASSPATH => '.',
 ) ;
+use Inline(
+	Java => 'STUDY',
+	AUTOSTUDY => 1,
+	STUDY => ['t.types'],
+	CLASSPATH => '.',
+) ;
+
+
+package toto ;
+
+use Inline(
+	Java => 'STUDY',
+	AUTOSTUDY => 1,
+	STUDY => ['t.types'],
+	CLASSPATH => '.',
+) ;
+
+
+package study ;
+
 use Inline::Java qw(study_classes) ;
 
 
 
 BEGIN {
-	plan(tests => 9) ;
+	plan(tests => 10) ;
 }
 
-study_classes([
-	't.types', 
+my $pkg = study_classes([
 	't.no_const'
 ]) ;
+
+# There is a 'use Inline Java' somewhere in the current 
+# package, so we can call the classes directly.
+ok(! defined($pkg)) ;
 
 my $t = new study::t::types() ;
 
@@ -34,7 +63,7 @@ my $t = new study::t::types() ;
 	my $nc = new study::t::no_const() ;
 	ok($nc->{i}, 5) ;
 	
-	my $a = new study::a8() ;
+	my $a = new study::study::a8() ;
 	ok($a->{i}, 50) ;
 	ok($a->truth()) ;
 	ok($a->sa()->[1], 'titi') ;
@@ -49,9 +78,12 @@ __DATA__
 
 __Java__
 
+// Use a public class
+package study ;
+
 import java.util.* ;
 
-class a8 {
+public class a8 {
 	public int i = 50 ;
 	
 	public a8(){
