@@ -78,9 +78,19 @@ In order for C<Inline::Java> to function properly, it needs to know
 where to find a Java 2 SDK on your machine. This is done using one
 of the following techniques:
 
-   - set the J2SDK configuration option to the correct directory
-   - set the PERL_INLINE_JAVA_J2SDK environment variable to the
-     correct directory
+=over 4
+
+=item 1 
+
+Set the J2SDK configuration option to the correct directory
+
+=item 2 
+
+Set the PERL_INLINE_JAVA_J2SDK environment variable to the 
+correct directory
+
+=back
+
 
 If none of these are specified, C<Inline::Java> will use the Java
 2 SDK that was specified a install time (see below).
@@ -100,126 +110,170 @@ by C<Inline::Java>, edit this file and change the value found there.
 If you wish use a different Java 2 SDK temporarily, see the J2SDK
 configuration option described below.
 
+Additionally, you can use the following command to get the list of directories
+that you should put in you shared library path when using the JNI extension:
+
+    % perl -MInline::Java=so_dirs
+
 
 =head1 CONFIGURATION OPTIONS
 
 There are a number of configuration options that dictate the
 behavior of C<Inline::Java>:
 
-   J2SDK:
-      Specifies the path to your Java 2 SDK.
-	  Ex: J2SDK => '/my/java/2/sdk/path'
-      Note: This configuration option only has an effect on the first
-      'use Inline Java' call inside a Perl script, since all other calls
-      make use of the same JVM.
+=over 4
 
-   PORT:
-      Specifies the starting port number for the server. If many
-      C<Inline::Java> blocks are declared, the port number is
-      incremented each time.
-      Default is 0 (next available port number).
-      Default for SHARED_JVM mode is 7890.
-      Ex: PORT => 4567
-      Note: This configuration option only has an effect on the first
-      'use Inline Java' call inside a Perl script, since all other calls
-      make use of the same JVM.
+=item J2SDK
 
-   STARTUP_DELAY:
-      Specifies the maximum number of seconds that the Perl script
-      will try to connect to the Java server. In other this is the
-      delay that Perl gives to the Java server to start.
-      Default is 15 seconds.
-      Ex: STARTUP_DELAY => 20
-      Note: This configuration option only has an effect on the first
-      'use Inline Java' call inside a Perl script, since all other calls
-      make use of the same JVM.
+Specifies the path to your Java 2 SDK.
 
-   CLASSPATH:
-      Adds the specified CLASSPATH. This CLASSPATH will only be available
-      threw the use classloader. To set the CLASSPATH globally, use the 
-      CLASSPATH environment variable.
-      Ex: CLASSPATH => '/my/other/java/classses'
+   Ex: J2SDK => '/my/java/2/sdk/path'
 
-   JNI:
-      Toggles the execution mode. The default is to use the client/server
-      mode. To use the JNI extension (you must have built it at install 
-      time though. See README and README.JNI for more information), set
-      JNI to 1. 
-      Ex: JNI => 1
-      Note: This configuration option only has an effect on the first
-      'use Inline Java' call inside a Perl script, since all other calls 
-      make use of the same JVM.
+Note: This configuration option only has an effect on the first
+'use Inline Java' call inside a Perl script, since all other calls
+make use of the same JVM.
 
-   EXTRA_JAVA_ARGS:
-   EXTRA_JAVAC_ARGS:
-      Specify extra command line parameters to be passed to, respectively,  
-      the JVM and the Java compiler. Use with caution as some options may 
-      alter normal C<Inline::Java> behavior.
-      Ex: EXTRA_JAVA_ARGS => '-Xmx96m'
-      Note: EXTRA_JAVA_ARGS only has an effect on the first
-      'use Inline Java' call inside a Perl script, since all other calls 
-      make use of the same JVM.
+=item PORT
 
-   EMBEDDED_JNI:
-      Same as JNI, except C<Inline::Java> expects the JVM to already be
-      loaded and to have loaded the Perl interpreter that is running the
-      script. This is an advanced feature that should only be need in
-      very specific circumstances.
-      Ex: EMBEDDED_JNI => 1
-      Note: The EMBEDDED_JNI option sets the JNI option.
-      Note: This configuration option only has an effect on the first
-      'use Inline Java' call inside a Perl script, since all other calls 
-      make use of the same JVM.
+Specifies the starting port number for the server. If many
+C<Inline::Java> blocks are declared, the port number is
+incremented each time. Default is 0 (next available port number),
+default for SHARED_JVM mode is 7890.
 
-   SHARED_JVM:
-      This mode enables mutiple processes to share the same JVM. It was 
-      created mainly in order to be able to use C<Inline::Java> under 
-      mod_perl. 
-      Ex: SHARED_JVM => 1
-      Note: This configuration option only has an effect on the first
-      'use Inline Java' call inside a Perl script, since all other calls 
-      make use of the same JVM.
+   Ex: PORT => 4567
 
-   PRIVATE:
-      In SHARED_JVM mode, makes every connection to the JVM use a different
-      classloader so that each connection is isolated from the others.
-      Ex: PRIVATE => 1
-      Note: This configuration option only has an effect on the first
-      'use Inline Java' call inside a Perl script, since all other calls
-      make use of the same JVM.
+Note: This configuration option only has an effect on the first
+'use Inline Java' call inside a Perl script, since all other calls
+make use of the same JVM.
 
-   DEBUG:
-      Enables debugging info. Debugging now uses levels (1 through 5)
-      that (loosely) follow these definitions:
-        1 = Major program steps
-        2 = Object creation/destruction
-        3 = Method/member accesses + packet dumps
-        4 = Everything else
-        5 = Data structure dumps
-      Ex: DEBUG => 2
+=item STARTUP_DELAY
 
-   DEBUGGER:
-      Starts jdb, (the Java debugger) instead of the regular Java JVM.
-      This option will also cause the Java code to be compiled using the
-      '-g' switch for extra debugging information. EXTRA_JAVA_ARGS can
-      be used use to pass extra options to the debugger.
-      Ex: DEBUGGER => 1
+Specifies the maximum number of seconds that the Perl script
+will try to connect to the Java server. In other this is the
+delay that Perl gives to the Java server to start. Default 
+is 15 seconds.
 
-   WARN_METHOD_SELECT:
-      Throws a warning when C<Inline::Java> has to 'choose' between 
-      different method signatures. The warning states the possible 
-      choices and the signature chosen.
-      Ex: WARN_METHOD_SELECT => 1
+   Ex: STARTUP_DELAY => 20
 
-   STUDY:
-      Takes an array of Java classes that you wish to have 
-      C<Inline::Java> learn about so that you can use them inside Perl.
-      Ex: STUDY => ['java.lang.HashMap', 'my.class']
+Note: This configuration option only has an effect on the first
+'use Inline Java' call inside a Perl script, since all other calls
+make use of the same JVM.
 
-   AUTOSTUDY:
-      Makes C<Inline::Java> automatically study unknown classes it
-      encounters them.
-      Ex: AUTOSTUDY => 1
+=item CLASSPATH
+
+Adds the specified CLASSPATH. This CLASSPATH will only be available
+threw the use classloader. To set the CLASSPATH globally, use the 
+CLASSPATH environment variable.
+
+   Ex: CLASSPATH => '/my/other/java/classses'
+
+=item JNI
+
+Toggles the execution mode. The default is to use the client/server
+mode. To use the JNI extension (you must have built it at install 
+time though. See README and README.JNI for more information), set
+JNI to 1. 
+
+   Ex: JNI => 1
+
+Note: This configuration option only has an effect on the first
+'use Inline Java' call inside a Perl script, since all other calls 
+make use of the same JVM.
+
+=item EXTRA_JAVA_ARGS, EXTRA_JAVAC_ARGS
+
+Specify extra command line parameters to be passed to, respectively,  
+the JVM and the Java compiler. Use with caution as some options may 
+alter normal C<Inline::Java> behavior.
+
+   Ex: EXTRA_JAVA_ARGS => '-Xmx96m'
+
+Note: EXTRA_JAVA_ARGS only has an effect on the first
+'use Inline Java' call inside a Perl script, since all other calls 
+make use of the same JVM.
+
+=item EMBEDDED_JNI
+
+Same as JNI, except C<Inline::Java> expects the JVM to already be
+loaded and to have loaded the Perl interpreter that is running the
+script. This is an advanced feature that should only be need in
+very specific circumstances.
+
+   Ex: EMBEDDED_JNI => 1
+
+Note: This configuration option only has an effect on the first
+'use Inline Java' call inside a Perl script, since all other calls 
+make use of the same JVM. Also, the EMBEDDED_JNI option automatically
+sets the JNI option.
+
+=item SHARED_JVM
+
+This mode enables mutiple processes to share the same JVM. It was 
+created mainly in order to be able to use C<Inline::Java> under 
+mod_perl. 
+
+   Ex: SHARED_JVM => 1
+
+Note: This configuration option only has an effect on the first
+'use Inline Java' call inside a Perl script, since all other calls 
+make use of the same JVM.
+
+=item PRIVATE
+
+In SHARED_JVM mode, makes every connection to the JVM use a different
+classloader so that each connection is isolated from the others.
+
+   Ex: PRIVATE => 1
+
+Note: This configuration option only has an effect on the first
+'use Inline Java' call inside a Perl script, since all other calls
+make use of the same JVM.
+
+=item DEBUG
+
+Enables debugging info. Debugging now uses levels (1 through 5)
+that (loosely) follow these definitions:
+
+   1 = Major program steps
+   2 = Object creation/destruction
+   3 = Method/member accesses + packet dumps
+   4 = Everything else
+   5 = Data structure dumps
+
+   Ex: DEBUG => 2
+
+=item DEBUGGER
+
+Starts jdb, (the Java debugger) instead of the regular Java JVM.
+This option will also cause the Java code to be compiled using the
+'-g' switch for extra debugging information. EXTRA_JAVA_ARGS can
+be used use to pass extra options to the debugger.
+
+   Ex: DEBUGGER => 1
+
+=item WARN_METHOD_SELECT
+
+Throws a warning when C<Inline::Java> has to 'choose' between 
+different method signatures. The warning states the possible 
+choices and the signature chosen.
+
+   Ex: WARN_METHOD_SELECT => 1
+
+=item STUDY
+
+Takes an array of Java classes that you wish to have 
+C<Inline::Java> learn about so that you can use them inside Perl.
+
+   Ex: STUDY => ['java.lang.HashMap', 'my.class']
+
+=item AUTOSTUDY
+
+Makes C<Inline::Java> automatically study unknown classes it
+encounters them.
+
+   Ex: AUTOSTUDY => 1
+
+=back 
 
 
 =head1 ENVIRONMENT VARIABLES
@@ -691,6 +745,7 @@ The study_classes() function takes 2 arguments, a reference to an array of
 class names (like the STUDY configuration option) and the name of the 
 package in which to bind those classes. If the name of the package is 
 undefined, the classes will be bound to the current (caller) package.
+
 Note: You can only specify the names of packages in which you have 
 previously "used" C<Inline::Java>.
    Z<>
@@ -706,8 +761,18 @@ This brings an improvement in performance.
 If you have built the JNI extension, you must enable it explicitely by doing
 one of the following:
 
-   - set the JNI configuration option to 1
-   - set the PERL_INLINE_JAVA_JNI environment variable to 1
+=over 4
+
+=item 1 
+
+Set the JNI configuration option to 1
+
+=item 2 
+
+Set the PERL_INLINE_JAVA_JNI environment variable to 1
+
+=back
+
 
 Note: C<Inline::Java> only creates one virtual machine instance. Therefore
 you can't use JNI for some sections and client/server for others. The first

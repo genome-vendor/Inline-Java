@@ -1,9 +1,10 @@
 Revision history for Perl extension Inline::Java
 ------------------------------------------------
-0.48  
+0.49  
     - Added PerlInterpreter: require/eval Perl code directly from Java
-	- Renamed PerlNatives stuff
+    - Renamed PerlNatives stuff
     - Split and updated documentation
+    - Applied JNI memory leak patch by Jeff Janes
 
 0.47  Sat Feb 14 10:00:00 EST 2004
     - Fixed bugs in portability code and added HPUX, AIX and Solaris specifics

@@ -56,7 +56,7 @@ print
 	"process. The use of this extension is optional, and building it still\n" .
 	"allows Inline::Java to run the JVM in the default (separate process)\n" .
 	"fashion.\n" .
-	"Note: You need a C compiler to build the extension.\n" ;
+	"Note: You need a C compiler to build the extension.\n" .
 	"Note: You must build the extension if you wish to use PerlNatives or\n" .
 	"      PerlInterpreter.\n" ;
 
@@ -144,8 +144,8 @@ TXT
 
 			print <<TXT;
 The PerlInterpreter extension allows Inline::Java to be loaded directly from
-Java using an embedded PerlInterpreter. It is still EXPERIMENTAL and 
-currently builds and works only with gcc under Linux. See documentation for 
+Java using an embedded Perl interpreter. It is still EXPERIMENTAL and 
+may not build or work properly on all platforms. See documentation for 
 more details.
 TXT
 			if (AskYN("Do you wish to build the PerlInterpreter extension?", 'n')){

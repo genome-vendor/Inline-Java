@@ -1,7 +1,7 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         Inline-Java
-version:      0.48_01
+version:      0.48_90
 version_from: Java.pm
 installdirs:  site
 requires:

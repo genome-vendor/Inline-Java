@@ -40,7 +40,7 @@ Inline::Java::PerlInterpreter - Call Perl directly from Java using Inline::Java.
 
 =head1 DESCRIPTION
 
-WARNING: C<Inline::Java::PerlInterpreter> is still experimantal.
+WARNING: C<Inline::Java::PerlInterpreter> is still experimental.
 
 The C<org.perl.inline.java.InlineJavaPerlInterpreter> Java class allows
 you to load a Perl interpreter directly from Java. You can then perform
@@ -76,24 +76,21 @@ for information on the callback API.
 Besides that API, C<org.perl.inline.java.InlineJavaPerlInterpreter> provides
 only 2 other public methods:
 
-  public InlineJavaPerlInterpreter create() 
-     throws InlineJavaPerlException, InlineJavaException 
+=over 4
+
+=item public InlineJavaPerlInterpreter create() 
+throws InlineJavaPerlException, InlineJavaException 
     
-     Creates a new org.perl.inline.java.InlineJavaPerlInterpreter object.
-     This class in a singleton.
+Creates a new org.perl.inline.java.InlineJavaPerlInterpreter object.
+This class in a singleton.
      
-  public void destroy()
+=item public void destroy()
   
-     Destroys the Perl interpreter.
+Destroys the Perl interpreter.
+
+=back
 
 
-=head1 BUGS AND DEFICIENCIES
-
-Presently, C<Inline::Java::PerlInterpreter> compiles only using the gcc
-C compiler. Any help on porting it to other platforms is appreciated.
-   Z<>
-
-     
 =head1 SEE ALSO
 
 L<Inline::Java>, L<Inline::Java::Callback>, L<Inline::Java::PerlNatives>.

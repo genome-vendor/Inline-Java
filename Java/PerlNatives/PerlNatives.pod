@@ -6,7 +6,10 @@ Inline::Java::PerlNatives - Map Java native methods to Perl functions.
 
 =for comment
 
+
    use Inline Java => <<'END' ;
+      import org.perl.inline.java.* ;
+
       class Pod_PN extends InlineJavaPerlNatives {
          public Pod_PN() throws InlineJavaException {
          }
@@ -22,7 +25,7 @@ Inline::Java::PerlNatives - Map Java native methods to Perl functions.
 
    package main ;
    my $b = new Pod_PN() ;
-   print $b->hello() ; # prints hi!
+   print($b->hello() . "\n") ; # prints hi!
 
 =for comment
 
@@ -43,7 +46,7 @@ Note: PerlNatives requires J2SDK version >= 1.4
 
 =head1 USING THE org.perl.inline.java.InlineJavaPerlNatives CLASS
 
-Let's revisit the example from the L<Inline::Java::Callback> documentation:
+Let's revisit an example from the L<Inline::Java::Callback> documentation:
 
 =for comment
 
@@ -74,13 +77,13 @@ Let's revisit the example from the L<Inline::Java::Callback> documentation:
 
    package Pod_Button_PN ;
    sub button_pressed {
-      print("click!\n") ; # prints click!
-      $b->StopCallbackLoop() ;
+      print('click!' . "\n") ; # prints click!
+      $main::b->StopCallbackLoop() ;
    }
 
    package main ;
-   my $b = new Pod_Button_PN() ;
-   $b->StartCallbackLoop() ;
+   $main::b = new Pod_Button_PN() ;
+   $main::b->StartCallbackLoop() ;
 
 =for comment
 

@@ -20,6 +20,8 @@ ok(1) ;
 
 
 my $inline = $Tests::INLINE ;
+$inline = $Tests::INLINE ; # stupid warning...
+
 my $install_dir = File::Spec->catdir($inline->get_api('install_lib'),
         'auto', $inline->get_api('modpname')) ;
 

@@ -6,7 +6,28 @@ Inline::Java::Callback - Callback into Perl from Java.
 
 =for comment
 
+   use Inline Java => <<'END' ;
+      import org.perl.inline.java.* ;
 
+      class Pod_caller extends InlineJavaPerlCaller { 
+         public Pod_caller() throws InlineJavaException {
+         }
+
+         public String perl()
+            throws InlineJavaException, InlineJavaPerlException {
+
+            return (String)CallPerlSub("main::perl",
+               new Object [] {}) ;
+         }
+      }
+   END
+
+   my $pc = new Pod_caller() ;
+   print($pc->perl() . "\n") ; # prints perl
+
+   sub perl {
+      return "perl" ;
+   }
 
 =for comment
 
@@ -30,7 +51,7 @@ object. Here is a example of a typical use:
          public boolean match(String target, String pattern)
             throws InlineJavaException {
             try {
-               String m = (String)CallPerl("main", "regexp",
+               String m = (String)CallPerlSub("main::regexp",
                   new Object [] {target, pattern}) ;
 
                if (m.equals("1")){
@@ -65,51 +86,60 @@ object. Here is a example of a typical use:
 Here are the various methods that one can use call into
 Perl:
 
-   public Object CallPerlSub(String sub, 
-      Object args[], Class cast)
-      throws InlineJavaException, InlineJavaPerlException
-      
-      Calls the specified subroutine with the supplied arguments and tries
-      to create an object of type 'cast' with the result.
-      Ex: Integer sum = (Integer)CallPerlSub("main::add", 
-             new Object [] {new Integer(5), new Integer}, Integer.class) ;
-      
-   public Object CallPerlStaticMethod(String pkg, String method, 
-      Object args[], Class cast) 
-      throws InlineJavaException, InlineJavaPerlException
-      
-      Calls the specified static package method (using the $pkg->$method()
-      notation) with the supplied arguments and tries to create an object 
-      of type 'cast' with the result.
-      Ex: Integer sum = (Integer)CallPerlStaticMethod("main", "add", 
-             new Object [] {new Integer(5), new Integer}, Integer.class) ;
+=over 4
 
-   public Object eval(String code, Class cast) 
-      throws InlineJavaPerlException, InlineJavaException
+=item public Object CallPerlSub(String sub, 
+Object args[], Class cast) 
+throws InlineJavaException, InlineJavaPerlException
       
-      Evaluates the given Perl code and tries to create an object
-      of type 'cast' with the result.
-      Ex: Interger sum = (Integer)eval("5 + 3", Integer.class) ;
+Calls the specified subroutine with the supplied arguments and tries
+to create an object of type 'cast' with the result.
 
-   public Object require(String module_or_file) 
-      throws InlineJavaPerlException, InlineJavaException
+Ex: Integer sum = (Integer)CallPerlSub("main::add", 
+new Object [] {new Integer(5), new Integer(3)}, Integer.class) ;
       
-      Requires the specified module/file by using the proper
-      construct.
-      Ex: require("Someting")
+=item public Object CallPerlStaticMethod(String pkg, String method,
+Object args[], Class cast)
+throws InlineJavaException, InlineJavaPerlException
       
-   public Object require_file(String file) 
-      throws InlineJavaPerlException, InlineJavaException
-      
-      Requires the specified file.
-      Ex: require("./my_stuff.pl") ;
+Calls the specified static package method (using the $pkg->$method()
+notation) with the supplied arguments and tries to create an object 
+of type 'cast' with the result.
 
-   public Object require_module(String module) 
-      throws InlineJavaPerlException, InlineJavaException
-      
-      Requires the specified module.
-      Ex: require("Data::Dumper") ;
+Ex: Integer sum = (Integer)CallPerlStaticMethod("main", "add", 
+new Object [] {new Integer(5), new Integer}, Integer.class) ;
 
+=item public Object eval(String code, Class cast) 
+throws InlineJavaPerlException, InlineJavaException
+      
+Evaluates the given Perl code and tries to create an object
+of type 'cast' with the result.
+
+Ex: Interger sum = (Integer)eval("5 + 3", Integer.class) ;
+
+=item public Object require(String module_or_file) 
+throws InlineJavaPerlException, InlineJavaException
+      
+Requires the specified module/file by using the proper
+construct.
+
+Ex: require("Someting")
+      
+=item public Object require_file(String file) 
+throws InlineJavaPerlException, InlineJavaException
+      
+Requires the specified file.
+
+Ex: require("./my_stuff.pl") ;
+
+=item public Object require_module(String module) 
+throws InlineJavaPerlException, InlineJavaException
+      
+Requires the specified module.
+
+Ex: require("Data::Dumper") ;
+
+=back
 
 Note: For all CallPerl* and eval methods, the 'cast' parameter is optional
 and defaults to 'String.class'.
@@ -152,7 +182,7 @@ in Perl. Here's an example:
 
          public void actionPerformed(ActionEvent e){
             try {
-               CallPerl("main", "button_pressed", new Object [] {}) ;
+               CallPerlSub("main::button_pressed", new Object [] {}) ;
             }
             catch (InlineJavaPerlException pe){
                // $@ is in pe.GetObject()
@@ -168,7 +198,7 @@ in Perl. Here's an example:
    $b->StartCallbackLoop() ;
 
    sub button_pressed {
-      print("click!\n") ; # prints click!
+      print('click!' . "\n") ; # prints click!
       $b->StopCallbackLoop() ;
    }
 

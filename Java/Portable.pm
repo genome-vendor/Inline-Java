@@ -10,7 +10,7 @@ use Config ;
 use File::Find ;
 use File::Spec ;
 
-$Inline::Java::Portable::VERSION = '0.48_01' ;
+$Inline::Java::Portable::VERSION = '0.48_90' ;
 
 # Here is some code to figure out if we are running on command.com
 # shell under Windows.
@@ -158,6 +158,8 @@ sub portable {
 		SUB_FIX_MAKE_QUOTES	=>	undef,
 		JVM_LIB				=>	"libjvm.$Config{dlext}",
 		JVM_SO				=>	"libjvm.$Config{dlext}",
+		PRE_WHOLE_ARCHIVE	=>  '-Wl,--whole-archive',
+		POST_WHOLE_ARCHIVE	=>  '-Wl,--no-whole-archive',
 	} ;
 
 	my $map = {
@@ -180,11 +182,18 @@ sub portable {
 				$val = qq{"$val"} ;
 				return $val ;
 			}),
-			SUB_FIX_MAKE_QUOTES	=>	sub {
-				my $val = shift ;
-				$val = qq{"$val"} ;
-				return $val ;
-			},
+
+# Can't remember what this was supposed to fix, but it breaks
+# when there are spaces in the J2SDK directory...
+#
+#			SUB_FIX_MAKE_QUOTES	=>	sub {
+#				my $val = shift ;
+#				$val = qq{"$val"} ;
+#				return $val ;
+#			},
+#
+			PRE_WHOLE_ARCHIVE	=>  '',
+			POST_WHOLE_ARCHIVE	=>  '',
 		},
 		cygwin => {
 			ENV_VAR_PATH_SEP_CP	=>	';',
