@@ -9,7 +9,7 @@ use Config ;
 use File::Find ;
 use File::Spec ;
 
-$Inline::Java::Portable::VERSION = '0.48_93' ;
+$Inline::Java::Portable::VERSION = '0.48_94' ;
 
 # Here is some code to figure out if we are running on command.com
 # shell under Windows.
@@ -159,6 +159,7 @@ sub portable {
 		JVM_SO				=>	"libjvm.$Config{dlext}",
 		PRE_WHOLE_ARCHIVE	=>  '-Wl,--whole-archive',
 		POST_WHOLE_ARCHIVE	=>  '-Wl,--no-whole-archive',
+		PERL_PARSE_DUP_ENV	=>  '-DPERL_PARSE_DUP_ENV',
 	} ;
 
 	my $map = {

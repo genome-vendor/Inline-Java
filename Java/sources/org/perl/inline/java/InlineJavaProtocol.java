@@ -244,7 +244,7 @@ class InlineJavaProtocol {
 		if (id > 0){
 			o = ijs.GetObject(id) ;
 
-			// Use the class of the object
+			// Use the class sent by Perl (it might be casted)
 			// class_name = o.getClass().getName() ;
 		}
 
@@ -313,7 +313,7 @@ class InlineJavaProtocol {
 		if (id > 0){
 			o = ijs.GetObject(id) ;
 
-			// Use the class of the object
+			// Use the class sent by Perl (it might be casted)
 			// class_name = o.getClass().getName() ;
 		}
 
@@ -369,7 +369,7 @@ class InlineJavaProtocol {
 		if (id > 0){
 			o = ijs.GetObject(id) ;
 
-			// Use the class of the object
+			// Use the class sent by Perl (it might be casted)
 			// class_name = o.getClass().getName() ;
 		}
 

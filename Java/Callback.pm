@@ -3,7 +3,7 @@ package Inline::Java::Callback ;
 use strict ;
 use Carp ;
 
-$Inline::Java::Callback::VERSION = '0.48_93' ;
+$Inline::Java::Callback::VERSION = '0.48_94' ;
 
 $Inline::Java::Callback::OBJECT_HOOK = undef ;
 
@@ -143,6 +143,12 @@ sub DeleteObject {
 sub ObjectCount {
 	return scalar(keys %OBJECTS) ;
 }
+
+
+sub __GetObjects {
+	return \%OBJECTS ;
+}
+
 
 
 ########## Utility methods used by Java to access Perl objects #################

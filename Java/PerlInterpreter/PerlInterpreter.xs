@@ -37,10 +37,24 @@ void throw_ijp(JNIEnv *env, char *msg){
 
 JNIEXPORT void JNICALL Java_org_perl_inline_java_InlineJavaPerlInterpreter_construct(JNIEnv *env, jclass cls){
 	char *args[] = {"inline-java", "-e1"} ;
+	int envl = 0 ;
+	int i = 0 ;
+	char **envdup = NULL ;
 
+#ifdef PERL_PARSE_ENV_DUP
+	/* This will leak, but it's a one shot... */
+	for (i = 0 ; environ[i] != NULL ; i++){
+		envl++ ;
+	}
+	envdup = (char **)calloc(envl + 1, sizeof(char *)) ;
+	for (i = 0 ; i < envl ; i++){
+		envdup[i] = strdup(environ[i]) ;
+	}
+#endif
+	
 	interp = perl_alloc() ;
 	perl_construct(interp) ;
-	perl_parse(interp, xs_init, 2, args, NULL) ;
+	perl_parse(interp, xs_init, 2, args, envdup) ;
 	perl_run(interp) ;
 }
 

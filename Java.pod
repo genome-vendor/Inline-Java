@@ -220,7 +220,7 @@ make use of the same JVM.
 
 =item START_JVM
 
-When used with SHARED_JVM, tells C<Inline::Java> that JVM should
+When used with SHARED_JVM, tells C<Inline::Java> that the JVM should
 already be running and that it should not attempt to start a new
 one. This option is useful in combination with command line interface
 described in the BUGS AND DEFICIENCIES section. Default is 1.
@@ -995,16 +995,16 @@ rebuilt to match the Perl code.
 
 Under certain environments, i.e. CGI or mod_perl, the JVM cannot start
 properly because of the way these environments set up STDIN and STDOUT.
-In these cases, you maybe wish to control the JVM (in shared mode) manually
+In these cases, you may wish to control the JVM (in shared mode) manually
 using the following commands:
 
     % perl -MInline::Java::Server=status
     % perl -MInline::Java::Server=start 
     % perl -MInline::Java::Server=stop 
-    % perl -MInline::Java::Server=restat 
+    % perl -MInline::Java::Server=restart 
    
-You can't specify C<Inline::Java> options by setting the proper
-environment variables. You can also set the _Inline directory by setting
+You can specify C<Inline::Java> options by setting the proper
+environment variables, and you can also set the _Inline directory by using
 the PERL_INLINE_JAVA_DIRECTORY environment variable. 
 
 In addition, you may also wish to set the START_JVM option to 0 in your scripts 

@@ -30,7 +30,7 @@ public class InlineJavaPerlObject extends InlineJavaPerlCaller {
 	}
 
 
-	public int GetId(){
+	int GetId(){
 		return id ;
 	}
 
@@ -50,12 +50,12 @@ public class InlineJavaPerlObject extends InlineJavaPerlCaller {
 	}
 
 
-	public void Done() throws InlineJavaPerlException, InlineJavaException {
-		Done(false) ;
+	public void Dispose() throws InlineJavaPerlException, InlineJavaException {
+		Dispose(false) ;
 	}
 
 
-	protected void Done(boolean gc) throws InlineJavaPerlException, InlineJavaException {
+	protected void Dispose(boolean gc) throws InlineJavaPerlException, InlineJavaException {
 		if (id != 0){
 			CallPerlSub("Inline::Java::Callback::java_finalize", new Object [] {new Integer(id), new Boolean(gc)}) ;
 		}
@@ -64,7 +64,7 @@ public class InlineJavaPerlObject extends InlineJavaPerlCaller {
 
 	protected void finalize() throws Throwable {
 		try {
-			Done(true) ;
+			Dispose(true) ;
 		}
 		finally {
 			super.finalize() ;
