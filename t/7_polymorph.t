@@ -12,35 +12,40 @@ use Inline::Java qw(cast) ;
 
 
 BEGIN {
-	plan(tests => 16) ;
+	plan(tests => 17) ;
 }
 
 
-my $t = new types() ;
-my $t1 = new t1() ;
+my $t = new types7() ;
 
-ok($t->func(5), "int") ;
-ok($t->func(cast("char", 5)), "char") ;
-ok($t->func(55), "int") ;
-ok($t->func("str"), "string") ;
-ok($t->func(cast("java.lang.StringBuffer", "str")), "stringbuffer") ;
+{
+	my $t1 = new t17() ;
+	
+	ok($t->func(5), "int") ;
+	ok($t->func(cast("char", 5)), "char") ;
+	ok($t->func(55), "int") ;
+	ok($t->func("str"), "string") ;
+	ok($t->func(cast("java.lang.StringBuffer", "str")), "stringbuffer") ;
+	
+	ok($t->f($t->{hm}), "hashmap") ;
+	ok($t->f(cast("java.lang.Object", $t->{hm})), "object") ;
+	
+	ok($t->f(["a", "b", "c"]), "string[]") ;
+	
+	ok($t->f(["12.34", "45.67"]), "double[]") ;
+	ok($t->f(cast("java.lang.Object", ['a'], "[Ljava.lang.String;")), "object") ;
+	
+	eval {$t->func($t1)} ; ok($@, qr/Can't find any signature/) ;
+	eval {$t->func(cast("int", $t1))} ; ok($@, qr/Can't convert (.*) to primitive int/) ;
+	
+	my $t2 = new t27() ;
+	ok($t2->f($t2), "t1") ;
+	ok($t1->f($t2), "t1") ;
+	ok($t2->f($t1), "t2") ;
+	ok($t2->f(cast("t17", $t2)), "t2") ;
+}
 
-ok($t->f($t->{hm}), "hashmap") ;
-ok($t->f(cast("java.lang.Object", $t->{hm})), "object") ;
-
-ok($t->f(["a", "b", "c"]), "string[]") ;
-
-ok($t->f(["12.34", "45.67"]), "double[]") ;
-ok($t->f(cast("java.lang.Object", ['a'], "[Ljava.lang.String;")), "object") ;
-
-eval {$t->func($t1)} ; ok($@, qr/Can't find any signature/) ;
-eval {$t->func(cast("int", $t1))} ; ok($@, qr/Can't convert (.*) to primitive int/) ;
-
-my $t2 = new t2() ;
-ok($t2->f($t2), "t1") ;
-ok($t1->f($t2), "t1") ;
-ok($t2->f($t1), "t2") ;
-ok($t2->f(cast("t1", $t2)), "t2") ;
+ok($t->__get_private()->{proto}->ObjectCount(), 1) ;
 
 
 __END__
@@ -50,30 +55,30 @@ __Java__
 
 import java.util.* ;
 
-class t1 {
-	public t1(){
+class t17 {
+	public t17(){
 	}
 
-	public String f(t2 o){
+	public String f(t27 o){
 		return "t1" ;
 	}
 }
 
 
-class t2 extends t1 {
-	public t2(){
+class t27 extends t17 {
+	public t27(){
 	}
 
-	public String f(t1 o){
+	public String f(t17 o){
 		return "t2" ;
 	}
 }
 
 
-class types {
+class types7 {
 	public HashMap hm = new HashMap() ;
 
-	public types(){
+	public types7(){
 	}
 
 	public String func(String o){

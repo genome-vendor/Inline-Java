@@ -10,29 +10,43 @@ use Inline(
 
 
 BEGIN {
-	plan(tests => 7) ;
+	plan(tests => 10) ;
 }
 
 
 # Methods
-ok(types->get("key"), undef) ;
-my $t = new types("key", "value") ;
-ok($t->get("key"), "value") ;
+ok(types6->get("key"), undef) ;
+my $t = new types6("key", "value") ;
 
-# Members
-ok($types::i == 5) ;
-$types::i = 7 ;
-ok($t->{i} == 7) ;
+{
+	ok($t->get("key"), "value") ;
+	
+	# Members
+	ok($types6::i == 5) ;
+	$types6::i = 7 ;
+	ok($t->{i} == 7) ;
+	
+	my $t2 = new types6("key2", "value2") ;
+	my $hm = $types6::hm ;
+	$types6::hm = undef ;
+	ok(types6->get($hm, "key2"), "value2") ;
+	
+	$types6::hm = $hm ;
+	ok($t2->get("key2"), "value2") ;
+	
+	# Calling an instance method without an object reference
+	eval {types6->set()} ; ok($@, qr/must be called from an object reference/) ;
 
-my $t2 = new types("key2", "value2") ;
-my $hm = $types::hm ;
-ok(types->get($hm, "key2"), "value2") ;
+	# Put in back like before...
+	$types6::i = 5 ;
+	ok($types6::i == 5) ;
+	my $tt = new types6("key", undef) ;
+	ok($tt->get("key"), undef) ;
+}
 
-$types::hm = $hm ;
-ok($t2->get("key2"), "value2") ;
-
-# Calling an instance method without an object reference
-eval {types->set()} ; ok($@, qr/must be called from an object reference/) ;
+# Since $types::hm was returned to the Perl space, it was registered in the object 
+# HashMap.
+ok($t->__get_private()->{proto}->ObjectCount(), 2) ;
 
 
 __END__
@@ -43,11 +57,11 @@ __Java__
 import java.util.* ;
 
 
-class types {
+class types6 {
 	public static int i = 5 ;
 	public static HashMap hm = new HashMap() ;
 
-	public types(String k, String v){
+	public types6(String k, String v){
 		hm.put(k, v) ;
 	}
 

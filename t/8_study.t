@@ -17,9 +17,8 @@ use Inline::Java qw(study_classes) ;
 
 
 BEGIN {
-	plan(tests => 8) ;
+	plan(tests => 9) ;
 }
-
 
 study_classes([
 	't.types', 
@@ -27,18 +26,23 @@ study_classes([
 ]) ;
 
 my $t = new study::t::types() ;
-ok($t->func(), "study") ;
-ok($t->hm()->get("key"), "value") ;
 
-my $nc = new study::t::no_const() ;
-ok($nc->{i}, 5) ;
+{
+	ok($t->func(), "study") ;
+	ok($t->hm()->get("key"), "value") ;
+	
+	my $nc = new study::t::no_const() ;
+	ok($nc->{i}, 5) ;
+	
+	my $a = new study::a8() ;
+	ok($a->{i}, 50) ;
+	ok($a->truth()) ;
+	ok($a->sa()->[1], 'titi') ;
+	ok($a->sb()->[0]->get('toto'), 'titi') ;
+	ok($a->sb()->[1]->get('error'), undef) ;
+}
 
-my $a = new study::a() ;
-ok($a->{i}, 50) ;
-ok($a->truth()) ;
-ok($a->sa()->[1], 'titi') ;
-ok($a->sb()->[0]->get('toto'), 'titi') ;
-ok($a->sb()->[1]->get('error'), undef) ;
+ok($t->__get_private()->{proto}->ObjectCount(), 1) ;
 
 
 __DATA__
@@ -47,10 +51,10 @@ __Java__
 
 import java.util.* ;
 
-class a {
+class a8 {
 	public int i = 50 ;
 	
-	public a(){
+	public a8(){
 	}
 
 	public boolean truth(){

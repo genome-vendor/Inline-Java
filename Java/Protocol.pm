@@ -3,7 +3,7 @@ package Inline::Java::Protocol ;
 
 use strict ;
 
-$Inline::Java::Protocol::VERSION = '0.22' ;
+$Inline::Java::Protocol::VERSION = '0.30' ;
 
 use Inline::Java::Object ;
 use Inline::Java::Array ;
@@ -43,16 +43,27 @@ sub ISA {
 	my $this = shift ;
 	my $proto = shift ;
 
-	my $id = $this->{obj_priv}->{id} ;
 	my $class = $this->{obj_priv}->{java_class} ;
 
 	Inline::Java::debug("checking if $class is a $proto") ;
 
 	my $data = join(" ", 
 		"isa", 
-		$id,
 		Inline::Java::Class::ValidateClass($class),
 		Inline::Java::Class::ValidateClass($proto),
+	) ;
+
+	return $this->Send($data, 1) ;
+}
+
+
+sub ObjectCount {
+	my $this = shift ;
+
+	Inline::Java::debug("getting object count") ;
+
+	my $data = join(" ", 
+		"obj_cnt", 
 	) ;
 
 	return $this->Send($data, 1) ;
@@ -382,6 +393,9 @@ class InlineJavaProtocol {
 		else if (c.equals("delete_object")){
 			DeleteJavaObject(st) ;
 		}
+		else if (c.equals("obj_cnt")){
+			ObjectCount(st) ;
+		}
 		else if (c.equals("die")){
 			ijs.debug("  received a request to die...") ;
 			System.exit(0) ;
@@ -459,21 +473,18 @@ class InlineJavaProtocol {
 
 
 	void ISA(StringTokenizer st) throws InlineJavaException {
-		int id = Integer.parseInt(st.nextToken()) ;
-
 		String class_name = st.nextToken() ;
 		Class c = ijc.ValidateClass(class_name) ;
 
 		String is_it_a = st.nextToken() ;
 		Class d = ijc.ValidateClass(is_it_a) ;
 
-		Integer oid = new Integer(id) ;
-		Object o = ijs.objects.get(oid) ;
-		if (o == null){
-			throw new InlineJavaException("Object " + oid.toString() + " is not in HashMap!") ;
-		}
-
 		SetResponse(new Integer(ijc.DoesExtend(c, d))) ;
+	}
+
+
+	void ObjectCount(StringTokenizer st) throws InlineJavaException {
+		SetResponse(new Integer(ijs.ObjectCount())) ;
 	}
 
 
@@ -524,11 +535,7 @@ class InlineJavaProtocol {
 		String class_name = st.nextToken() ;
 		Object o = null ;
 		if (id > 0){
-			Integer oid = new Integer(id) ;
-			o = ijs.objects.get(oid) ;
-			if (o == null){
-				throw new InlineJavaException("Object " + oid.toString() + " is not in HashMap!") ;
-			}
+			o = ijs.GetObject(id) ;
 
 			// Use the class of the object
 			class_name = o.getClass().getName() ;
@@ -577,11 +584,7 @@ class InlineJavaProtocol {
 		String class_name = st.nextToken() ;
 		Object o = null ;
 		if (id > 0){
-			Integer oid = new Integer(id) ;
-			o = ijs.objects.get(oid) ;
-			if (o == null){
-				throw new InlineJavaException("Object " + oid.toString() + " is not in HashMap!") ;
-			}
+			o = ijs.GetObject(id) ;
 
 			// Use the class of the object
 			class_name = o.getClass().getName() ;
@@ -637,11 +640,7 @@ class InlineJavaProtocol {
 		String class_name = st.nextToken() ;
 		Object o = null ;
 		if (id > 0){
-			Integer oid = new Integer(id) ;
-			o = ijs.objects.get(oid) ;
-			if (o == null){
-				throw new InlineJavaException("Object " + oid.toString() + " is not in HashMap!") ;
-			}
+			o = ijs.GetObject(id) ;
 
 			// Use the class of the object
 			class_name = o.getClass().getName() ;
@@ -679,8 +678,7 @@ class InlineJavaProtocol {
 	void DeleteJavaObject(StringTokenizer st) throws InlineJavaException {
 		int id = Integer.parseInt(st.nextToken()) ;
 
-		Integer oid = new Integer(id) ;
-		Object o = ijs.objects.remove(oid) ;
+		Object o = ijs.DeleteObject(id) ;
 
 		SetResponse(null) ;
 	}
@@ -882,7 +880,7 @@ class InlineJavaProtocol {
 		This sets the response that will be returned to the Perl
 		script
 	*/
-	void SetResponse (Object o){
+	void SetResponse (Object o) throws InlineJavaException {
 		if (o == null){
 			response = "ok undef:" ;
 		}
@@ -896,10 +894,10 @@ class InlineJavaProtocol {
 		else {
 			// Here we need to register the object in order to send
 			// it back to the Perl script.
-			ijs.objects.put(new Integer(ijs.objid), o) ;
-			response = "ok object:" + String.valueOf(ijs.objid) +
+			int id = ijs.objid ;
+			ijs.PutObject(id, o) ;
+			response = "ok object:" + String.valueOf(id) +
 				":" + o.getClass().getName() ;
-			ijs.objid++ ;
 		}
 	}
 

@@ -3,7 +3,7 @@ package Inline::Java::JVM ;
 
 use strict ;
 
-$Inline::Java::JVM::VERSION = '0.22' ;
+$Inline::Java::JVM::VERSION = '0.30' ;
 
 use Carp ;
 use IPC::Open3 ;
@@ -18,6 +18,7 @@ sub new {
 
 	$this->{socket} = undef ;
 	$this->{JNI} = undef ;
+	$this->{owner} = 1 ;
 
 	Inline::Java::debug("Starting JVM...") ;
 
@@ -36,14 +37,29 @@ sub new {
 	}
 	else{
 		Inline::Java::debug("  Client/Server mode") ;
-
+		
 		my $debug = (Inline::Java::get_DEBUG() ? "true" : "false") ;
 
+		my $shared_jvm = ($o->get_java_config('SHARED_JVM') ? "true" : "false") ;
 		my $port = $o->get_java_config('PORT') ;
+
+		$this->{port} = $port ;
+
+		# Check if JVM is already running
+		if ($shared_jvm){
+			eval {
+				$this->reconnect() ;
+			} ;
+			if (! $@){
+				Inline::Java::debug("  Connected to already running JVM!") ;			
+				return $this ;
+			}
+		}
+
 		my $java = $o->get_java_config('BIN') . "/java" . Inline::Java::portable("EXE_EXTENSION") ;
 		my $pjava = Inline::Java::portable("RE_FILE", $java) ;
 
-		my $cmd = "\"$pjava\" InlineJavaServer $debug $port" ;
+		my $cmd = "\"$pjava\" InlineJavaServer $debug $port $shared_jvm" ;
 		Inline::Java::debug($cmd) ;
 
 		if ($o->get_config('UNTAINT')){
@@ -62,7 +78,8 @@ sub new {
 		$this->{pid} = $pid ;
 		$this->{socket}	= $this->setup_socket(
 			$port, 
-			$o->get_java_config('STARTUP_DELAY')
+			$o->get_java_config('STARTUP_DELAY'),
+			0
 		) ;
 	}
 
@@ -73,26 +90,35 @@ sub new {
 sub DESTROY {
 	my $this = shift ;
 
-	if ($this->{socket}){
-		# This asks the Java server to stop and die.
-		my $sock = $this->{socket} ;
-		if ($sock->connected()){
-			print $sock "die\n" ;
+	if ($this->{owner}){
+		if ($this->{socket}){
+			# This asks the Java server to stop and die.
+			my $sock = $this->{socket} ;
+			if ($sock->connected()){
+				print $sock "die\n" ;
+			}
+			else{
+				carp "Lost connection with Java virtual machine" ;
+			}
+			close($sock) ;
+	
+			if ($this->{pid}){
+				# Here we go ahead and send the signals anyway to be very 
+				# sure it's dead...
+				# Always be polite first, and then insist.
+				kill(15, $this->{pid}) ;
+				kill(9, $this->{pid}) ;
+	
+				# Reap the child...
+				waitpid($this->{pid}, 0) ;
+			}
 		}
-		else{
-			carp "Lost connection with Java virtual machine" ;
-		}
-		close($sock) ;
-
-		if ($this->{pid}){
-			# Here we go ahead and send the signals anyway to be very 
-			# sure it's dead...
-			# Always be polite first, and then insist.
-			kill(15, $this->{pid}) ;
-			kill(9, $this->{pid}) ;
-
-			# Reap the child...
-			waitpid($this->{pid}, 0) ;
+	}
+	else{
+		# We are not the JVM owner, so we simply politely disconnect
+		if ($this->{socket}){
+			close($this->{socket}) ;
+			$this->{socket} = undef ;
 		}
 	}
 
@@ -105,13 +131,15 @@ sub setup_socket {
 	my $this = shift ;
 	my $port = shift ;
 	my $timeout = shift ;
+	my $one_shot = shift ;
 
 	my $socket = undef ;
+
 	my $last_words = "timeout\n" ;
+	my $got_alarm = Inline::Java::portable("GOT_ALARM") ;
+
 	eval {
 		local $SIG{ALRM} = sub { die($last_words) ; } ;
-
-		my $got_alarm = Inline::Java::portable("GOT_ALARM") ;
 
 		if ($got_alarm){
 			alarm($timeout) ;
@@ -128,7 +156,7 @@ sub setup_socket {
 				PeerAddr => 'localhost',
 				PeerPort => $port,
 				Proto => 'tcp') ;
-			if ($socket){
+			if (($socket)||($one_shot)){
 				last ;
 			}
 		}
@@ -142,9 +170,13 @@ sub setup_socket {
 			croak "JVM taking more than $timeout seconds to start, or died before Perl could connect. Increase config STARTUP_DELAY if necessary." ;
 		}
 		else{
+			if ($got_alarm){
+				alarm(0) ;
+			}
 			croak $@ ;
 		}
 	}
+
 	if (! $socket){
 		croak "Can't connect to JVM: $!" ;
 	}
@@ -152,6 +184,29 @@ sub setup_socket {
 	$socket->autoflush(1) ;
 
 	return $socket ;
+}
+
+
+sub reconnect {
+	my $this = shift ;
+
+	if ($this->{JNI}){
+		return ;
+	}
+
+	if ($this->{socket}){
+		# Close the previous socket
+		close($this->{socket}) ;
+		$this->{socket} = undef ;
+	}
+
+	my $socket = $this->setup_socket(
+		$this->{port}, 
+		0,
+		1
+	) ;
+	$this->{socket} = $socket ;
+	$this->{owner} = 0 ;
 }
 
 

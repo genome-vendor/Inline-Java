@@ -1,6 +1,17 @@
 Revision history for Perl extension Inline::Java
 ------------------------------------------------
 
+0.30  Mon Sep 17 15:45:06 EDT 2001
+    - JVM server is now multi-threaded
+    - Added 'SHARED_JVM' option for mod_perl support
+    - Beefed up test suite
+
+0.23  Thu Aug 30 08:41:11 EDT 2001
+    - Added support for multiple Inline sections using a special notation
+      in the CLASSPATH.
+    - Added the 'fix' Makefile.PL option au automatically fix the Makefile
+      for Win95/98/Me.
+
 0.22  Fri Jun  1 13:31:35 EDT 2001
     - Fixed up Inline::Java to work with Inline 0.41
     - Added support for java.lang.Number as a primitive numeric type. Any

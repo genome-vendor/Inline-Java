@@ -7,7 +7,7 @@ package Inline::Java ;
 
 use strict ;
 
-$Inline::Java::VERSION = '0.23' ;
+$Inline::Java::VERSION = '0.30' ;
 
 
 # DEBUG is set via the DEBUG config
@@ -46,8 +46,10 @@ my $DONE = 0 ;
 # This is set when at least one JVM is loaded.
 my $JVM = undef ;
 
+
 # This hash will store the $o objects...
 my $INLINES = {} ;
+
 
 # Here is some code to figure out if we are running on command.com
 # shell under Windows.
@@ -82,9 +84,7 @@ sub done {
 		Inline::Java::debug("killed by signal SIG$signal.") ;
 	}
 
-	if ($JVM){
-		undef $JVM ;
-	}
+	shutdown_JVM() ;
 	
 	Inline::Java::debug("exiting with $ec") ;
 
@@ -150,15 +150,14 @@ sub _validate {
 	my $o = shift ;
 	my $ignore_other_configs = shift ;
 
-	# if ($o->get_INLINE_nb() == 1){
-	# 	croak "Inline::Java does not currently support multiple Inline sections" ;
-	# }
-
 	if (! exists($o->{ILSM}->{PORT})){
 		$o->{ILSM}->{PORT} = 7890 ;
 	}
 	if (! exists($o->{ILSM}->{STARTUP_DELAY})){
 		$o->{ILSM}->{STARTUP_DELAY} = 15 ;
+	}
+	if (! exists($o->{ILSM}->{SHARED_JVM})){
+		$o->{ILSM}->{SHARED_JVM} = 0 ;
 	}
 	if (! exists($o->{ILSM}->{DEBUG})){
 		$o->{ILSM}->{DEBUG} = 0 ;
@@ -199,6 +198,9 @@ sub _validate {
 			}
 			$o->{ILSM}->{$key} = $value ;
 		}
+		elsif ($key eq 'SHARED_JVM'){
+			$o->{ILSM}->{$key} = $value ;
+		}
 		elsif ($key eq 'DEBUG'){
 			$o->{ILSM}->{$key} = $value ;
 			$Inline::Java::DEBUG = $value ;
@@ -221,8 +223,20 @@ sub _validate {
 		}
 	}
 
+	if (defined($ENV{PERL_INLINE_JAVA_DEBUG})){
+		$Inline::Java::DEBUG = $ENV{PERL_INLINE_JAVA_DEBUG} ;
+	}
+
 	if (defined($ENV{PERL_INLINE_JAVA_JNI})){
 		$o->{ILSM}->{JNI} = $ENV{PERL_INLINE_JAVA_JNI} ;
+	}
+
+	if (defined($ENV{PERL_INLINE_JAVA_SHARED_JVM})){
+		$o->{ILSM}->{SHARED_JVM} = $ENV{PERL_INLINE_JAVA_SHARED_JVM} ;
+	}
+
+	if (($o->{ILSM}->{JNI})&&($o->{ILSM}->{SHARED_JVM})){
+		croak("You can't use the 'SHARED_JVM' option in 'JNI' mode") ;
 	}
 
 	$o->set_java_bin() ;
@@ -406,16 +420,16 @@ sub write_java {
 	$o->mkpath($build_dir) ;
 
 	if (! $study_only){
-		open(JAVA, ">$build_dir/$modfname.java") or
+		open(Inline::Java::JAVA, ">$build_dir/$modfname.java") or
 			croak "Can't open $build_dir/$modfname.java: $!" ;
-		Inline::Java::Init::DumpUserJavaCode(\*JAVA, $modfname, $code) ;
-		close(JAVA) ;
+		Inline::Java::Init::DumpUserJavaCode(\*Inline::Java::JAVA, $modfname, $code) ;
+		close(Inline::Java::JAVA) ;
 	}
 
-	open(JAVA, ">$build_dir/InlineJavaServer.java") or
+	open(Inline::Java::JAVA, ">$build_dir/InlineJavaServer.java") or
 		croak "Can't open $build_dir/InlineJavaServer.java: $!" ;
-	Inline::Java::Init::DumpServerJavaCode(\*JAVA, $modfname) ;
-	close(JAVA) ;
+	Inline::Java::Init::DumpServerJavaCode(\*Inline::Java::JAVA, $modfname) ;
+	close(Inline::Java::JAVA) ;
 
 	Inline::Java::debug("write_java done.") ;
 }
@@ -514,9 +528,9 @@ sub compile_error_msg {
 
 	my $build_dir = $o->get_api('build_dir') ;
 	my $error = '' ;
-	if (open(CMD, "<cmd.out")){
-		$error = join("", <CMD>) ;
-		close(CMD) ;
+	if (open(Inline::Java::CMD, "<cmd.out")){
+		$error = join("", <Inline::Java::CMD>) ;
+		close(Inline::Java::CMD) ;
 	}
 
 	my $lang = $o->get_api('language') ;
@@ -584,10 +598,10 @@ sub touch_file {
 
 	my $pfile = portable("RE_FILE", $file) ;
 
-	if (! open(TOUCH, ">$pfile")){
+	if (! open(Inline::Java::TOUCH, ">$pfile")){
 		croak "Can't create file $pfile" ;
 	}
-	close(TOUCH) ;
+	close(Inline::Java::TOUCH) ;
 
 	return '' ;
 }
@@ -617,6 +631,15 @@ sub load {
 	}
 
 	# Add our Inline object to the list.
+	my $prev_o = $INLINES->{$modfname} ;
+	if (defined($prev_o)){
+		Inline::Java::debug("Module '$modfname' was already loaded, importing binding into new instance") ;
+		if (! defined($o->{ILSM}->{data})){
+			$o->{ILSM}->{data} = [] ;
+		}
+		push @{$o->{ILSM}->{data}}, @{$prev_o->{ILSM}->{data}} ;		
+	}
+
 	$INLINES->{$modfname} = $o ;
 
 	$o->_study() ;
@@ -660,7 +683,13 @@ sub set_classpath {
 
 			foreach my $m (@modules){
 				$m =~ s/::/$sep_re/g ;
-				$cp{"$dir$sep$m"} = 1 ;
+
+				# Here we must make sure that the directory exists, or
+				# else it is removed from the CLASSPATH by Java
+				my $path = "$dir$sep$m" ;
+				$o->mkpath($path) ;
+
+				$cp{$path} = 1 ;
 			}
 
 			delete $cp{$k} ;
@@ -740,9 +769,9 @@ sub report {
 		Inline::Java::debug("using jdat cache") ;
 		my $size = (-s "$install/$modfname.$suffix") || 0 ;
 		if ($size > 0){
-			if (open(CACHE, "<$install/$modfname.$suffix")){
-				$resp = join("", <CACHE>) ;
-				close(CACHE) ;
+			if (open(Inline::Java::CACHE, "<$install/$modfname.$suffix")){
+				$resp = join("", <Inline::Java::CACHE>) ;
+				close(Inline::Java::CACHE) ;
 			}
 			else{
 				croak "Can't open $modfname.$suffix file for reading" ;
@@ -758,9 +787,9 @@ sub report {
 	if (($use_cache)&&($o->{ILSM}->{built})){
 		# Update the cache.
 		Inline::Java::debug("updating jdat cache") ;
-		if (open(CACHE, ">$install/$modfname.$suffix")){
-			print CACHE $resp ;
-			close(CACHE) ;
+		if (open(Inline::Java::CACHE, ">$install/$modfname.$suffix")){
+			print Inline::Java::CACHE $resp ;
+			close(Inline::Java::CACHE) ;
 		}
 		else{
 			croak "Can't open $modfname.$suffix file for writing" ;
@@ -782,7 +811,7 @@ sub load_jdat {
 	}
 
 	# We need an array here since the same object can have many 
-	# load sessions.
+	# study sessions.
 	if (! defined($o->{ILSM}->{data})){
 		$o->{ILSM}->{data} = [] ;
 	}
@@ -947,7 +976,7 @@ CODE
 			Inline::Java::debug($code) ;
 		}
 
-		# open (CODE, ">>code") and print CODE $code and close(CODE) ;
+		# open (Inline::Java::CODE, ">>code") and print CODE $code and close(CODE) ;
 
 		eval $code ;
 
@@ -1080,6 +1109,20 @@ sub get_JVM {
 }
 
 
+sub shutdown_JVM {
+	if ($JVM){
+		undef $JVM ;
+	}
+}
+
+
+sub reconnect_JVM {
+	if ($JVM){
+		$JVM->reconnect() ;
+	}
+}
+
+
 sub get_INLINE {
 	my $module = shift ;
 
@@ -1088,7 +1131,6 @@ sub get_INLINE {
 
 
 sub get_INLINE_nb {
-
 	return scalar(keys %{$INLINES}) ;
 }
 
@@ -1130,11 +1172,11 @@ sub known_to_perl {
 
 	no strict 'refs' ;
 	if (defined(${$perl_class . "::" . "EXISTS"})){
-		Inline::Java::debug("  returned class exists!") ;
+		Inline::Java::debug("  Perl knows about '$jclass'") ;
 		return 1 ;
 	}
 	else{
-		Inline::Java::debug("  returned class doesn't exist!") ;
+		Inline::Java::debug("  Perl doesn't know about '$jclass'") ;
 	}
 
 	return 0 ;

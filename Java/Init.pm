@@ -3,7 +3,7 @@ package Inline::Java::Init ;
 
 use strict ;
 
-$Inline::Java::Init::VERSION = '0.20' ;
+$Inline::Java::Init::VERSION = '0.30' ;
 
 my $DATA = join('', <DATA>) ;
 my $OBJECT_DATA = join('', <Inline::Java::Object::DATA>) ;
@@ -57,50 +57,63 @@ import java.lang.reflect.* ;
 	objects.
 */
 public class InlineJavaServer {
-	public ServerSocket ss ;
-	public Socket client ;
-	boolean debug = false ;
+	boolean debug ;
+	int port = 0 ;
+	boolean shared_jvm = false ;
 
-	public HashMap objects = new HashMap() ;
+	public HashMap thread_objects = new HashMap() ;
 	public int objid = 1 ;
 
 	// This constructor is used in JNI mode
 	InlineJavaServer(boolean d) {
 		debug = d ;
+
+		thread_objects.put(Thread.currentThread().getName(), new HashMap()) ;
 	}
 
 
 	// This constructor is used in server mode
 	InlineJavaServer(String[] argv) {
 		debug = new Boolean(argv[0]).booleanValue() ;
+		port = Integer.parseInt(argv[1]) ;
+		shared_jvm = new Boolean(argv[2]).booleanValue() ;
 
-		int port = Integer.parseInt(argv[1]) ;
-
+		ServerSocket ss = null ;
 		try {
-			ss = new ServerSocket(port) ;
-			client = ss.accept() ;
-
-			BufferedReader br = new BufferedReader(
-				new InputStreamReader(client.getInputStream())) ;
-			BufferedWriter bw = new BufferedWriter(
-				new OutputStreamWriter(client.getOutputStream())) ;
-
-			while (true){
-				String cmd = br.readLine() ;
-
-				String resp = ProcessCommand(cmd) ;
-				bw.write(resp) ;
-				bw.flush() ;
-			}
+			ss = new ServerSocket(port) ;	
 		}
 		catch (IOException e){
 			System.err.println("Can't open server socket on port " + String.valueOf(port)) ;
+			System.exit(1) ;
 		}
+
+		while (true){
+			try {
+				InlineJavaThread ijt = new InlineJavaThread(this, ss.accept()) ;
+				ijt.start() ;
+				if (! shared_jvm){
+					try {
+						ijt.join() ; 
+					}
+					catch (InterruptedException e){
+					}
+					break ;
+				}
+			}
+			catch (IOException e){
+				System.err.println("IO error: " + e.getMessage()) ;
+			}
+		}
+
 		System.exit(1) ;
 	}
 
 
-	public String ProcessCommand(String cmd){
+	/*
+		Since this function is also called from the JNI XS extension,
+		it's best if it doesn't throw any exceptions.
+	*/
+	public String ProcessCommand(String cmd) {
 		debug("  packet recv is " + cmd) ;
 
 		String resp = null ;
@@ -118,12 +131,96 @@ public class InlineJavaServer {
 			}
 		}
 		else{
-			// Probably connection dropped...
-			debug("  Lost connection with client") ;
-			System.exit(1) ;
+			if (! shared_jvm){
+				// Probably connection dropped...
+				debug("  Lost connection with client in single client mode. Exiting.") ;
+				System.exit(1) ;
+			}
+			else{
+				debug("  Lost connection with client in shared JVM mode.") ;
+				return null ;
+			}
 		}
 
 		return resp ;
+	}
+
+	
+	public Object GetObject(int id) throws InlineJavaException {
+		Object o = null ;
+		String name = Thread.currentThread().getName() ;
+		HashMap h = (HashMap)thread_objects.get(name) ;
+
+		if (h == null){
+			throw new InlineJavaException("Can't find thread " + name + "!") ;
+		}
+		else{
+			o = h.get(new Integer(id)) ;
+			if (o == null){
+				throw new InlineJavaException("Can't find object " + id + " for thread " + name) ;
+			}
+		}
+
+		return o ;
+	}
+
+
+	synchronized public void PutObject(int id, Object o) throws InlineJavaException {
+		String name = Thread.currentThread().getName() ;
+		HashMap h = (HashMap)thread_objects.get(name) ;
+
+		if (h == null){
+			throw new InlineJavaException("Can't find thread " + name + "!") ;
+		}
+		else{
+			h.put(new Integer(id), o) ;
+			objid++ ;
+		}
+	}
+
+
+	public Object DeleteObject(int id) {
+		Object o = null ;
+		try {
+			String name = Thread.currentThread().getName() ;
+			HashMap h = (HashMap)thread_objects.get(name) ;
+
+			if (h == null){
+				throw new InlineJavaException("Can't find thread " + name + "!") ;
+			}
+			else{
+				o = h.remove(new Integer(id)) ;
+				if (o == null){
+					throw new InlineJavaException("Can't find object " + id + " for thread " + name) ;
+				}
+			}
+		}
+		catch (InlineJavaException e){
+			debug(e.getMessage()) ;
+		}
+
+		return o ;
+	}
+
+
+	public int ObjectCount() {
+		int i = -1 ;
+		try {
+			String name = Thread.currentThread().getName() ;
+			HashMap h = (HashMap)thread_objects.get(name) ;
+
+			if (h == null){
+				throw new InlineJavaException("Can't find thread " + name + "!") ;
+			}
+			else{
+				i = h.values().size() ;
+			}
+		}
+		catch (InlineJavaException e){
+			debug(e.getMessage()) ;
+		}
+
+		return i ;
 	}
 
 
@@ -148,7 +245,7 @@ public class InlineJavaServer {
 	}
 
 
-	public void debug(String s) {
+	synchronized public void debug(String s) {
 		if (debug){
 			System.err.println("java: " + s) ;
 			System.err.flush() ;
@@ -168,7 +265,6 @@ public class InlineJavaServer {
 		return new InlineJavaServer(debug) ;
 	}
 	
-
 	<INLINE_JAVA_OBJECT>
 
 	<INLINE_JAVA_ARRAY>
@@ -193,6 +289,56 @@ public class InlineJavaServer {
 	class InlineJavaCastException extends InlineJavaException {
 		InlineJavaCastException(String m){
 			super(m) ;
+		}
+	}
+
+
+	class InlineJavaIOException extends IOException {
+		InlineJavaIOException(String m){
+			super(m) ;
+		}
+	}
+
+	
+	class InlineJavaThread extends Thread {
+		InlineJavaServer ijs ;
+		Socket client ;
+
+		InlineJavaThread(InlineJavaServer _ijs, Socket _client){
+			super() ;
+			client = _client ;
+			ijs = _ijs ;
+		}
+
+
+		public void run(){
+			try {
+				ijs.thread_objects.put(getName(), new HashMap()) ;
+
+				BufferedReader br = new BufferedReader(
+					new InputStreamReader(client.getInputStream())) ;
+				BufferedWriter bw = new BufferedWriter(
+					new OutputStreamWriter(client.getOutputStream())) ;
+
+				while (true){
+					String cmd = br.readLine() ;
+
+					String resp = ijs.ProcessCommand(cmd) ;
+					if (resp != null){
+						bw.write(resp) ;
+						bw.flush() ;
+					}
+					else {
+						break ;
+					}
+				}
+			}
+			catch (IOException e){
+				System.err.println("IO error: " + e.getMessage()) ;
+			}
+			finally {
+				ijs.thread_objects.remove(getName()) ;
+			}
 		}
 	}
 }

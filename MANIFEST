@@ -4,6 +4,7 @@ README
 README.JNI
 TODO
 Makefile.PL
+shared_jvm_test.pl
 Java.pm
 Java.pod
 Java/Init.pm

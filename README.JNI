@@ -96,3 +96,12 @@ To run Inline::Java with the JNI extension, do one of the following:
    - set the JNI configuration option to 1
    - set the PERL_INLINE_JAVA_JNI environment variable to 1
 
+
+USING THE 'SHARED_JVM' MODE
+---------------------------
+
+Inline::Java 0.30 introduced a 'SHARED_JVM' mode that allows many clients to connect
+to the same Inline::Java Java server. The 'SHARED_JVM' mode is meant to be used with
+forking processes such as Apache with mod_perl. The 'SHARED_JVM' mode does NOT work 
+along with the JNI mode. In fact the author was not able to successfully fork the Java
+Virtual Machine under any circumstances.

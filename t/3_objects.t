@@ -10,42 +10,46 @@ use Inline(
 
 
 BEGIN {
-	plan(tests => 13) ;
+	plan(tests => 14) ;
 }
 
 
 # Create some objects
-my $t = new types() ;
+my $t = new types3() ;
 
-my $obj1 = new obj1() ;
-eval {my $obj2 = new obj2()} ; ok($@, qr/No public constructor/) ;
-my $obj11 = new obj11() ;
+{
+	my $obj1 = new obj13() ;
+	eval {my $obj2 = new obj23()} ; ok($@, qr/No public constructor/) ;
+	my $obj11 = new obj113() ;
+	
+	ok($t->_obj1(undef), undef) ;
+	ok($t->_obj1($obj1)->get_data(), "obj1") ;
+	ok($t->_obj11($obj11)->get_data(), "obj11") ;
+	ok($t->_obj1($obj11)->get_data(), "obj11") ;
+	eval {$t->_int($obj1)} ; ok($@, qr/Can't convert (.*) to primitive int/) ;
+	eval {$t->_obj11($obj1)} ; ok($@, qr/is not a kind of/) ;
+	
+	# Receive an unbound object and send it back
+	my $unb = $t->get_unbound() ;
+	ok($t->send_unbound($unb), "al_elem") ;
+	
+	# Unexisting method
+	eval {$t->toto()} ; ok($@, qr/No public method/) ;
+	
+	# Method on unbound object
+	eval {$unb->toto()} ; ok($@, qr/Can't call method/) ;
+	
+	# Incompatible prototype, 1 signature
+	eval {$t->_obj1(5)} ; ok($@, qr/Can't convert/) ;
+	
+	# Incompatible prototype, >1 signature
+	eval {$t->__obj1(5)} ; ok($@, qr/Can't find any signature/) ;
+	
+	# Return a scalar hidden in an object.
+	ok($t->_olong(), 12345) ;
+}
 
-ok($t->_obj1(undef), undef) ;
-ok($t->_obj1($obj1)->get_data(), "obj1") ;
-ok($t->_obj11($obj11)->get_data(), "obj11") ;
-ok($t->_obj1($obj11)->get_data(), "obj11") ;
-eval {$t->_int($obj1)} ; ok($@, qr/Can't convert (.*) to primitive int/) ;
-eval {$t->_obj11($obj1)} ; ok($@, qr/is not a kind of/) ;
-
-# Receive an unbound object and send it back
-my $unb = $t->get_unbound() ;
-ok($t->send_unbound($unb), "al_elem") ;
-
-# Unexisting method
-eval {$t->toto()} ; ok($@, qr/No public method/) ;
-
-# Method on unbound object
-eval {$unb->toto()} ; ok($@, qr/Can't call method/) ;
-
-# Incompatible prototype, 1 signature
-eval {$t->_obj1(5)} ; ok($@, qr/Can't convert/) ;
-
-# Incompatible prototype, >1 signature
-eval {$t->__obj1(5)} ; ok($@, qr/Can't find any signature/) ;
-
-# Return a scalar hidden in an object.
-ok($t->_olong(), 12345) ;
+ok($t->__get_private()->{proto}->ObjectCount(), 1) ;
 
 
 __END__
@@ -55,10 +59,10 @@ __Java__
 import java.util.* ;
 
 
-class obj1 {
+class obj13 {
 	String data = "obj1" ;
 
-	public obj1() {
+	public obj13() {
 	}
 
 	public String get_data(){
@@ -66,10 +70,10 @@ class obj1 {
 	}
 }
 
-class obj11 extends obj1 {
+class obj113 extends obj13 {
 	String data = "obj11" ;
 
-	public obj11() {
+	public obj113() {
 	}
 
 	public String get_data(){
@@ -78,10 +82,10 @@ class obj11 extends obj1 {
 }
 
 
-class obj2 {
+class obj23 {
 	String data = "obj2" ;
 
-	obj2() {
+	obj23() {
 	}
 
 	public String get_data(){
@@ -90,8 +94,8 @@ class obj2 {
 }
 
 
-class types {
-	public types(){
+class types3 {
+	public types3(){
 	}
 
 	public int _int(int i){
@@ -102,22 +106,22 @@ class types {
 		return o ;
 	}
 
-	public obj1 _obj1(obj1 o){
+	public obj13 _obj1(obj13 o){
 		return o ;
 	}
 
 
-	public obj1 __obj1(obj1 o, int i){
+	public obj13 __obj1(obj13 o, int i){
 		return o ;
 	}
 
 
-	public obj1 __obj1(obj1 o){
+	public obj13 __obj1(obj13 o){
 		return o ;
 	}
 
 
-	public obj11 _obj11(obj11 o){
+	public obj113 _obj11(obj113 o){
 		return o ;
 	}
 

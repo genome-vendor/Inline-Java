@@ -3,7 +3,7 @@ package Inline::Java::Class ;
 
 use strict ;
 
-$Inline::Java::Class::VERSION = '0.22' ;
+$Inline::Java::Class::VERSION = '0.30' ;
 
 $Inline::Java::Class::MAX_SCORE = 10 ;
 
@@ -667,11 +667,8 @@ class InlineJavaClass {
 				if (DoesExtend(c, p) > -1){
 					ijs.debug("    " + c.getName() + " is a kind of " + p.getName()) ;
 					// get the object from the hash table
-					Integer oid = new Integer(objid) ;
-					Object o = ijs.objects.get(oid) ;
-					if (o == null){
-						throw new InlineJavaException("Object " + oid.toString() + " of type " + c_name + " is not in object table ") ;
-					}
+					int id = Integer.parseInt(objid) ;
+					Object o = ijs.GetObject(id) ;
 					ret = o ;
 				}
 				else{

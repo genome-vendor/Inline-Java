@@ -9,104 +9,134 @@ use Inline(
 ) ;
 
 BEGIN {
-	plan(tests => 40) ;
+	plan(tests => 42) ;
 }
 
 
-my $t = new types() ;
+my $t = new types5() ;
 
-ok($t->_byte([12, 34, 56])->[0] == 123) ;
-ok($t->_Byte([12, 34, 56])->[1] == 34) ;
-ok($t->_short([12, 34, 56])->[0] == 123) ;
-ok($t->_Short([12, 34, 56])->[1] == 34) ;
-ok($t->_int([12, 34, 56])->[0] == 123) ;
-ok($t->_Integer([12, 34, 56])->[1] == 34) ;
-ok($t->_long([12, 34, 56])->[0] == 123) ;
-ok($t->_Long([12, 34, 56])->[1] == 34) ;
-ok($t->_float([12.34, 5.6, 7])->[0] == 123.456) ;
-ok($t->_Float([12.34, 5.6, 7])->[1] == 5.6) ;
-ok($t->_double([12.34, 5.6, 7])->[0] == 123.456) ;
-ok($t->_Double([12.34, 5.6, 7])->[1] == 5.6) ;
-ok($t->_boolean([1, 0, "tree"])->[0]) ;
-ok(! $t->_Boolean([1, 0])->[1]) ;
-ok($t->_char(['a', 'b', 'c'])->[0], "A") ;
-ok($t->_Character(['a', 'b', 'c'])->[1], 'b') ;
-ok($t->_String(["bla", "ble", "bli"])->[0], "STRING") ;
-ok($t->_StringBuffer(["bla", "ble", "bli"])->[0], "STRINGBUFFER") ;
+{
+	ok($t->_byte([12, 34, 56])->[0] == 123) ;
+	ok(eq_array($t->_Byte([12, 34, 56]), [12, 34, 56])) ;
+	ok($t->_short([12, 34, 56])->[0] == 123) ;
+	ok(eq_array($t->_Short([12, 34, 56]), [12, 34, 56])) ;
+	ok($t->_int([12, 34, 56])->[0] == 123) ;
+	ok(eq_array($t->_Integer([12, 34, 56]), [12, 34, 56])) ;
+	ok($t->_long([12, 34, 56])->[0] == 123) ;
+	ok(eq_array($t->_Long([12, 34, 56]), [12, 34, 56])) ;
+	ok($t->_float([12.34, 5.6, 7])->[0] == 123.456) ;
+	ok(eq_array($t->_Float([12.34, 5.6, 7]), [12.34, 5.6, 7])) ;
+	ok($t->_double([12.34, 5.6, 7])->[0] == 123.456) ;
+	ok(eq_array($t->_Double([12.34, 5.6, 7]), [12.34, 5.6, 7])) ;
+	ok($t->_boolean([1, 0, "tree"])->[0]) ;
+	ok($t->_Boolean([1, 0])->[0]) ;
+	ok(! $t->_Boolean([1, 0])->[1]) ;
+	ok($t->_char(['a', 'b', 'c'])->[0], "A") ;
+	ok(eq_array($t->_Character(['a', 'b', 'c']), ['a', 'b', 'c'], 1)) ;
+	ok($t->_String(["bla", "ble", "bli"])->[0], "STRING") ;
+	ok($t->_StringBuffer(["bla", "ble", "bli"])->[0], "STRINGBUFFER") ;
+	
+	ok($t->_Object(undef), undef) ;
+	my $a = $t->_Object([1, "two", $t]) ;
+	ok($a->[0], "1") ;
+	ok($a->[1], "two") ;
+	ok(UNIVERSAL::isa($a->[2], "main::types5")) ;
+	ok($a->[2]->{data}->[1], "a") ;
+	$a->[2]->{data} = ["1", "2"] ;
+	ok($a->[2]->{data}->[1], 2) ;
+	
+	# Try some multidimensional arrays.
+	$a = $t->_StringString([
+		["00", "01"],
+		["10", "11"]
+	]) ;
+	ok($a->[1]->[0], "10") ;
+	
+	# Try some incomplete multidimensional arrays.
+	$a = $t->_StringString([
+		[undef, "01", "02"],
+		[undef, "11"],
+		undef,
+	]) ;
+	ok($a->[1]->[0], undef) ;
+	
+	
+	my $b = $a->[1] ;
+	ok($t->_String($b)->[0], "STRING") ;
+	
+	# Arrays of other arrays
+	$a = $t->_StringString([
+		$a->[0],
+	]) ;
+	ok($a->[0]->[2], "02") ;
+	
+	# This is one of the things that won't work. 
+	# Try passing an array as an Object.
+	eval {$t->_o(["a", "b", "c"])} ; ok($@, qr/Can't create Java array/) ;
+	ok($t->_o(Inline::Java::cast(
+		"java.lang.Object", 
+		["a", "b", "c"], 
+		"[Ljava.lang.String;"))->[0], "a") ;
+	$t->{o} = Inline::Java::cast(
+		"java.lang.Object", 
+		["a", "b", "c"], 
+		"[Ljava.lang.String;") ;
+	ok($t->{o}->[0], "a") ;
+	$t->{o} = $t->{i} ;
+	ok($t->{o}->[0], "1") ;
+	
+	# Mixed types
+	eval {$t->_int(["3", "3456", "cat"])} ; ok($@, qr/Can't convert/) ;
+	ok($t->_Object(["3", "3456", "cat"])->[2], 'cat') ; 
+	
+	# Badly constructed array
+	eval {$t->_int(["3", [], "cat"])} ; ok($@, qr/Java array contains mixed types/) ;
+	eval {$t->_StringString([["3"], "string"])} ; ok($@, qr/Java array contains mixed types/) ;
+	
+	# Invalid operations on arrays.
+	eval {@{$b} = ()} ; ok($@, qr/Operation CLEAR/) ;
+	eval {pop @{$b}} ; ok($@, qr/Operation POP/) ;
+	eval {shift @{$b}} ; ok($@, qr/Operation SHIFT/) ;
+	eval {splice(@{$b}, 0, 1)} ; ok($@, qr/Operation SPLICE/) ;
+}
 
-ok($t->_Object(undef), undef) ;
-my $a = $t->_Object([1, "two", $t]) ;
-ok($a->[0], "1") ;
-ok($a->[1], "two") ;
-ok(UNIVERSAL::isa($a->[2], "main::types")) ;
-ok($a->[2]->{data}->[1], "a") ;
-$a->[2]->{data} = ["1", "2"] ;
-ok($a->[2]->{data}->[1], 2) ;
-
-# Try some multidimensional arrays.
-$a = $t->_StringString([
-	["00", "01"],
-	["10", "11"]
-]) ;
-ok($a->[1]->[0], "10") ;
-
-# Try some incomplete multidimensional arrays.
-$a = $t->_StringString([
-	[undef, "01", "02"],
-	[undef, "11"],
-	undef,
-]) ;
-ok($a->[1]->[0], undef) ;
+ok($t->__get_private()->{proto}->ObjectCount(), 1) ;
 
 
-my $b = $a->[1] ;
-ok($t->_String($b)->[0], "STRING") ;
+sub eq_array {
+	my $a1 = shift ;
+	my $a2 = shift ;
+	my $eq = shift || 0 ;
 
-# Arrays of other arrays
-$a = $t->_StringString([
-	$a->[0],
-]) ;
-ok($a->[0]->[2], "02") ;
+	if (scalar(@{$a1}) != scalar(@{$a2})){
+		return 0 ;
+	}
 
-# This is one of the things that won't work. 
-# Try passing an array as an Object.
-eval {$t->_o(["a", "b", "c"])} ; ok($@, qr/Can't create Java array/) ;
-ok($t->_o(Inline::Java::cast(
-	"java.lang.Object", 
-	["a", "b", "c"], 
-	"[Ljava.lang.String;"))->[0], "a") ;
-$t->{o} = Inline::Java::cast(
-	"java.lang.Object", 
-	["a", "b", "c"], 
-	"[Ljava.lang.String;") ;
-ok($t->{o}->[0], "a") ;
-$t->{o} = $t->{i} ;
-ok($t->{o}->[0], "1") ;
+	my $ok = 1 ;
+	for (0..$#{$a1}){
+		if ($eq){
+			$ok = ($a1->[$_] eq $a2->[$_]) ;
+		}
+		else{
+			$ok = ($a1->[$_] == $a2->[$_]) ;
+		}
+		last unless $ok ;
+	}
+	
+	return $ok ;
+}
 
-# Mixed types
-eval {$t->_int(["3", "3456", "cat"])} ; ok($@, qr/Can't convert/) ;
-ok($t->_Object(["3", "3456", "cat"])->[2], 'cat') ; 
-
-# Badly constructed array
-eval {$t->_int(["3", [], "cat"])} ; ok($@, qr/Java array contains mixed types/) ;
-eval {$t->_StringString([["3"], "string"])} ; ok($@, qr/Java array contains mixed types/) ;
-
-# Invalid operations on arrays.
-eval {@{$b} = ()} ; ok($@, qr/Operation CLEAR/) ;
-eval {pop @{$b}} ; ok($@, qr/Operation POP/) ;
-eval {shift @{$b}} ; ok($@, qr/Operation SHIFT/) ;
-eval {splice(@{$b}, 0, 1)} ; ok($@, qr/Operation SPLICE/) ;
 
 __END__
 
 __Java__
 
 
-class types {
+class types5 {
 	public Object o ;
 	public int i[] = {1, 2, 3} ;
 	public String data[] = {"d", "a", "t", "a"} ;
-	public types(){
+	public types5(){
 	}
 
 	public byte[] _byte(byte b[]){
