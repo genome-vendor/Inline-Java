@@ -2,6 +2,7 @@
 
 Inline::Java - Write Perl classes in Java.
 
+
 =head1 SYNOPSIS
 
    my $alu = new alu() ;
@@ -23,11 +24,13 @@ Inline::Java - Write Perl classes in Java.
       }   
    END_OF_JAVA_CODE
 
+
 =head1 WARNING 
 
 THIS IS ALPHA SOFTWARE. It is incomplete and possibly unreliable. 
 It is also possible that some elements of the interface (API) will 
 change in future releases.
+
 
 =head1 DESCRIPTION
 
@@ -41,6 +44,7 @@ written in Perl.
 The process of interrogating the Java classes for public methods
 occurs the first time you run your Java code. The namespace is
 cached, and subsequent calls use the cached version.
+
 
 =head1 USING THE Inline::Java MODULE
 
@@ -81,6 +85,7 @@ on your machine. This is done using one of the following techniques:
    - set the PERL_INLINE_JAVA_BIN environment variable to the correct directory
    - put the correct directory in your PATH environment variable
 
+
 =head1 CONFIGURATION OPTIONS
 
 There are a number of configuration options that dictate the 
@@ -89,6 +94,10 @@ behavior of C<Inline::Java>:
    BIN: 
       Specifies the path to your Java binaries. 
 	  Ex: BIN => 'my/java/bin/path'
+      Note: This configuration option only has an effect on the first
+      'use Inline Java' call inside a Perl script, since all other calls 
+      make use of the same JVM. However, you can use it if you want to 
+      change which 'javac' executable is used for subsequent calls.
 
    PORT:
       Specifies the starting port number for the server. If many 
@@ -96,6 +105,9 @@ behavior of C<Inline::Java>:
       incremented each time.	
       Default is 7890.
       Ex: PORT => 4567
+      Note: This configuration option only has an effect on the first
+      'use Inline Java' call inside a Perl script, since all other calls 
+      make use of the same JVM.
 
    STARTUP_DELAY:
       Specifies the maximum number of seconds that the Perl script
@@ -103,14 +115,32 @@ behavior of C<Inline::Java>:
       delay that Perl gives to the Java server to start.
       Default is 15 seconds.
       Ex: STARTUP_DELAY => 20
+      Note: This configuration option only has an effect on the first
+      'use Inline Java' call inside a Perl script, since all other calls 
+      make use of the same JVM.
+
+   CLASSPATH:
+      Adds the specified CLASSPATH to the environment CLASSPATH.
+      Ex: CLASSPATH => '/my/other/java/classses'
+      Note: This configuration option only has an effect on the first
+      'use Inline Java' call inside a Perl script, since all other calls 
+      make use of the same JVM.
+
+   JNI:
+      Toggles the execution mode. The default is to use the client/server
+      mode. To use the JNI extension (you must have built it at install 
+      time though. See README and README.JNI for more information), set 
+      JNI to 1. 
+      Ex: JNI => 1
+      Note: This can also be set globally by setting the PERL_INLINE_JAVA_JNI
+      environment variable to 1.
+      Note: This configuration option only has an effect on the first
+      'use Inline Java' call inside a Perl script, since all other calls 
+      make use of the same JVM.
 
    DEBUG:
       Enables debugging info
       Ex: DEBUG => 1
-
-   CLASSPATH:
-      Adds the specified CLASSPATH to the environment CLASSPATH.
-      Ex: CLASSPATH => 'my/other/java/classses'
 
    WARN_METHOD_SELECT:
       Throws a warning when C<Inline::Java> has to 'choose' between 
@@ -118,14 +148,16 @@ behavior of C<Inline::Java>:
       choices and the sugnature chosen.
       Ex: WARN_METHOD_SELECT => 1
 
-   JNI:
-      Toggles the execution mode. The default is to use the client/server
-      mode. To use the JNI extension (you must have built it at install 
-      time though. See README and README.JNI for more information), set 
-      JNI to 1. 
-      Note: This can also be set globally by setting the PERL_INLINE_JAVA_JNI
-      environment variable to 1.
-      Ex: JNI => 1
+   STUDY:
+      Takes an array of Java classes that you wish to have C<Inline::Java>
+      learn about so that you can use thme inside Perl.
+      Ex: STUDY => ['java.lang.HashMap', 'my.class'] ;
+
+   AUTOSTUDY:
+      Makes C<Inline::Java> automatically study unknown classes it 
+      encounters.
+      Ex: STUDY => ['java.lang.HashMap', 'my.class'] ;
+
 
 =head1 CLASSES AND OBJECTS
 
@@ -202,6 +234,7 @@ to an outer class object as the first parameter of the constructor:
    my $obj = new Foo() ;
    my $obj2 = new Bar($obj) ;
 
+
 =head1 METHODS
 
 In the previous example we have seen how to call a method. You can also
@@ -257,6 +290,7 @@ are not known to C<Inline::Java>. This is also true for return types:
 Objects of types unknown to Perl can exist in the Perl space, you just 
 can't call any of their methods.
 
+
 =head1 MEMBER VARIABLES
 
 You can also access all public member variables (static or not) from Perl.
@@ -282,6 +316,7 @@ be known to Perl:
 
 Note: Watch out for typos when accessing members in the static fashion,
 'use strict' will not catch them since they have a package name...
+
 
 =head1 ARRAYS
 
@@ -315,6 +350,7 @@ You can also send and receive arrays. This is done by using Perl lists:
       ["10", "11"],
    ]) ; # String [][]
    print $a2->[1]->[0] ; # "10"
+
 
 =head1 TYPE CASTING
 
@@ -401,6 +437,59 @@ Java array reference obtained from elsewhere, you don't even need to cast:
    $obj->{o} = $obj->{a} ;
 
 
+=head1 STUDYING
+
+As of version 0.21, C<Inline::Java> can learn about other Java classes
+and use them just like the Java code you write inside your Perl script.
+In fact you are not even required to write Java code inside your Perl
+script anymore. Here's how to use the 'studying' function:
+
+   use Inline {
+      Java => 'STUDY',
+      STUDY => ['java.lang.HashMap'],
+   ) ;
+
+   my $hm = new java::lang::HashMap() ;
+   $hm->put("key", "value") ;
+   my $v = $hm->get("key") ;
+
+If you do not wish to put any Java code inside you Perl script, you must
+use the string 'STUDY' as your code. This will skip the build section.
+
+You can also use the AUTOSTUDY option to tell C<Inline::Java> that you wish
+to study all classes that it comes across:
+
+   use Inline {
+      Java => 'DATA',
+      AUTOSTUDY => 1,
+   ) ;
+
+   my $obj = new Foo8() ;
+   my $hm = $obj->get_hm() ;
+   $hm->put("key", "value") ;
+   my $v = $hm->get("key") ;
+
+   __END__
+   __Java__
+  
+   import java.util.* ;
+
+   class Foo8 {
+      public Foo8() {
+      }
+
+      public HashMap get_hm(){
+         HashMap hm = new HashMap() ;
+         return hm ;
+      }
+   }
+
+In this case C<Inline::Java> intercepts the return value of the get_hm()
+method, sees that it's of a type that it doesn't know about (java.lang.HashMap),
+and immediately studies the class. After that call the java::lang::HashMap
+class is available to use through Perl.
+
+
 =head1 JNI vs CLIENT/SERVER MODES
 
 Starting in version 0.20, it is possible to use the JNI (Java Native 
@@ -419,18 +508,21 @@ Note: C<Inline::Java> only creates one virtual machine instance. Therefore
 you can't use JNI for some sections and client/server for others. The first
 section determines the execution mode.
 
+
 =head1 SUPPORTED PLATFORMS
 
 This is an ALPHA release of Inline::Java. Further testing and
 expanded support for other operating systems and platforms will be a
 focus for future releases. It has been tested on: 
 
-   - Solaris 2.5.1 + Perl 5.6 + Java SDK 1.2.2
-   - Solaris 2.8   + Perl 5.6 + Java SDK 1.3.0
-   - Windows 2000  + Perl 5.6 + Java SDK 1.3.0
-   - Windows 95    + Perl 5.6 + Java SDK 1.2.2 (fix required in Makefile)
+   - Solaris 2.5.1          + Perl 5.6 + Java SDK 1.2.2
+   - Solaris 2.8            + Perl 5.6 + Java SDK 1.3.0
+   - Linux Redhat 6.2 Alpha + Perl 5.6 + Java SDK 1.3.1
+   - Windows 2000           + Perl 5.6 + Java SDK 1.3.0
+   - Windows 95             + Perl 5.6 + Java SDK 1.2.2 (fix required in Makefile)
 
 It likely will work with many other configurations.
+
 
 =head1 HOW IT WORKS
 
@@ -448,6 +540,7 @@ the JNI mode). Then each object creation or method invocation on "Java
 objects" send requests to the server, which processes them and returns 
 object ids to Perl which keeps them the reference te objects in the future.
 
+
 =head1 SEE ALSO 		   
 
 For information about using C<Inline>, see L<Inline>.
@@ -457,6 +550,7 @@ For information about other Inline languages, see L<Inline-Support>.
 Inline::Java's mailing list is inline@perl.org
 
 The subscribe, send email to inline-subscribe@perl.org
+
 
 =head1 BUGS AND DEFICIENCIES
 

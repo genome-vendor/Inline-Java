@@ -2,12 +2,12 @@ package Inline::Java ;
 @Inline::Java::ISA = qw(Inline Exporter) ;
 
 # Export the cast function if wanted
-@EXPORT_OK = qw(cast) ;
+@EXPORT_OK = qw(cast study_classes) ;
 
 
 use strict ;
 
-$Inline::Java::VERSION = '0.20' ;
+$Inline::Java::VERSION = '0.21' ;
 
 
 # DEBUG is set via the DEBUG config
@@ -146,6 +146,10 @@ sub _validate {
 	my $o = shift ;
 	my $ignore_other_configs = shift ;
 
+	if ($o->get_INLINE_nb() == 1){
+		croak "Inline::Java does not currently support multiple Inline sections" ;
+	}
+
 	if (! exists($o->{Java}->{PORT})){
 		$o->{Java}->{PORT} = 7890 ;
 	}
@@ -163,6 +167,9 @@ sub _validate {
 	}
 	if (! exists($o->{Java}->{WARN_METHOD_SELECT})){
 		$o->{Java}->{WARN_METHOD_SELECT} = '' ;
+	}
+	if (! exists($o->{Java}->{AUTOSTUDY})){
+		$o->{Java}->{AUTOSTUDY} = 0 ;
 	}
 
 	while (@_) {
@@ -195,9 +202,17 @@ sub _validate {
 		elsif ($key eq 'JNI'){
 			$o->{Java}->{$key} = $value ;
 		}
+		elsif ($key eq 'AUTOSTUDY'){
+			$o->{Java}->{$key} = $value ;
+		}
+		elsif ($key eq 'STUDY'){
+			$o->{Java}->{$key} = $o->check_config_array(
+				$key, $value,
+				"Java class names") ;
+		}
 		else{
 			if (! $ignore_other_configs){
-				croak "'$key' is not a valid config option for Inline::Java\n";
+				croak "'$key' is not a valid config option for Inline::Java";
 			}
 		}
 	}
@@ -206,41 +221,30 @@ sub _validate {
 		$o->{Java}->{JNI} = $ENV{PERL_INLINE_JAVA_JNI} ;
 	}
 
-	my $install_lib = $o->{install_lib} ;
-	my $modpname = $o->{modpname} ;
-	my $install = "$install_lib/auto/$modpname" ;
-
-	$o->set_classpath($install) ;
-
 	$o->set_java_bin() ;
 
 	Inline::Java::debug("validate done.") ;
 }
 
 
-# This function builds the CLASSPATH environment variable
-sub set_classpath {
+sub check_config_array {
 	my $o = shift ;
-	my $path = shift ;
+	my $key = shift ;
+	my $value = shift ;
+	my $desc = shift ;
 
-	my @list = () ;
-	if (defined($ENV{CLASSPATH})){
-		push @list, $ENV{CLASSPATH} ;
+	if (ref($value) eq 'ARRAY'){
+		foreach my $c (@{$value}){
+			if (ref($c)){
+				croak "config '$key' must be an array of $desc" ;
+			}
+		}
 	}
-	if (defined($o->{Java}->{CLASSPATH})){
-		push @list, $o->{Java}->{CLASSPATH} ;
-	}
-	if (defined($path)){
-		push @list, $path ;
+	else{
+		croak "config '$key' must be an array of $desc" ;
 	}
 
-	my $sep = portable("ENV_VAR_PATH_SEP") ;
-	my @cp = split(/$sep/, join($sep, @list)) ;
-	my %cp = map { ($_ !~ /^\s*$/ ? ($_, 1) : ()) } @cp ;
-
-	$ENV{CLASSPATH} = join($sep, keys %cp) ;
-
-	Inline::Java::debug("  classpath: " . $ENV{CLASSPATH}) ;
+	return $value ;
 }
 
 
@@ -345,9 +349,11 @@ sub build {
 		return ;
 	}
 
-	$o->write_java ;
+	my $code = $o->{code} ;
+	my $study_only = ($code eq 'STUDY') ;
 
-	$o->compile ;
+	$o->write_java($study_only) ;
+	$o->compile($study_only) ;
 
 	$o->{Java}->{built} = 1 ;
 }
@@ -356,6 +362,7 @@ sub build {
 # Writes the java code.
 sub write_java {
 	my $o = shift ;
+	my $study_only = shift ;
 
 	my $build_dir = $o->{build_dir} ;
 	my $modfname = $o->{modfname} ;
@@ -363,10 +370,12 @@ sub write_java {
 
 	$o->mkpath($o->{build_dir}) ;
 
-	open(JAVA, ">$build_dir/$modfname.java") or
-		croak "Can't open $build_dir/$modfname.java: $!" ;
-	Inline::Java::Init::DumpUserJavaCode(\*JAVA, $modfname, $code) ;
-	close(JAVA) ;
+	if (! $study_only){
+		open(JAVA, ">$build_dir/$modfname.java") or
+			croak "Can't open $build_dir/$modfname.java: $!" ;
+		Inline::Java::Init::DumpUserJavaCode(\*JAVA, $modfname, $code) ;
+		close(JAVA) ;
+	}
 
 	open(JAVA, ">$build_dir/InlineJavaServer.java") or
 		croak "Can't open $build_dir/InlineJavaServer.java: $!" ;
@@ -380,14 +389,17 @@ sub write_java {
 # Run the build process.
 sub compile {
 	my $o = shift ;
+	my $study_only = shift ;
 
 	my $build_dir = $o->{build_dir} ;
 	my $modpname = $o->{modpname} ;
 	my $modfname = $o->{modfname} ;
+	my $suffix = $o->{ILSM_suffix} ;
 	my $install_lib = $o->{install_lib} ;
 
 	my $install = "$install_lib/auto/$modpname" ;
-	$o->mkpath($install) ;
+
+	$o->mkpath("$install") ;
 
 	my $javac = $o->{Java}->{BIN} . "/javac" . portable("EXE_EXTENSION") ;
 
@@ -401,17 +413,21 @@ sub compile {
 
 	my $debug = ($Inline::Java::DEBUG ? "true" : "false") ;
 
+	my $source = ($study_only ? '' : "$modfname.java") ;
+
 	# When we run the commands, we quote them because in WIN32 you need it if
 	# the programs are in directories which contain spaces. Unfortunately, in
 	# WIN9x, when you quote a command, it masks it's exit value, and 0 is always
 	# returned. Therefore a command failure is not detected.
-	# copy_pattern will take care of checking whether there are actually files
+	# copy_classes will take care of checking whether there are actually files
 	# to be copied, and if not will exit the script.
+	# This strategy doesn't work that well if you have many classes in the same 
+	# file, but we can't penalize the other users just to give better support
+	# for Win9x...
 	foreach my $cmd (
-		"\"$pjavac\" InlineJavaServer.java $modfname.java > cmd.out $predir",
-		["copy_pattern", $o, "InlineJavaServer*.class"],
-		["copy_pattern", $o, "*.class"],
-		["touch_file", $o, "$install/$modfname.jdat"],
+		"\"$pjavac\" InlineJavaServer.java $source > cmd.out $predir",
+		["copy_classes", $o, $install],
+		["touch_file", $o, "$install/$modfname.$suffix"],
 		) {
 
 		if ($cmd){
@@ -487,6 +503,60 @@ MSG
 }
 
 
+sub copy_classes {
+	my $o = shift ;
+	my $install = shift ;
+
+	my $build_dir = $o->{build_dir} ;
+	my $modpname = $o->{modpname} ;
+	my $install_lib = $o->{install_lib} ;
+	my $pinstall = portable("RE_FILE", $install) ;
+
+	my $src_dir = $build_dir ;
+	my $dest_dir = $pinstall ;
+
+	my @flist = glob("*.class") ;
+
+	if (portable('COMMAND_COM')){
+		if (! scalar(@flist)){
+			croak "No files to copy. Previous command failed under command.com?" ;
+		}
+		foreach my $file (@flist){
+			if (! (-s $file)){
+				croak "File $file has size zero. Previous command failed under WIN9x?" ;
+			}
+		}
+	}
+
+	foreach my $file (@flist){
+		if ($o->{config}->{UNTAINT}){
+			($file) = $file =~ /(.*)/ ;
+		}
+		Inline::Java::debug("copy_classes: $file, $dest_dir/$file") ;
+		if (! File::Copy::copy($file, "$dest_dir/$file")){
+			return "Can't copy $src_dir/$file to $dest_dir/$file: $!" ;
+		}
+	}
+
+	return '' ;
+}
+
+
+sub touch_file {
+	my $o = shift ;
+	my $file = shift ;
+
+	my $pfile = portable("RE_FILE", $file) ;
+
+	if (! open(TOUCH, ">$pfile")){
+		croak "Can't create file $pfile" ;
+	}
+	close(TOUCH) ;
+
+	return '' ;
+}
+
+
 # Load and Run the Java Code.
 sub load {
 	my $o = shift ;
@@ -495,32 +565,74 @@ sub load {
 		return ;
 	}
 
+	my $install_lib = $o->{install_lib} ;
 	my $modfname = $o->{modfname} ;
+	my $modpname = $o->{modpname} ;
+	my $install = "$install_lib/auto/$modpname" ;
+	my $pinstall = portable("RE_FILE", $install) ;
 
 	# Make sure the default options are set.
 	$o->_validate(1, %{$o->{config}}) ;
 
 	# If the JVM is not running, we need to start it here.
 	if (! $JVM){
+		$o->set_classpath($pinstall) ;
 		$JVM = new Inline::Java::JVM($o) ;
 	}
-	
-	# Now that the JVM is running, we make sure it knows where all 
-	# the classes are.
-	my $pc = new Inline::Java::Protocol(undef, $o) ;
-	$pc->SetClassPath($ENV{CLASSPATH}) ;
+
+	# Add our Inline object to the list.
+	$INLINES->{$modfname} = $o ;
+
+	$o->_study() ;
+	if ((defined($o->{Java}->{STUDY}))&&(scalar($o->{Java}->{STUDY}))){
+		$o->_study($o->{Java}->{STUDY}) ;
+	}
+
+	$o->{Java}->{loaded} = 1 ;
+}
+
+
+# This function builds the CLASSPATH environment variable for the JVM
+sub set_classpath {
+	my $o = shift ;
+	my $path = shift ;
+
+	my @list = () ;
+	if (defined($ENV{CLASSPATH})){
+		push @list, $ENV{CLASSPATH} ;
+	}
+	if (defined($o->{Java}->{CLASSPATH})){
+		push @list, $o->{Java}->{CLASSPATH} ;
+	}
+	if (defined($path)){
+		push @list, $path ;
+	}
+
+	my $sep = portable("ENV_VAR_PATH_SEP") ;
+	my @cp = split(/$sep/, join($sep, @list)) ;
+	my %cp = map { ($_ !~ /^\s*$/ ? ($_, 1) : ()) } @cp ;
+
+	$ENV{CLASSPATH} = join($sep, keys %cp) ;
+
+	Inline::Java::debug("  classpath: " . $ENV{CLASSPATH}) ;
+}
+
+
+
+# This function 'studies' the specified classes and binds them to 
+# Perl
+sub _study {
+	my $o = shift ;
+	my $classes = shift ;
 
 	# Then we ask it to give us the public symbols from the classes
 	# that we got.
-	my @lines = $o->report() ;
+	my @lines = $o->report($classes) ;
 
 	# Now we read up the symbols and bind them to Perl.
-	$o->load_jdat(@lines) ;
-
-	$INLINES->{$modfname} = $o ;
-	$o->bind_jdat() ;
-
-	$o->{Java}->{loaded} = 1 ;
+	$o->bind_jdat(
+		$o->load_jdat(@lines)
+	) ;
 }
 
 
@@ -532,20 +644,74 @@ sub report {
 
 	my $install_lib = $o->{install_lib} ;
 	my $modpname = $o->{modpname} ;
+	my $modfname = $o->{modfname} ;
+	my $suffix = $o->{ILSM_suffix} ;
 	my $install = "$install_lib/auto/$modpname" ;
 	my $pinstall = portable("RE_FILE", $install) ;
 
+	my $use_cache = 0 ;
 	if (! defined($classes)){
+		$classes = [] ;
+
+		$use_cache = 1 ;
+
 		# We need to take the classes that are in the directory...
 		my @cl = glob("$pinstall/*.class") ;
 		foreach my $class (@cl){
 			$class =~ s/^\Q$pinstall\E\/(.*)\.class$/$1/ ;
+			if ($class !~ /^InlineJavaServer/){
+				push @{$classes}, $class ;
+			}
 		}
-		$classes = \@cl ;
 	}
 
-	my $pc = new Inline::Java::Protocol(undef, $o) ;
-	my $resp = $pc->Report(join(" ", @{$classes})) ;
+	my @new_classes = () ;
+	foreach my $class (@{$classes}){
+		$class = Inline::Java::Class::ValidateClass($class) ;
+
+		if (! Inline::Java::known_to_perl($o->{pkg}, $class)){
+			push @new_classes, $class ;
+		}
+	}
+
+	if (! scalar(@new_classes)){
+		return () ;
+	}
+
+	my $resp = undef ;
+	if (($use_cache)&&(! $o->{Java}->{built})){
+		# Since we didn't build the module, this means that 
+		# it was up to date. We can therefore use the data 
+		# from the cache
+		Inline::Java::debug("using jdat cache") ;
+		my $size = (-s "$install/$modfname.$suffix") || 0 ;
+		if ($size > 0){
+			if (open(CACHE, "<$install/$modfname.$suffix")){
+				$resp = join("", <CACHE>) ;
+				close(CACHE) ;
+			}
+			else{
+				croak "Can't open $modfname.$suffix file for reading" ;
+			}
+		}
+	}
+
+	if (! defined($resp)){
+		my $pc = new Inline::Java::Protocol(undef, $o) ;
+		$resp = $pc->Report(join(" ", @new_classes)) ;
+	}
+
+	if (($use_cache)&&($o->{Java}->{built})){
+		# Update the cache.
+		Inline::Java::debug("updating jdat cache") ;
+		if (open(CACHE, ">$install/$modfname.$suffix")){
+			print CACHE $resp ;
+			close(CACHE) ;
+		}
+		else{
+			croak "Can't open $modfname.$suffix file for writing" ;
+		}
+	}
 
 	return split("\n", $resp) ;
 }
@@ -557,10 +723,18 @@ sub load_jdat {
 	my $o = shift ;
 	my @lines = @_ ;
 
-	Inline::Java::debug(join("\n", @lines)) ;
+	if (Inline::Java::debug_all()){
+		Inline::Java::debug(join("\n", @lines)) ;
+	}
 
-	$o->{Java}->{data} = {} ;
-	my $d = $o->{Java}->{data} ;
+	# We need an array here since the same object can have many 
+	# load sessions.
+	if (! defined($o->{Java}->{data})){
+		$o->{Java}->{data} = [] ;
+	}
+	my $d = {} ;
+	my $data_idx = scalar(@{$o->{Java}->{data}}) ;
+	push @{$o->{Java}->{data}}, $d ;
 	
 	my $re = '[\w.\$\[;]+' ;
 
@@ -570,9 +744,10 @@ sub load_jdat {
 		chomp($line) ;
 		if ($line =~ /^class ($re)$/){
 			# We found a class definition
-			$current_class = $1 ;
-			$current_class =~ s/[\$.]/::/g ;
+			my $java_class = $1 ;
+			$current_class = Inline::Java::java2perl($o->{pkg}, $java_class) ;
 			$d->{classes}->{$current_class} = {} ;
+			$d->{classes}->{$current_class}->{java_class} = $java_class ;
 			$d->{classes}->{$current_class}->{constructors} = {} ;
 			$d->{classes}->{$current_class}->{methods} = {} ;
 			$d->{classes}->{$current_class}->{fields} = {} ;
@@ -624,35 +799,44 @@ sub load_jdat {
 		$idx++ ;
 	}
 
-	Inline::Java::debug_obj($d) ;
+	if (Inline::Java::debug_all()){
+		Inline::Java::debug_obj($d) ;
+	}
+
+	return ($d, $data_idx) ;
 }
 
 
 # Binds the classes and the methods to Perl
 sub bind_jdat {
 	my $o = shift ;
+	my $d = shift ;
+	my $idx = shift ;
 
-	my $d = $o->{Java}->{data} ;
 	my $modfname = $o->{modfname} ;
+
+	if (! defined($d->{classes})){
+		return ;
+	}
 
 	my %classes = %{$d->{classes}} ;
 	foreach my $class (sort keys %classes) {
-		my $java_class = $class ;
-		$java_class =~ s/::/\$/g ;
 		my $class_name = $class ;
 		$class_name =~ s/^(.*)::// ;
+
+		my $java_class = $d->{classes}->{$class}->{java_class} ;
 
 		my $colon = ":" ;
 		my $dash = "-" ;
 		
 		my $code = <<CODE;
-package $o->{pkg}::$class ;
+package $class ;
 use vars qw(\@ISA \$EXISTS \$JAVA_CLASS \$DUMMY_OBJECT) ;
 
 \@ISA = qw(Inline::Java::Object) ;
 \$EXISTS = 1 ;
 \$JAVA_CLASS = '$java_class' ;
-\$DUMMY_OBJECT = $o->{pkg}::$class$dash>__new(
+\$DUMMY_OBJECT = $class$dash>__new(
 	\$JAVA_CLASS,
 	Inline::Java::get_INLINE('$modfname'),
 	0) ;
@@ -664,7 +848,7 @@ CODE
 		while (my ($field, $sign) = each %{$d->{classes}->{$class}->{fields}}){
 			if ($sign->{STATIC}){
 				$code .= <<CODE;
-tie \$$o->{pkg}::$class$colon:$field, "Inline::Java::Object::StaticMember", 
+tie \$$class$colon:$field, "Inline::Java::Object::StaticMember", 
 			\$DUMMY_OBJECT,
 			'$field' ;
 CODE
@@ -673,7 +857,6 @@ CODE
 
 
 		if (scalar(keys %{$d->{classes}->{$class}->{constructors}})){
-			my $pkg = $o->{pkg} ;
 			$code .= <<CODE;
 
 sub new {
@@ -681,7 +864,7 @@ sub new {
 	my \@args = \@_ ;
 
 	my \$o = Inline::Java::get_INLINE('$modfname') ;
-	my \$d = \$o->{Java}->{data} ;
+	my \$d = \$o->{Java}->{data}->[$idx] ;
 	my \$signatures = \$d->{classes}->{'$class'}->{constructors} ;
 	my (\$proto, \$new_args, \$static) = \$class->__validate_prototype('new', [\@args], \$signatures, \$o) ;
 
@@ -703,10 +886,14 @@ CODE
 		}
 
 		while (my ($method, $sign) = each %{$d->{classes}->{$class}->{methods}}){
-			$code .= $o->bind_method($class, $method) ;
+			$code .= $o->bind_method($idx, $class, $method) ;
 		}
 
-		Inline::Java::debug($code) ;
+		if (Inline::Java::debug_all()){
+			Inline::Java::debug($code) ;
+		}
+
+		# open (CODE, ">>code") and print CODE $code and close(CODE) ;
 
 		eval $code ;
 
@@ -717,12 +904,12 @@ CODE
 
 sub bind_method {
 	my $o = shift ;
+	my $idx = shift ;
 	my $class = shift ;
 	my $method = shift ;
 	my $static = shift ;
 
 	my $modfname = $o->{modfname} ;
-	my $pkg = $o->{pkg} ;
 	
 	my $code = <<CODE;
 
@@ -731,7 +918,7 @@ sub $method {
 	my \@args = \@_ ;
 
 	my \$o = Inline::Java::get_INLINE('$modfname') ;
-	my \$d = \$o->{Java}->{data} ;
+	my \$d = \$o->{Java}->{data}->[$idx] ;
 	my \$signatures = \$d->{classes}->{'$class'}->{methods}->{'$method'} ;
 	my (\$proto, \$new_args, \$static) = \$this->__validate_prototype('$method', [\@args], \$signatures, \$o) ;
 
@@ -759,10 +946,14 @@ sub get_fields {
 	my $class = shift ;
 
 	my $fields = {} ;
-	my $d = $o->{Java}->{data} ;
+	my $data_list = $o->{Java}->{data} ;
 
-	while (my ($field, $value) = each %{$d->{classes}->{$class}->{fields}}){
-		$fields->{$field} = $value ;
+	foreach my $d (@{$data_list}){
+		if (exists($d->{classes}->{$class})){
+			while (my ($field, $value) = each %{$d->{classes}->{$class}->{fields}}){
+				$fields->{$field} = $value ;
+			}
+		}
 	}
 
 	return $fields ;
@@ -785,92 +976,44 @@ sub info {
 	}
 
 	my $info = '' ;
-	my $d = $o->{Java}->{data} ;
+	my $data_list = $o->{Java}->{data} ;
 
-	my %classes = %{$d->{classes}} ;
-	$info .= "The following Java classes have been bound to Perl:\n" ;
-	foreach my $class (sort keys %classes) {
-		$info .= "\n  class $class:\n" ;
-
-		$info .= "    public methods:\n" ;
-		while (my ($k, $v) = each %{$d->{classes}->{$class}->{constructors}}){
-			my $name = $class ;
-			$name =~ s/^(.*)::// ;
-			$info .= "      $name($k)\n" ;
+	foreach my $d (@{$data_list}){
+		if (! defined($d->{classes})){
+			next ;
 		}
 
-		while (my ($k, $v) = each %{$d->{classes}->{$class}->{methods}}){
-			while (my ($k2, $v2) = each %{$d->{classes}->{$class}->{methods}->{$k}}){
-				my $static = ($v2->{STATIC} ? "static " : "") ;
-				$info .= "      $static$k($k2)\n" ;
+		my %classes = %{$d->{classes}} ;
+
+		$info .= "The following Java classes have been bound to Perl:\n" ;
+		foreach my $class (sort keys %classes) {
+			$info .= "\n  class $class:\n" ;
+
+			$info .= "    public methods:\n" ;
+			while (my ($k, $v) = each %{$d->{classes}->{$class}->{constructors}}){
+				my $name = $class ;
+				$name =~ s/^(.*)::// ;
+				$info .= "      $name($k)\n" ;
 			}
-		}
 
-		$info .= "    public member variables:\n" ;
-		while (my ($k, $v) = each %{$d->{classes}->{$class}->{fields}}){
-			my $static = ($v->{STATIC} ? "static " : "") ;
-			my $type = $v->{TYPE} ;
+			while (my ($k, $v) = each %{$d->{classes}->{$class}->{methods}}){
+				while (my ($k2, $v2) = each %{$d->{classes}->{$class}->{methods}->{$k}}){
+					my $static = ($v2->{STATIC} ? "static " : "") ;
+					$info .= "      $static$k($k2)\n" ;
+				}
+			}
 
-			$info .= "      $static$type $k\n" ;
+			$info .= "    public member variables:\n" ;
+			while (my ($k, $v) = each %{$d->{classes}->{$class}->{fields}}){
+				my $static = ($v->{STATIC} ? "static " : "") ;
+				my $type = $v->{TYPE} ;
+
+				$info .= "      $static$type $k\n" ;
+			}
 		}
 	}
 
     return $info ;
-}
-
-
-sub copy_pattern {
-	my $o = shift ;
-	my $pattern = shift ;
-
-	my $build_dir = $o->{build_dir} ;
-	my $modpname = $o->{modpname} ;
-	my $install_lib = $o->{install_lib} ;
-	my $install = "$install_lib/auto/$modpname" ;
-	my $pinstall = portable("RE_FILE", $install) ;
-
-	my $src_dir = $build_dir ;
-	my $dest_dir = $pinstall ;
-
-	my @flist = glob($pattern) ;
-
-	if (portable('COMMAND_COM')){
-		if (! scalar(@flist)){
-			croak "No files to copy. Previous command failed under command.com?" ;
-		}
-		foreach my $file (@flist){
-			if (! (-s $file)){
-				croak "File $file has size zero. Previous command failed under WIN9x?" ;
-			}
-		}
-	}
-
-	foreach my $file (@flist){
-		if ($o->{config}->{UNTAINT}){
-			($file) = $file =~ /(.*)/ ;
-		}
-		Inline::Java::debug("copy_pattern: $file, $dest_dir/$file") ;
-		if (! File::Copy::copy($file, "$dest_dir/$file")){
-			return "Can't copy $src_dir/$file to $dest_dir/$file: $!" ;
-		}
-	}
-
-	return '' ;
-}
-
-
-sub touch_file {
-	my $o = shift ;
-	my $file = shift ;
-
-	my $pfile = portable("RE_FILE", $file) ;
-
-	if (! open(TOUCH, ">$pfile")){
-		croak "Can't create file $pfile for writing" ;
-	}
-	close(TOUCH) ;
-
-	return '' ;
 }
 
 
@@ -890,8 +1033,19 @@ sub get_INLINE {
 }
 
 
+sub get_INLINE_nb {
+
+	return scalar(keys %{$INLINES}) ;
+}
+
+
 sub get_DEBUG {
 	return $Inline::Java::DEBUG ;
+}
+
+
+sub debug_all {
+	return (Inline::Java::get_DEBUG() > 1) ;
 }
 
 
@@ -901,9 +1055,14 @@ sub get_DONE {
 
 
 sub java2perl {
+	my $pkg = shift ;
 	my $jclass = shift ;
 
 	$jclass =~ s/[.\$]/::/g ;
+
+	if ((defined($pkg))&&($pkg)){
+		$jclass = $pkg . "::" . $jclass ;
+	}
 
 	return $jclass ;
 }
@@ -913,21 +1072,18 @@ sub known_to_perl {
 	my $pkg = shift ;
 	my $jclass = shift ;
 
-	$jclass =~ s/[.\$]/::/g ;
-
-	my $perl_class = java2perl($jclass) ;
-	$perl_class = $pkg . "::" . $perl_class ;
+	my $perl_class = java2perl($pkg, $jclass) ;
 
 	no strict 'refs' ;
 	if (defined(${$perl_class . "::" . "EXISTS"})){
 		Inline::Java::debug("  returned class exists!") ;
-		return $perl_class ;
+		return 1 ;
 	}
 	else{
 		Inline::Java::debug("  returned class doesn't exist!") ;
 	}
 
-	return undef ;
+	return 0 ;
 }
 
 
@@ -1041,6 +1197,26 @@ sub cast {
 	croak $@ if $@ ;
 
 	return $o ;
+}
+
+
+sub study_classes {
+	my $classes = shift ;
+
+	Inline::Java::debug("Selecting random module to house studied classes...") ;
+
+	# Select a random Inline object to be responsible for these
+	# classes
+	my @modules = keys %{$INLINES} ;
+	srand() ;
+	my $idx = int rand @modules ;
+	my $module = $modules[$idx] ;
+
+	Inline::Java::debug("  Selected $module") ;
+
+	my $o = Inline::Java::get_INLINE($module) ;
+
+	return $o->_study($classes) ;
 }
 
 

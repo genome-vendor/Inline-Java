@@ -1,11 +1,20 @@
-Revision history for Perl extension Inline::Java.
+Revision history for Perl extension Inline::Java
+------------------------------------------------
 
-0.01  Thu Feb 15 14:01:25 EST 2001  
-    - Created Inline::Java.
+0.21  Tue May  8 11:32:28 EDT 2001
+    - Added 'studying' of external Java classes
+    - Added support for default no-arg constructors for public classes
+    - Caching for class information
+    - Added error message stating that Inline::Java doesn't currently 
+      support multiple sections
 
 0.20  Sat Apr 14 23:00:00 EDT 2001
+    - Added optional JNI extension.
     - Added support for arrays.
     - Added support for public member variables.
     - Added support for public static member variables.
     - Added type casting.
+
+0.01  Thu Feb 15 14:01:25 EST 2001  
+    - Created Inline::Java.
 

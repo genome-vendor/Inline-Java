@@ -1,4 +1,5 @@
 CODE:
+- Add support for multiple sections (waiting for Inline 0.40)
 
 TEST:
 - Add test script for configuration options (other than BIN)

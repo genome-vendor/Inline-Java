@@ -46,7 +46,7 @@ To install Inline::Java do this:
 
 perl Makefile.PL
 make             (see Note 2)
-make test        (see Note 3, 4)
+make test        (see Note 3, 4, 5)
 make install
 
 You have to 'make install' before you can run it successfully. 
@@ -71,6 +71,10 @@ Note 4: If you have built the JNI extension and want the test suite to use
 it, you will need to set the PERL_INLINE_JAVA_JNI environment variable to 1 
 BEFORE running 'make test'.
 
+Note 5: When testing Inline::Java, it's always a good idea to run 'make test'
+twice. The first time you test the building and loading of a module, the second 
+time you test loading of an already built module.
+
 
 -------------------------------------------------------------------------------
 FEATURES:
@@ -79,7 +83,12 @@ WARNING: THIS IS ALPHA SOFTWARE. It is incomplete and possibly unreliable.
          It is also possible that some elements of the interface (API) will 
          change in future releases.
 
-Inline::Java version 0.20 includes:
+Inline::Java version 0.21 is a minor upgrade that includes:
++ 'Studying' of external classes
++ Default no-arg constructors for public ('studied') classes
++ Caching of class information increases performance
+
+Inline::Java version 0.20 is a major upgrade that includes:
 + All public member variables are now exported to Perl.
 + Arrays can now be passed as method parameters and assigned to 
   member variables.

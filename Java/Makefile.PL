@@ -56,9 +56,13 @@ if ($JNI_BUILD){
 		}
 	}
 
+	my $l = join(" or ", @{$java_so}) ;
 	if ($^O eq "MSWin32"){
-		my $l = join(" or ", @{$java_so}) ;
 		print "\nNote: You will need to add $l to your PATH environment " .
+			"variable in order to be able to use the JNI mode.\n" ;
+	}
+	else{
+		print "\nNote: You may need to add $l to your LD_LIBRARY_PATH environment " .
 			"variable in order to be able to use the JNI mode.\n" ;
 	}
 

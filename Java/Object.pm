@@ -37,6 +37,11 @@ sub __new {
 	my $knot = tie %this, $class ;
 	my $this = bless(\%this, $class) ;
 
+	my $pkg = $inline->{pkg} ;
+	if ($class ne "Inline::Java::Object"){
+		$class = Inline::Java::java2perl($pkg, $java_class) ;
+	}
+
 	my $priv = Inline::Java::Object::Private->new($class, $java_class, $inline) ;
 	$PRIVATES->{$knot} = $priv ;
 
@@ -122,7 +127,7 @@ sub __validate_prototype {
 
 	my $nb_matched = scalar(@matched) ;
 	if (! $nb_matched){
-		my $name = $this->__get_private()->{class} ;
+		my $name = (ref($this) ? $this->__get_private()->{class} : $this) ;
 		my $sa = Inline::Java::Protocol->CreateSignature($args) ;
 		my $msg = "In method $method of class $name: Can't find any signature that matches " .
 			"the arguments passed $sa.\nAvailable signatures are:\n"  ;
@@ -162,7 +167,7 @@ sub __validate_prototype {
 	if ((! $chosen->{STATIC})&&(! ref($this))){
 		# We are trying to call an instance method without an object
 		# reference
-		croak "Method $method of class $inline->{pkg}::$this must be called from an object reference" ;
+		croak "Method $method of class $this must be called from an object reference" ;
 	}
 
 	# Here we will be polite and warn the user if we had to choose a 
@@ -224,7 +229,7 @@ sub __get_member {
 	Inline::Java::debug("fetching member variable $key") ;
 
 	my $inline = Inline::Java::get_INLINE($this->__get_private()->{module}) ;
-	my $fields = $inline->get_fields($this->__get_private()->{java_class}) ;
+	my $fields = $inline->get_fields($this->__get_private()->{class}) ;
 
 	if ($fields->{$key}){
 		my $proto = $fields->{$key}->{TYPE} ;
@@ -251,7 +256,7 @@ sub __set_member {
 	}
 
 	my $inline = Inline::Java::get_INLINE($this->__get_private()->{module}) ;
-	my $fields = $inline->get_fields($this->__get_private()->{java_class}) ;
+	my $fields = $inline->get_fields($this->__get_private()->{class}) ;
 
 	if ($fields->{$key}){
 		my $proto = $fields->{$key}->{TYPE} ;
@@ -282,7 +287,7 @@ sub AUTOLOAD {
 
 	my $name = (ref($this) ? $this->__get_private()->{class} : $this) ;
 	if ($name eq "Inline::Java::Object"){
-		croak "Can't call method $func_name on an object that is not bound to Perl" ;
+		croak "Can't call method $func_name on an object ($name) that is not bound to Perl" ;
 	}
 
 	croak "No public method $func_name defined for class $name" ;
@@ -373,7 +378,7 @@ sub EXISTS {
  	my $key = shift ;
 
 	my $inline = Inline::Java::get_INLINE($this->__get_private()->{module}) ;
-	my $fields = $inline->get_fields($this->__get_private()->{java_class}) ;
+	my $fields = $inline->get_fields($this->__get_private()->{class}) ;
 
 	if ($fields->{$key}){
 		return 1 ;
