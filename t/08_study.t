@@ -23,7 +23,7 @@ use Inline(
 	AUTOSTUDY => 1,
 	STUDY => ['t.types'],
 	CLASSPATH => '.',
-) ;
+) ;				   
 
 
 package toto ;

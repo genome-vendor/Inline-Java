@@ -5,6 +5,8 @@ use Test ;
 
 
 BEGIN {
+	# Leave previous server enough time to die...
+	sleep(1) ;
 	require Inline::Java::Portable ;
 	if ($ENV{PERL_INLINE_JAVA_JNI}){
 		plan(tests => 0) ;

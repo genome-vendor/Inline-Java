@@ -1,6 +1,10 @@
 Revision history for Perl extension Inline::Java
 ------------------------------------------------
 
+0.41  Mon Jul 14 13:18:25 EDT 200
+    - Fixed CLASSPATH bug
+    - Possibly (!) fixed test suite problems under heavy load
+
 0.40  Fri Apr 11 11:00:00 EST 2003
     - Patch by Doug MacEachern to allow running under servlet engines.
     - Patch by John Kinsley for handling empty arrays.

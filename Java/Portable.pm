@@ -58,10 +58,12 @@ sub make_classpath {
 	my @fcp = () ;
 	my %cp = map {$_ => 1} @cp ;
 	foreach my $p (@cp){
-		if (($p)&&($cp{$p})&&(-e $p)){
-			my $fp = (-d $p ? Cwd::abs_path($p) : $p) ;
-			push @fcp, portable("SUB_FIX_CLASSPATH", $fp) ;
-			delete $cp{$p} ;
+		if (($p)&&(-e $p)){
+			if ($cp{$p}){
+				my $fp = (-d $p ? Cwd::abs_path($p) : $p) ;
+				push @fcp, portable("SUB_FIX_CLASSPATH", $fp) ;
+				delete $cp{$p} ;
+			}
 		}
 		else{
 			Inline::Java::debug(2, "classpath candidate '$p' scraped") ;

@@ -7,7 +7,7 @@ package Inline::Java ;
 
 use strict ;
 
-$Inline::Java::VERSION = '0.40' ;
+$Inline::Java::VERSION = '0.41' ;
 
 
 # DEBUG is set via the DEBUG config
@@ -315,6 +315,7 @@ sub build {
 			croak $o->compile_error_msg($cmd) ;
 		} ;
 		$ENV{CLASSPATH} = $cp ;
+		Inline::Java::debug(2, "classpath: $ENV{CLASSPATH}") ;
 
 		# When we run the commands, we quote them because in WIN32 you need it if
 		# the programs are in directories which contain spaces. Unfortunately, in
@@ -404,6 +405,7 @@ sub load {
 		Inline::Java::debug(2, "classpath: $ENV{CLASSPATH}") ;
 		$JVM = new Inline::Java::JVM($o) ;
 		$ENV{CLASSPATH}	= $cp ;
+		Inline::Java::debug(2, "classpath: $ENV{CLASSPATH}") ;
 
 		# Add CLASSPATH entries + user jar + $install_dir to the JVM classpath
 		my @cp = make_classpath($o->get_java_config('CLASSPATH'), get_user_jar()) ;

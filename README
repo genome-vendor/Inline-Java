@@ -70,6 +70,10 @@ WARNING: THIS IS ALPHA SOFTWARE. It is incomplete and possibly unreliable.
          It is also possible that some elements of the interface (API) will 
          change in future releases.
 
+Inline::Java version 0.41 is a minor upgrade that includes:
++ Fixed CLASSPATH bug
++ Possibly (!) fixed test suite problems under heavy load
+
 Inline::Java version 0.40 is a major upgrade that includes:
 + Patch by Doug MacEachern to allow running under servlet engines.
 + Patch by John Kinsley for handling empty arrays.

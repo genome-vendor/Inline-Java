@@ -29,13 +29,13 @@ sub AddClassPath {
 	@paths = map {
 		my $e = $_ ;
 		if ($CLASSPATH_ENTRIES{$e}){
-			return () ;
+			() ;
 		}
 		else{
 			Inline::Java::debug(2, "adding to classpath: '$e'") ;
 			$CLASSPATH_ENTRIES{$e} = 1 ;
+			$e ;
 		}
-		$e ;
 	} @paths ;
 
 	my $data = "add_classpath " . join(" ", map {encode($_)} @paths) ;

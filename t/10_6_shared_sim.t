@@ -9,6 +9,8 @@ use Inline Config =>
 
 
 BEGIN {
+	# Leave previous server enough time to die...
+	sleep(1) ;
 	if ($ENV{PERL_INLINE_JAVA_JNI}){
 		plan(tests => 0) ;
 		exit ;
