@@ -1,0 +1,82 @@
+INTRODUCTION:
+
+Inline::Java - Write Perl classes in Java.
+
+Inline::Java lets you write Perl classes in Java.
+
+Example:
+
+    use Inline Java => <<'END',
+	    class JAxH {
+			public JAxH(String x){
+				System.out.println("Just Another " + x + " Hacker") ;
+			}
+	    }
+	END
+    
+    new JAxH('Inline') ;
+
+When run, this complete program prints:
+
+    Just Another Inline Hacker
+
+
+-------------------------------------------------------------------------------
+INSTALLATION:
+
+- This module requires Inline version 0.31 or higher to be installed.
+- It also requires a version of the Java SDK 1.2 or higher to be 
+  installed. You can get the latest Java SDK from Sun Microsystems
+  at http://java.sun.com. Follow the provided instructions in order
+  to install the Java SDK properly.
+
+To install Inline::Java do this:
+
+perl Makefile.PL
+make
+make test (see Note 2)
+make install
+
+You have to 'make install' before you can run it successfully. 
+
+
+Note 1: Use nmake on Windows systems. If you are using the COMMAND.COM shell
+under Windows, Inline::Java will try to detect it. If it doesn't, 
+you should set the PERL_INLINE_JAVA_COMMAND_COM environment variable 
+to a true value. You also will need set this whenever you use the module
+later on.
+
+Note 2: In order for 'make test' to run properly, you should put the 
+directory to your Java binaries in either your PATH environment variable 
+or in the PERL_INLINE_JAVA_BIN environment variable. 'make test' will remind you 
+if you don't do this.
+
+
+-------------------------------------------------------------------------------
+FEATURES:
+
+WARNING: THIS IS ALPHA SOFTWARE. It is incomplete and possibly unreliable. 
+         It is also possible that some elements of the interface (API) will 
+         change in future releases.
+
+Inline::Java version 0.01 includes:
+
++ All classes and their public methods are exported to Perl, relative
+  to your current package.
++ All objects (except arrays) and primitive Java types are supported as
+  method parameters.
+
+
+-------------------------------------------------------------------------------
+INFORMATION:
+
+= For more information on Inline::Java, see 'perldoc Inline::Java'.
+= For information about Inline, see 'perldoc Inline'.
+= For information on using Java, visit http://java.sun.org
+
+The Inline::Java mailing list is inline@perl.org. 
+Send email to inline-subscribe@perl.org to subscribe.
+
+Please send questions and comments to "Patrick LeBoutillier" <patl@cpan.org>
+
+Copyright (c) 2001, Patrick LeBoutillier. All Rights Reserved.  

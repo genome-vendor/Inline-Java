@@ -1,0 +1,16 @@
+CHANGES
+MANIFEST
+README
+TODO
+Makefile.PL
+Java.pm
+Java.pod
+Java/Init.pm
+Java/Object.pm
+Java/Protocol.pm
+Java/Class.pm
+t/1_init.t
+t/2_primitives.t
+t/3_objects.t
+t/4_arrays.t
+

@@ -1,0 +1,41 @@
+CODE:
+- Member variables
+	- In Java, when calling instance methods, change protocol to get 
+	  class_name from object instead of getting it from what Perl sends.
+	- Code in objects to send read/write to Java.
+
+- Arrays
+	- Add support for arrays in Class::CastArgument
+		>               # Java expects an object but we don't have one. Maybe it's an array ?
+		>               if (UNIVERSAL::isa($elem, "ARRAY")){
+		>                       my $array = new Inline::Java::Array($proto, ) ; 
+		>               }
+		>               else{
+		>                       if (ref($arg)){
+		>                               # We got some other type of ref...
+		>                               croak "Can't convert $arg to object $proto" ;
+		>                       }
+		>                       else{
+		>                               # Here we got a scalar
+		>                               # Here we allow scalars to be passed in place of java.lang.Object
+		>                               # They will wrapped on the Java side.
+		>                               if ($proto ne "java.lang.Object"){
+		>                                       croak "Can't convert $arg to object $proto" ;
+		>                               }
+		>                       }
+	- Class::CastArgument will call Java to create the array.
+		create_array [[I 2,2 scalar:0 scalar:1 scalar:2 scalar:3
+	- Add support for arrays in Protocol::ValidateArgs
+	- Create protocol to pass arrays in methods:
+		array:[[I:3
+	- Add Java code to create support for arrays in Protocol::ValidateArgs
+
+- Multiple signatures
+	- load_jdat to grab all signatures
+	- bind_jdat to create proxy methods, Java should not have to choose the 
+	  method, Perl will choose it and send Java the signature to call.
+
+
+TEST:
+- Add test script for configuration options (other than BIN)
+

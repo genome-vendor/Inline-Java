@@ -1,0 +1,334 @@
+=head1 NAME
+
+Inline::Java - Write Perl classes in Java.
+
+=head1 SYNOPSIS
+
+   my $alu = new alu() ;
+   print "9 + 16 = ", $alu->add(9, 16), "\n";
+   print "9 - 16 = ", $alu->subtract(9, 16), "\n";
+
+   use Inline Java => <<'END_OF_JAVA_CODE';
+      class alu {
+         public alu(){
+         }
+
+         public int add(int i, int j){
+            return i + j ;
+         }
+
+         public int subtract(int i, int j){
+            return i - j ;
+         }
+      }   
+   END_OF_JAVA_CODE
+
+=head1 WARNING 
+
+THIS IS ALPHA SOFTWARE. It is incomplete and possibly unreliable. 
+It is also possible that some elements of the interface (API) will 
+change in future releases.
+
+=head1 DESCRIPTION
+
+The C<Inline::Java> module allows you to put Java source code
+directly "inline" in a Perl script or module. A Java compiler
+is launched and the Java code is compiled. Then Perl asks the
+Java classes what public methods have been defined. These classes 
+and methods are available to the Perl program as if they had been 
+written in Perl.
+
+The process of interrogating the Java classes for public methods
+occurs the first time you run your Java code. The namespace is
+cached, and subsequent calls use the cached version.
+
+=head1 USING THE Inline::Java MODULE
+
+C<Inline::Java> is driven by fundamentally the same idea as other
+C<Inline> language modules, like C<Inline::C> or C<Inline::CPP>. 
+Because Java is both compiled and interpreted, the method of getting 
+your code is different, but overall, using C<Inline::Java> is very similar 
+to any other C<Inline> language module.
+
+This section will explain the different ways to C<use> Inline::Java.
+For more details on C<Inline>, see 'perldoc Inline'. 
+
+=head2 Basic Usage
+
+The most basic form for using C<Inline::Java> is:
+
+   use Inline Java => 'Java source code' ;
+
+Of course, you can use Perl's "here document" style of quoting to make 
+the code slightly easier to read:
+
+   use Inline Java => <<'END';
+
+      Java source code goes here.
+
+   END
+
+The source code can also be specified as a filename, a subroutine
+reference (sub routine should return source code), or an array
+reference (array contains lines of source code). This information
+is detailed in 'perldoc Inline'.
+
+In order for C<Inline::Java> to function properly, it needs to know 
+where to find the Java compiler (javac) and the Java Runtime (java)
+on your machine. This is done using one of the following techniques:
+
+   - set the BIN configuration option to the correct directory
+   - set the PERL_INLINE_JAVA_BIN environment variable to the correct directory
+   - put the correct directory in your PATH environment variable
+
+=head1 CONFIGURATION OPTIONS
+
+There are a number of configuration options that dictate the 
+behavior of C<Inline::Java>:
+
+   BIN: 
+      Specifies the path to your Java binaries. 
+	  Ex: BIN => 'my/java/bin/path'
+
+   PORT:
+      Specifies the starting port number for the server. If many 
+      C<Inline::Java> blocks are declared, the port number is 
+      incremented each time.	
+      Default is 7890.
+      Ex: PORT => 4567
+
+   STARTUP_DELAY:
+      Specifies the maximum number of seconds that the Perl script
+      will try to connect to the Java server. In other this is the
+      delay that Perl gives to the Java server to start.
+      Default is 15 seconds.
+      Ex: STARTUP_DELAY => 20
+
+   DEBUG:
+      Enables debugging info
+      Ex: DEBUG => 1
+
+   CLASSPATH:
+      Adds the specified CLASSPATH to the environment CLASSPATH.
+      Ex: CLASSPATH => 'my/other/java/classses'
+
+=head1 CLASSES AND OBJECTS
+
+Because Java is object oriented, any interface between Perl and Java
+needs to support Java classes adequately.
+
+Example: 
+
+   use Inline Java => <<'END';
+      class Foo {
+         String data = "data" ;
+         static String sdata = "static data" ;
+
+         public Foo() {
+            System.out.println("new Foo object being created") ;
+         }
+
+         public String get_data(){
+            return data ;
+         }
+
+         public static get_static_data(){
+            return sdata ;
+         }
+
+         public void set_data(String d){
+            data = d ;
+         }
+      }
+   END
+
+   my $obj = new Foo ;
+   print $obj->get_data() . "\n" ;
+   $obj->set_data("new data") ;
+   print $obj->get_data() . "\n" ;
+
+The output from this program is:
+
+   new Foo object being created
+   data
+   new data
+
+C<Inline::Java> created a new namespace called C<main::Foo> and 
+created the following functions:
+
+   sub main::Foo::new { ... }
+   sub main::Foo::Foo { ... }
+   sub main::Foo::get_data { ... }
+   sub main::Foo::get_sdata { ... }
+   sub main::Foo::set_data { ... }
+   sub main::Foo::DESTROY { ... }
+
+Note that only the public methods are exported to Perl. 
+Note also that the class itself is not public. With 
+C<Inline::Java> you cannot create public classes because Java 
+requires that they be defined in a .java file of the same 
+name (C<Inline::Java> can't work this way).
+
+Inner classes are also supported, you simply need to supply a reference
+to an outer class object as the first parameter of the constructor:
+
+   use Inline Java => <<'END';
+      class Foo {
+         public Foo() {
+         }
+
+         public class Bar {
+            public Bar() {
+            }
+         }
+      }
+   END
+
+   my $obj = new Foo() ;
+   my $obj2 = new Bar($obj) ;
+
+=head1 METHODS
+
+In the previous example we have seen how to call a method. You can also
+call static methods in the following manner:
+
+   print Foo->get_sdata() . "\n" ;
+   # or
+   my $obj = new Foo() ;
+   print $obj->get_sdata() . "\n" ;
+	
+both of these will print:
+   
+   static data   
+
+You can pass any kind of Perl scalar or any Java object to a method. It
+will be automatically converted to the correct type:
+
+   use Inline Java => <<'END';
+      class Foo2 {
+         public Foo2(int i, String j, Foo k) {
+            ...
+         }
+      }
+   END
+
+   my $obj = new Foo() ;
+   my $obj2 = new Foo2(5, "toto", $obj) ;
+
+will work fine. These objects can be of any type, even if these types
+are not know to C<Inline::Java>. This is also true for return types:
+
+   use Inline Java => <<'END';
+      import java.util.* ;
+
+      class Foo3 {
+         public Foo3() {
+         }
+
+         public HashMap get_hash(){
+            return new HashMap() ;
+         }
+
+         public void do_stuff_to_hash(HashMap h){
+            ...
+         }
+      }
+   END
+
+   my $obj = new Foo3() ;
+   my $h = $obj->gethash() ;
+   $obj->do_stuff_to_hash($h) ;
+
+Objects of types unknown to Perl can exist in the Perl space, you just 
+can't call any of their methods.
+
+=head1 MEMBER VARIABLES
+
+Currently public member variables are not visible from the Perl space. 
+This will be implemented in a future version. But you can certainly create 
+get/set methods to access them.
+
+=head1 ARRAYS
+
+Currently array are not supported in C<Inline::Java>. 
+This will be implemented in a future version. But remember that you can
+always ask Java to return an array, or modify it. See Methods section.
+
+=head1 SUPPORTED PLATFORMS
+
+This is an ALPHA release of Inline::Java. Further testing and
+expanded support for other operating systems and platforms will be a
+focus for future releases. It has been tested on Solaris 2.5.1, with
+Perl 5.6 and Java SDK 1.2.1. It likely will work with many other
+configuration under Unix, and possibly under Windows.
+
+=head1 HOW IT WORKS
+
+This is how C<Inline::Java> works. Once the user's code is compiled by the 
+javac binary, C<Inline::Java>'s own Java code is compiled. This code 
+implements a server that receives requests from Perl to create objects, 
+call methods, destroy objects, etc. It is also capable of analyzing Java code
+tp extract the public symbols. Once this code is compiled, it is executed to 
+extract the symbols from the Java code.
+
+Once this is done, the user's code information is fetched and is bound to 
+Perl namespaces. Then C<Inline::Java>'s code is run to launch the server. The 
+Perl script then connects to the server using a TCP socket. Then each object 
+creation or method invocation on "Java objects" send requests to the server, 
+which processes them and returns object ids to Perl which keeps them the 
+reference te objects in the future.
+
+=head1 SEE ALSO 		   
+
+For information about using C<Inline>, see L<Inline>.
+
+For information about other Inline languages, see L<Inline-Support>.
+
+Inline::Java's mailing list is inline@perl.org
+
+The subscribe, send email to inline-subscribe@perl.org
+
+=head1 BUGS AND DEFICIENCIES
+
+When reporting a bug, please do the following:
+
+ - Put "use Inline REPORTBUG;" at the top of your code, or 
+   use the command line option "perl -MInline=REPORTBUG ...".
+ - Run your code.
+ - Follow the printed instructions.
+
+Here are some things to watch out for:
+
+=over 4
+
+=item 1
+
+You can't use the "package" Java directive when using C<Inline::Java>. 
+
+=item 2
+
+You can't create public classes when using Inline::Java. This is due
+to the fact that Java requires that public classes be defined in a 
+.java file of the same name (C<Inline::Java> can't work this way).
+
+
+
+=back
+
+=head1 AUTHOR
+
+Patrick LeBoutillier <patl@cpan.org>
+
+Brian Ingerson <INGY@cpan.org> is the author of Inline.
+
+=head1 COPYRIGHT
+
+Copyright (c) 2001, Patrick LeBoutillier.
+
+All Rights Reserved. This module is free software. It may be used,
+redistributed and/or modified under the terms of the Perl Artistic
+License.
+
+(see http://www.perl.com/perl/misc/Artistic.html)
+
+=cut
