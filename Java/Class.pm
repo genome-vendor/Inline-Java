@@ -3,7 +3,7 @@ package Inline::Java::Class ;
 use strict ;
 use Carp ;
 
-$Inline::Java::Class::VERSION = '0.48_92' ;
+$Inline::Java::Class::VERSION = '0.48_93' ;
 
 $Inline::Java::Class::MAX_SCORE = 10 ;
 
@@ -128,10 +128,10 @@ sub CastArgument {
 
 	my $sub = sub {
 		my $array_type = undef ;
-		if ((defined($arg))&&(UNIVERSAL::isa($arg, "Inline::Java::Class::Cast"))){
-			my $v = $arg->get_value() ;
-			$proto = $arg->get_type() ;
-			$array_type = $arg->get_array_type() ;
+		if ((defined($arg))&&(UNIVERSAL::isa($arg, "Inline::Java::Class::Coerce"))){
+			my $v = $arg->__get_value() ;
+			$proto = $arg->__get_type() ;
+			$array_type = $arg->__get_array_type() ;
 			$arg = $v ;
 		}
 
@@ -300,17 +300,17 @@ sub CastArgument {
 
 	my @ret = $sub->() ;
 
-	if ((defined($arg_ori))&&(UNIVERSAL::isa($arg_ori, "Inline::Java::Class::Cast"))){
+	if ((defined($arg_ori))&&(UNIVERSAL::isa($arg_ori, "Inline::Java::Class::Coerce"))){
 		# It seems we had casted the variable to a specific type
-		if ($arg_ori->matches($proto_ori)){
-			Inline::Java::debug(3, "type cast match!") ;
+		if ($arg_ori->__matches($proto_ori)){
+			Inline::Java::debug(3, "type coerce match!") ;
 			$ret[1] = $Inline::Java::Class::MAX_SCORE ;
 		}
 		else{
-			# We have casted to something that doesn't exactly match
+			# We have coerced to something that doesn't exactly match
 			# any of the available types. 
 			# For now we don't allow this.
-			croak "Cast ($proto) doesn't exactly match prototype ($proto_ori)" ;
+			croak "Coerce ($proto) doesn't exactly match prototype ($proto_ori)" ;
 		}
 	}
 
@@ -447,8 +447,8 @@ sub ClassIsArray {
 
 
 
-######################## Inline::Java::Class::Cast ########################
-package Inline::Java::Class::Cast ;
+######################## Inline::Java::Class::Coerce ########################
+package Inline::Java::Class::Coerce ;
 
 
 use Carp ;
@@ -459,7 +459,7 @@ sub new {
 	my $value = shift ;
 	my $array_type = shift ;
 
-	if (UNIVERSAL::isa($value, "Inline::Java::Class::Cast")){
+	if (UNIVERSAL::isa($value, "Inline::Java::Class::Coerce")){
 		# This allows chaining
 		$value = $value->get_value() ;
 	}
@@ -474,27 +474,27 @@ sub new {
 }
 
 
-sub get_value {
+sub __get_value {
 	my $this = shift ;
 
 	return $this->{value} ;
 }
 
 
-sub get_type {
+sub __get_type {
 	my $this = shift ;
 
 	return $this->{cast} ;
 }
 
-sub get_array_type {
+sub __get_array_type {
 	my $this = shift ;
 
 	return $this->{array_type} ;
 }
 
 
-sub matches {
+sub __matches {
 	my $this = shift ;
 	my $proto = shift ;
 

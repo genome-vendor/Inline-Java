@@ -286,6 +286,13 @@ encounters them.
 
    Ex: AUTOSTUDY => 1
 
+=item PACKAGE
+
+Forces C<Inline::Java> to bind the Java code under the specified
+package instead of under the current (caller) package.
+
+   Ex: PACKAGE => 'main'
+
 =back 
 
 
@@ -532,98 +539,6 @@ using Perl lists:
 =for comment
 
 
-=head1 TYPE CASTING
-
-Sometimes when a class as many signatures for the same method,
-C<Inline::Java> will have to select one of the signatures based on
-the arguments that are passed:
-
-=for comment
-
-   use Inline Java => <<'END' ;
-      class Pod_7 {
-         public Pod_7(){
-         }
-
-         public String f(int i){
-            return "int" ;
-         }
-
-         public String f(char c){
-            return "char" ;
-         }
-      }
-   END
-
-   my $obj = new Pod_7() ;
-   print($obj->f('5') . "\n") ; # prints int
-
-=for comment
-
-In this case, C<Inline::Java> will call f(int i), because '5' is an integer.
-But '5' is a valid char as well. So to force the call of f(char c), do the 
-following:
-
-   use Inline::Java qw(cast) ;
-   $obj->f(cast('char', '5')) ;
-   # or
-   $obj->f(Inline::Java::cast('char', '5')) ;
-
-The cast function forces the selection of the matching signature. Note that
-the cast must match the argument type exactly. Casting to a class that
-extends the argument type will not work.
-
-Another case where type casting is need is when one wants to pass an array
-as a java.lang.Object:
-
-   use Inline Java => <<'END';
-      class Pod_8 {
-         public Object o ;
-         int a[] = {1, 2, 3} ;
-
-         public Pod_8() {
-         }
-      }
-   END
-
-   my $obj = new Pod_8() ;
-   $obj->{o} = [1, 2, 3] ;	# No!
-
-The reason why this will not work is simple. When C<Inline::Java> sees an
-array, it checks the Java type you are trying to match it against to validate
-the construction of your Perl list. But in this case, it can't validate
-the array because you're assigning it to an Object. You must use the 3 
-parameter version of the cast function to do this:
-
-   $obj->{o} = Inline::Java::cast(
-     "java.lang.Object", 
-     [1, 2, 3],
-     "[Ljava.lang.String;") ;
-
-This tells C<Inline::Java> to validate your Perl list as a String [], and 
-then cast it as an Object.
-
-Here is how to construct the array type representations:
-
-  [<type>  -> 1 dimensional <type> array
-  [[<type> -> 2 dimensional <type> array
-  ...
-
-  where <type> is one of:
-    B byte     S short     I int     J long  
-    F float    D double    C char    Z boolean
-
-    L<class>; array of <class> objects
-
-This is described in more detail in most Java books that talk about
-reflection.
-
-But you only need to do this if you have a Perl list. If you already have a
-Java array reference obtained from elsewhere, you don't even need to cast:
-
-   $obj->{o} = $obj->{a} ;
-
-
 =head1 EXCEPTIONS
 
 You can now (as of 0.31) catch exceptions as objects when they are thrown 
@@ -762,6 +677,136 @@ undefined, the classes will be bound to the current (caller) package.
 Note: You can only specify the names of packages in which you have 
 previously "used" C<Inline::Java>.
    Z<>
+
+
+=head1 TYPE CASTING
+
+Sometimes you need to manipulate a Java object using a specific
+subtype. That's when type casting is necessary. Here's an 
+example of this:
+
+=for comment
+
+   use Inline (
+      Java => 'STUDY',
+      STUDY => ['java.util.HashMap'],
+      AUTOSTUDY => 1,
+   ) ;
+   use Inline::Java qw(cast) ;
+
+   my $hm = new java::util::HashMap() ;
+   $hm->put('key', 'value') ;
+
+   my $entries = $hm->entrySet()->toArray() ;
+   foreach my $e (@{$entries}){
+     # print($e->getKey() . "\n") ; # No!
+     print(cast('java.util.Map$Entry', $e)->getKey() . "\n") ; # prints key
+   }
+
+=for comment
+
+In this case, C<Inline::Java> knows that $e is of type java.util.HashMap$Entry.
+The problem is that this type is not public, and therefore we can't access
+the object through that type. We must cast it to a java.util.Map$Entry, which
+is a public interface and will allow us to access the getKey() method. 
+
+You can also use type casting to force the selection of a specific method
+signature for methods that have multiple signatures. See examples similar
+to this in the "TYPE COERCING" section below.
+
+
+=head1 TYPE COERCING
+
+Type coercing is the equivalent of casting for primitives types 
+and arrays. It is used to force the selection if a specific method
+signature when C<Inline::Java> has multiple choices. The coerce 
+function returns a special object that can only be used when calling
+Java methods or assigning Java members. Here is an example:
+
+=for comment
+
+   use Inline Java => <<'END' ;
+      class Pod_101 {
+         public Pod_101(){
+         }
+
+         public String f(int i){
+            return "int" ;
+         }
+
+         public String f(char c){
+            return "char" ;
+         }
+      }
+   END
+
+   my $obj = new Pod_101() ;
+   print($obj->f('5') . "\n") ; # prints int
+
+=for comment
+
+In this case, C<Inline::Java> will call f(int i), because '5' is an integer.
+But '5' is a valid char as well. So to force the call of f(char c), do the 
+following:
+
+   use Inline::Java qw(coerce) ;
+   $obj->f(coerce('char', '5')) ;
+   # or
+   $obj->f(Inline::Java::coerce('char', '5')) ;
+
+The coerce function forces the selection of the matching signature. Note that
+the coerce must match the argument type exactly. Coercing to a class that
+extends the argument type will not work.
+
+Another case where type coercing is needed is when one wants to pass an array
+as a java.lang.Object:
+
+   use Inline Java => <<'END';
+      class Pod_8 {
+         public Object o ;
+         int a[] = {1, 2, 3} ;
+
+         public Pod_8() {
+         }
+      }
+   END
+
+   my $obj = new Pod_8() ;
+   $obj->{o} = [1, 2, 3] ;	# No!
+
+The reason why this will not work is simple. When C<Inline::Java> sees an
+array, it checks the Java type you are trying to match it against to validate
+the construction of your Perl list. But in this case, it can't validate
+the array because you're assigning it to an Object. You must use the 3 
+parameter version of the coerce function to do this:
+
+   $obj->{o} = Inline::Java::coerce(
+     "java.lang.Object", 
+     [1, 2, 3],
+     "[Ljava.lang.String;") ;
+
+This tells C<Inline::Java> to validate your Perl list as a String [], and 
+then coerce it as an Object.
+
+Here is how to construct the array type representations:
+
+  [<type>  -> 1 dimensional <type> array
+  [[<type> -> 2 dimensional <type> array
+  ...
+
+  where <type> is one of:
+    B byte     S short     I int     J long  
+    F float    D double    C char    Z boolean
+
+    L<class>; array of <class> objects
+
+This is described in more detail in most Java books that talk about
+reflection.
+
+But you only need to do this if you have a Perl list. If you already have a
+Java array reference obtained from elsewhere, you don't even need to coerce:
+
+   $obj->{o} = $obj->{a} ;
 
 
 =head1 JNI vs CLIENT/SERVER MODES

@@ -58,7 +58,7 @@ class InlineJavaCallback {
 		StringBuffer cmdb = new StringBuffer("callback " + via + " " + method + " " + cast.getName()) ;
 		if (args != null){
 			for (int i = 0 ; i < args.length ; i++){
-				cmdb.append(" " + ijp.SerializeObject(args[i])) ;
+				cmdb.append(" " + ijp.SerializeObject(args[i], null)) ;
 			}
 		}
 		return cmdb.toString() ;

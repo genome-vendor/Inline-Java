@@ -121,8 +121,9 @@ of type 'cast' with the result.
 =item public Object require(String module_or_file) 
 throws InlineJavaPerlException, InlineJavaException
       
-Requires the specified module/file by using the proper
-construct.
+Requires the specified module/file by using a heuristic (currently,
+checks whether or not the file exists) and calling Perl's C<require>
+function using the appropriate construct.
 
    /* Example */
    require("Someting")
@@ -133,7 +134,7 @@ throws InlineJavaPerlException, InlineJavaException
 Requires the specified file.
 
    /* Example */
-   require("./my_stuff.pl") ;
+   require_file("./my_stuff.pl") ;
 
 =item public Object require_module(String module) 
 throws InlineJavaPerlException, InlineJavaException
@@ -141,7 +142,7 @@ throws InlineJavaPerlException, InlineJavaException
 Requires the specified module.
 
    /* Example */
-   require("Data::Dumper") ;
+   require_module("Data::Dumper") ;
 
 =back
 
@@ -175,12 +176,15 @@ in Perl. Here's an example:
 
       class Pod_Button extends InlineJavaPerlCaller
                        implements ActionListener {
+         JFrame frame = null ;
+
          public Pod_Button() throws InlineJavaException {
-            JFrame frame = new JFrame("Pod_Button") ;
+            frame = new JFrame("Pod_Button") ;
             frame.setSize(100,100) ;
             JButton button = new JButton("Click Me!") ;
             frame.getContentPane().add(button) ;
             button.addActionListener(this) ;
+            frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE) ; 
             frame.show() ;
          }
 
@@ -195,11 +199,27 @@ in Perl. Here's an example:
                pe.printStackTrace() ;
             }
          }
+
+         public void close(){
+            frame.dispose() ;
+            frame.hide() ;
+			frame = null ;
+         }
+
+         public void quit(){
+            System.exit(0) ;
+         }
       }
    END
 
    my $b = new Pod_Button() ;
    $b->StartCallbackLoop() ;
+   $b->close() ;
+
+   # Maybe do some other stuff
+
+   exit() ;      # in client-server mode, optional
+   $b->quit() ;  # in JNI mode
 
    sub button_pressed {
       print('click!' . "\n") ; # prints click!

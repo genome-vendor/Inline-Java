@@ -6,13 +6,15 @@ use Inline Config =>
 
 use Inline(
 	Java => 'DATA',
+	STUDY => ['java.util.HashMap'],
+	AUTOSTUDY => 1,
 ) ;
 
-use Inline::Java qw(cast) ;
+use Inline::Java qw(cast coerce) ;
 
 
 BEGIN {
-	plan(tests => 22) ;
+	plan(tests => 23) ;
 }
 
 
@@ -22,10 +24,10 @@ my $t = new types7() ;
 	my $t1 = new t17() ;
 	
 	ok($t->func(5), "int") ;
-	ok($t->func(cast("char", 5)), "char") ;
+	ok($t->func(coerce("char", 5)), "char") ;
 	ok($t->func(55), "int") ;
 	ok($t->func("str"), "string") ;
-	ok($t->func(cast("java.lang.StringBuffer", "str")), "stringbuffer") ;
+	ok($t->func(coerce("java.lang.StringBuffer", "str")), "stringbuffer") ;
 	
 	ok($t->f($t->{hm}), "hashmap") ;
 	ok($t->f(cast("java.lang.Object", $t->{hm})), "object") ;
@@ -33,10 +35,10 @@ my $t = new types7() ;
 	ok($t->f(["a", "b", "c"]), "string[]") ;
 	
 	ok($t->f(["12.34", "45.67"]), "double[]") ;
-	ok($t->f(cast("java.lang.Object", ['a'], "[Ljava.lang.String;")), "object") ;
+	ok($t->f(coerce("java.lang.Object", ['a'], "[Ljava.lang.String;")), "object") ;
 	
 	eval {$t->func($t1)} ; ok($@, qr/Can't find any signature/) ;
-	eval {$t->func(cast("int", $t1))} ; ok($@, qr/Can't convert (.*) to primitive int/) ;
+	eval {$t->func(cast("int", $t1))} ; ok($@, qr/Can't cast (.*) to a int/) ;
 	
 	my $t2 = new t27() ;
 	ok($t2->f($t2), "t1") ;
@@ -56,6 +58,13 @@ my $t = new types7() ;
 	# Interfaces
 	my $al = $t1->get_al() ;
 	ok(0, $t1->count($al)) ;
+
+	my $hm = new java::util::HashMap() ;
+	$hm->put('key', 'value') ;
+	my $a = $hm->entrySet()->toArray() ;
+	foreach my $e (@{$a}){
+		ok(cast('java.util.Map$Entry', $e)->getKey(), 'key') ;
+	}
 }
 
 ok($t->__get_private()->{proto}->ObjectCount(), 1) ;

@@ -87,11 +87,11 @@ my $t = new types5() ;
 	# This is one of the things that won't work. 
 	# Try passing an array as an Object.
 	eval {$t->_o(["a", "b", "c"])} ; ok($@, qr/Can't create Java array/) ;
-	ok($t->_o(Inline::Java::cast(
+	ok($t->_o(Inline::Java::coerce(
 		"java.lang.Object", 
 		["a", "b", "c"], 
 		"[Ljava.lang.String;"))->[0], "a") ;
-	$t->{o} = Inline::Java::cast(
+	$t->{o} = Inline::Java::coerce(
 		"java.lang.Object", 
 		["a", "b", "c"], 
 		"[Ljava.lang.String;") ;

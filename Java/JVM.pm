@@ -6,8 +6,9 @@ use Carp ;
 use IO::File ;
 use IPC::Open3 ;
 use IO::Socket ;
+use Inline::Java::Portable ;
 
-$Inline::Java::JVM::VERSION = '0.48_92' ;
+$Inline::Java::JVM::VERSION = '0.48_93' ;
 
 my %SIGS = () ;
 
@@ -68,7 +69,7 @@ sub new {
 
 		# Grab the next free port number and release it.
 		if ((! $this->{shared})&&($this->{port} < 0)){
-			if (Inline::Java::portable("GOT_NEXT_FREE_PORT")){
+			if (Inline::Java::Portable::portable("GOT_NEXT_FREE_PORT")){
 				my $sock = IO::Socket::INET->new(
 					Listen => 0, Proto => 'tcp',
 					LocalAddr => 'localhost', LocalPort => 0) ;
@@ -110,11 +111,11 @@ sub new {
 
 		my $java = File::Spec->catfile($o->get_java_config('J2SDK'), 'bin',
 			($this->{debugger} ? "jdb" : "java") . 
-			Inline::Java::portable("EXE_EXTENSION")) ;
+			Inline::Java::Portable::portable("EXE_EXTENSION")) ;
 
 		my $shared = ($this->{shared} ? "true" : "false") ;
 		my $priv = ($this->{private} ? "true" : "false") ;
-		my $cmd = Inline::Java::portable("SUB_FIX_CMD_QUOTES", "\"$java\" $args org.perl.inline.java.InlineJavaServer $debug $this->{port} $shared $priv") ;
+		my $cmd = Inline::Java::Portable::portable("SUB_FIX_CMD_QUOTES", "\"$java\" $args org.perl.inline.java.InlineJavaServer $debug $this->{port} $shared $priv") ;
 		Inline::Java::debug(2, $cmd) ;
 		if ($o->get_config('UNTAINT')){
 			($cmd) = $cmd =~ /(.*)/ ;
@@ -155,7 +156,7 @@ sub launch {
 
 	local $SIG{__WARN__} = sub {} ;
 
-	my $dn = Inline::Java::portable("DEV_NULL") ;
+	my $dn = Inline::Java::Portable::portable("DEV_NULL") ;
 	my $in = ($this->{debugger} ? ">&STDIN" : new IO::File("<$dn")) ;
 	if (! defined($in)){
 		croak "Can't open $dn for reading" ;
@@ -261,7 +262,7 @@ sub setup_socket {
 	my $socket = undef ;
 
 	my $last_words = "timeout\n" ;
-	my $got_alarm = Inline::Java::portable("GOT_ALARM") ;
+	my $got_alarm = Inline::Java::Portable::portable("GOT_ALARM") ;
 
 	eval {
 		local $SIG{ALRM} = sub { die($last_words) ; } ;

@@ -1,7 +1,6 @@
 package Inline::Java::Portable ;
 @Inline::Java::Portable::ISA = qw(Exporter) ;
 
-@EXPORT = qw(portable make_classpath get_server_jar get_user_jar get_source_dir) ;
 
 use strict ;
 use Exporter ;
@@ -10,7 +9,7 @@ use Config ;
 use File::Find ;
 use File::Spec ;
 
-$Inline::Java::Portable::VERSION = '0.48_92' ;
+$Inline::Java::Portable::VERSION = '0.48_93' ;
 
 # Here is some code to figure out if we are running on command.com
 # shell under Windows.
@@ -46,7 +45,7 @@ sub make_classpath {
 	}
 	push @list, @paths ;
 
-	my $sep = portable("ENV_VAR_PATH_SEP_CP") ;
+	my $sep = Inline::Java::Portable::portable("ENV_VAR_PATH_SEP_CP") ;
 	my @cp = split(/$sep+/, join($sep, @list)) ;
 
 	# Clean up paths
@@ -62,7 +61,7 @@ sub make_classpath {
 		if (($p)&&(-e $p)){
 			if ($cp{$p}){
 				my $fp = (-d $p ? File::Spec->rel2abs($p) : $p) ;
-				push @fcp, portable("SUB_FIX_CLASSPATH", $fp) ;
+				push @fcp, Inline::Java::Portable::portable("SUB_FIX_CLASSPATH", $fp) ;
 				delete $cp{$p} ;
 			}
 		}
@@ -213,6 +212,8 @@ sub portable {
 		},
 		solaris => {
 			GOT_NEXT_FREE_PORT  =>  0,
+			PRE_WHOLE_ARCHIVE	=>  '-Wl,-zallextract',
+			POST_WHOLE_ARCHIVE	=>  '-Wl,-zdefaultextract',
 		},
 		aix => {
 			JVM_LIB				=>	"libjvm$Config{lib_ext}",

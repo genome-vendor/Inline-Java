@@ -19,14 +19,14 @@ use Inline::Java::Portable ;
 ok(1) ;
 
 
-my $inline = $Tests::INLINE ;
-$inline = $Tests::INLINE ; # stupid warning...
+my $inline = $org::perl::inline::java::InlineJavaPerlInterpreterTests::INLINE ;
+$inline = $org::perl::inline::java::InlineJavaPerlInterpreterTests::INLINE ; # stupid warning...
 
 my $install_dir = File::Spec->catdir($inline->get_api('install_lib'),
         'auto', $inline->get_api('modpname')) ;
 
 require Inline::Java->find_default_j2sdk() ;
-my $server_jar = get_server_jar() ;
+my $server_jar = Inline::Java::Portable::get_server_jar() ;
 
 run_java($install_dir, $server_jar) ;
 
@@ -37,16 +37,17 @@ run_java($install_dir, $server_jar) ;
 sub run_java {
 	my @cps = @_ ;
 
-	print STDERR "\n" ;
-	$ENV{CLASSPATH} = make_classpath(@cps) ;
-	# print STDERR "CLASSPATH is $ENV{CLASSPATH}\n" ;
+	$ENV{CLASSPATH} = Inline::Java::Portable::make_classpath(@cps) ;
+	Inline::Java::debug(1, "CLASSPATH is $ENV{CLASSPATH}\n") ;
 
 	my $java = File::Spec->catfile(
 		Inline::Java::get_default_j2sdk(),
-		'bin', 'java' . Inline::Java::portable("EXE_EXTENSION")) ;
+		'bin', 'java' . Inline::Java::Portable::portable("EXE_EXTENSION")) ;
 
-	my $cmd = Inline::Java::portable("SUB_FIX_CMD_QUOTES", "\"$java\" Tests") ;
-	# print STDERR "Command is $cmd\n" ;
+	my $debug = $ENV{PERL_INLINE_JAVA_DEBUG} || 0 ;
+	my $cmd = Inline::Java::Portable::portable("SUB_FIX_CMD_QUOTES", "\"$java\" " . 
+		"org.perl.inline.java.InlineJavaPerlInterpreterTests $debug") ;
+	Inline::Java::debug(1, "Command is $cmd\n") ;
 	print `$cmd` ;
 }
 
@@ -54,11 +55,11 @@ sub run_java {
 __END__
 
 __Java__
-import org.perl.inline.java.* ;
+package org.perl.inline.java ;
 
-class Tests extends InlineJavaPerlInterpreter {
+class InlineJavaPerlInterpreterTests extends InlineJavaPerlInterpreter {
 	private static int cnt = 2 ;
-	private Tests() throws InlineJavaException, InlineJavaPerlException {
+	private InlineJavaPerlInterpreterTests() throws InlineJavaException, InlineJavaPerlException {
 	}
 
 	private static void ok(Object o1, Object o2){
@@ -75,6 +76,12 @@ class Tests extends InlineJavaPerlInterpreter {
 
 	public static void main(String args[]){
 		try {
+			int debug = 0 ;
+			if (args.length > 0){
+				debug = Integer.parseInt(args[0]) ;
+				InlineJavaUtils.debug = debug ;
+			}
+
 			init("test") ;
 			InlineJavaPerlInterpreter pi = InlineJavaPerlInterpreter.create() ; 
 

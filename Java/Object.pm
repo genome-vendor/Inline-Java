@@ -5,7 +5,7 @@ use strict ;
 use Inline::Java::Protocol ;
 use Carp ;
 
-$Inline::Java::Object::VERSION = '0.48_92' ;
+$Inline::Java::Object::VERSION = '0.48_93' ;
 
 # Here we store as keys the knots and as values our blessed private objects
 my $PRIVATES = {} ;
@@ -121,7 +121,7 @@ sub __validate_prototype {
 			IDX =>		$idx,
 		} ;
 
-		# Tiny optimization: abort if type cast was used and matched for
+		# Tiny optimization: abort if type coerce was used and matched for
 		# every parameter
 		if (Inline::Java::Class::IsMaxArgumentsScore($new_args, $score)){
 			Inline::Java::debug(3, "perfect match found, aborting search") ;
@@ -225,6 +225,16 @@ sub __isa {
 
 	return ('', $ret) ;
 }
+
+
+sub __cast {
+	my $this = shift ;
+	my $class = shift ;
+
+	my $ret = $this->__get_private()->{proto}->Cast($class) ;
+
+	return $ret ;
+} 
 
 
 sub __get_member {

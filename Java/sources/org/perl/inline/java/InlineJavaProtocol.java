@@ -64,6 +64,9 @@ class InlineJavaProtocol {
 		else if (c.equals("obj_cnt")){
 			ObjectCount(st) ;
 		}
+		else if (c.equals("cast")){
+			Cast(st) ;
+		}
 		else if (c.equals("die")){
 			InlineJavaUtils.debug(1, "received a request to die...") ;
 			ijs.Shutdown() ;
@@ -104,8 +107,8 @@ class InlineJavaProtocol {
 			Method methods[] = c.getMethods() ;
 			Field fields[] = c.getFields() ;
 
-			int pub = c.getModifiers() & Modifier.PUBLIC ;
-			if (pub != 0){
+			boolean pub = ijc.ClassIsPublic(c) ;
+			if (pub){
 				// If the class is public and has no constructors,
 				// we provide a default no-arg constructors.
 				if (c.getDeclaredConstructors().length == 0){
@@ -242,7 +245,7 @@ class InlineJavaProtocol {
 			o = ijs.GetObject(id) ;
 
 			// Use the class of the object
-			class_name = o.getClass().getName() ;
+			// class_name = o.getClass().getName() ;
 		}
 
 		Class c = ijc.ValidateClass(class_name) ;
@@ -286,6 +289,20 @@ class InlineJavaProtocol {
 
 
 	/*
+		Returns a new reference to the current object, using the provided subtype
+	*/
+	void Cast(StringTokenizer st) throws InlineJavaException {
+		int id = Integer.parseInt(st.nextToken()) ;
+
+		String class_name = st.nextToken() ;
+		Object o = ijs.GetObject(id) ;
+		Class c = ijc.ValidateClass(class_name) ;
+
+		SetResponse(o, c) ;
+	}
+
+
+	/*
 		Sets a Java member variable
 	*/
 	void SetJavaMember(StringTokenizer st) throws InlineJavaException {
@@ -297,7 +314,7 @@ class InlineJavaProtocol {
 			o = ijs.GetObject(id) ;
 
 			// Use the class of the object
-			class_name = o.getClass().getName() ;
+			// class_name = o.getClass().getName() ;
 		}
 
 		Class c = ijc.ValidateClass(class_name) ;
@@ -353,7 +370,7 @@ class InlineJavaProtocol {
 			o = ijs.GetObject(id) ;
 
 			// Use the class of the object
-			class_name = o.getClass().getName() ;
+			// class_name = o.getClass().getName() ;
 		}
 
 		Class c = ijc.ValidateClass(class_name) ;
@@ -607,19 +624,35 @@ class InlineJavaProtocol {
 		This sets the response that will be returned to the Perl
 		script
 	*/
-	void SetResponse (Object o) throws InlineJavaException {
-		response = "ok " + SerializeObject(o) ;
+	void SetResponse(Object o) throws InlineJavaException {
+		SetResponse(o, null) ;
 	}
 
 
-	String SerializeObject(Object o) throws InlineJavaException {
+	void SetResponse(Object o, Class p) throws InlineJavaException {
+		response = "ok " + SerializeObject(o, p) ;
+	}
+
+
+	String SerializeObject(Object o, Class p) throws InlineJavaException {
+		Class c = (o == null ? null : o.getClass()) ;
+
+		if ((c != null)&&(p != null)){
+			if (ijc.DoesExtend(c, p) < 0){
+				throw new InlineJavaException("Can't cast a " + c.getName() + " to a " + p.getName()) ;
+			}
+			else{
+				c = p ;
+			}
+		}
+
 		if (o == null){
 			return "undef:" ;
 		}
-		else if ((ijc.ClassIsNumeric(o.getClass()))||(ijc.ClassIsChar(o.getClass()))||(ijc.ClassIsString(o.getClass()))){
+		else if ((ijc.ClassIsNumeric(c))||(ijc.ClassIsChar(c))||(ijc.ClassIsString(c))){
 			return "scalar:" + Encode(o.toString()) ;
 		}
-		else if (ijc.ClassIsBool(o.getClass())){
+		else if (ijc.ClassIsBool(c)){
 			String b = o.toString() ;
 			return "scalar:" + Encode((b.equals("true") ? "1" : "0")) ;
 		}
@@ -631,10 +664,12 @@ class InlineJavaProtocol {
 				if (o instanceof InlineJavaThrown){ 
 					thrown = true ;
 					o = ((InlineJavaThrown)o).GetThrowable() ;
-				}			
+					c = o.getClass() ;
+				}
 				int id = ijs.PutObject(o) ;
+
 				return "java_object:" + (thrown ? "1" : "0") + ":" + String.valueOf(id) +
-					":" + o.getClass().getName() ;
+					":" + c.getName() ;
 			}
 			else {
 				return "perl_object:" + ((InlineJavaPerlObject)o).GetId() +

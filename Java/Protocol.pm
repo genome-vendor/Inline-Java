@@ -5,7 +5,7 @@ use Inline::Java::Object ;
 use Inline::Java::Array ;
 use Carp ;
 
-$Inline::Java::Protocol::VERSION = '0.48_92' ;
+$Inline::Java::Protocol::VERSION = '0.48_93' ;
 
 my %CLASSPATH_ENTRIES = () ;
 
@@ -151,6 +151,24 @@ sub CallJavaMethod {
 		$this->ValidateMethod($method),
 		$this->CreateSignature($proto, ","),
 		$this->ValidateArgs($args),
+	) ;
+
+	return $this->Send($data) ;
+}
+
+
+# Casts a Java object.
+sub Cast {
+	my $this = shift ;
+	my $class = shift ;
+
+	my $id = $this->{obj_priv}->{id} ;
+	Inline::Java::debug(3, "creating a new reference to object($id) with type $class") ;
+
+	my $data = join(" ", 
+		"cast", 
+		$id,
+		Inline::Java::Class::ValidateClass($class),
 	) ;
 
 	return $this->Send($data) ;

@@ -2,13 +2,13 @@ package Inline::Java ;
 @Inline::Java::ISA = qw(Inline Exporter) ;
 
 # Export the cast function if wanted
-@EXPORT_OK = qw(cast study_classes caught jar j2sdk) ;
+@EXPORT_OK = qw(cast coerce study_classes caught jar j2sdk) ;
 
 
 use strict ;
 require 5.006 ;
 
-$Inline::Java::VERSION = '0.48_92' ;
+$Inline::Java::VERSION = '0.48_93' ;
 
 
 # DEBUG is set via the DEBUG config
@@ -94,8 +94,8 @@ sub import {
 			exit() ;
 		}
 		elsif ($a eq 'so_dirs'){
-			print portable('SO_LIB_PATH_VAR') . "=" . 
-				join(portable('ENV_VAR_PATH_SEP'), 
+			print Inline::Java::Portable::portable('SO_LIB_PATH_VAR') . "=" . 
+				join(Inline::Java::Portable::portable('ENV_VAR_PATH_SEP'), 
 				Inline::Java::get_default_j2sdk_so_dirs()) ;
 			exit() ;
 		}
@@ -151,6 +151,7 @@ sub validate {
 	$o->set_option('DEBUGGER',				0,		'b', 1, \%opts) ;
 
 	$o->set_option('PRIVATE',				'',		'b', 1, \%opts) ;
+	$o->set_option('PACKAGE',				'',		's', 1, \%opts) ;
 
 	my @left_overs = keys(%opts) ;
 	if (scalar(@left_overs)){
@@ -193,7 +194,7 @@ sub validate {
 		# Add the -sourcepath runtime option
 		$o->set_java_config('EXTRA_JAVA_ARGS', $o->get_java_config('EXTRA_JAVA_ARGS') .
 			" -sourcepath " . $o->get_api('build_dir') .
-			portable("ENV_VAR_PATH_SEP_CP") .
+			Inline::Java::Portable::portable("ENV_VAR_PATH_SEP_CP") .
 			get_source_dir()
 		) ;
 	}	
@@ -279,6 +280,11 @@ sub get_api {
 	my $o = shift ;
 	my $param = shift ;
 
+	# Allows us to force a specific package...
+	if (($param eq 'pkg')&&($o->get_config('PACKAGE'))){
+		return $o->get_config('PACKAGE') ;
+	}
+
 	return $o->{API}->{$param} ;
 }
 
@@ -301,7 +307,7 @@ sub build {
 
 	# We must grab this before we change to the build dir because
 	# it could be relative...
-	my $server_jar = get_server_jar() ;
+	my $server_jar = Inline::Java::Portable::get_server_jar() ;
 
 	# Create the build dir and go there
 	my $build_dir = $o->get_api('build_dir') ;
@@ -335,8 +341,8 @@ sub build {
 
 		# ... and compile it.
 		my $javac = File::Spec->catfile($o->get_java_config('J2SDK'), 'bin', 
-		"javac" . portable("EXE_EXTENSION")) ;
-		my $redir = portable("IO_REDIR") ;
+		"javac" . Inline::Java::Portable::portable("EXE_EXTENSION")) ;
+		my $redir = Inline::Java::Portable::portable("IO_REDIR") ;
 
 		# We need to add all the previous install dirs to the classpath because
 		# they can access each other.
@@ -347,10 +353,11 @@ sub build {
 		}
 
 		my $cp = $ENV{CLASSPATH} || '' ;
-		$ENV{CLASSPATH} = make_classpath($server_jar, @prev_install_dirs, $o->get_java_config('CLASSPATH')) ;
+		$ENV{CLASSPATH} = Inline::Java::Portable::make_classpath($server_jar, @prev_install_dirs, $o->get_java_config('CLASSPATH')) ;
 		Inline::Java::debug(2, "classpath: $ENV{CLASSPATH}") ;
 		my $args = "-deprecation " . $o->get_java_config('EXTRA_JAVAC_ARGS') ;
-		my $cmd = portable("SUB_FIX_CMD_QUOTES", "\"$javac\" $args -d \"$install_dir\" $source > cmd.out $redir") ;
+		my $cmd = Inline::Java::Portable::portable("SUB_FIX_CMD_QUOTES", 
+			"\"$javac\" $args -d \"$install_dir\" $source > cmd.out $redir") ;
 		if ($o->get_config('UNTAINT')){
 			($cmd) = $cmd =~ /(.*)/ ;
 		}
@@ -372,7 +379,7 @@ sub build {
 		# returned. Therefore a command failure is not detected.
 		# We need to take care of checking whether there are actually files
 		# to be copied, and if not will exit the script.
-		if (portable('COMMAND_COM')){
+		if (Inline::Java::Portable::portable('COMMAND_COM')){
 			my @fl = Inline::Java::Portable::find_classes_in_dir($install_dir) ;
 		 	if (! scalar(@fl)){
 				croak "No class files produced. Previous command failed under command.com?" ;
@@ -459,14 +466,15 @@ sub load {
 	# If the JVM is not running, we need to start it here.
 	my $cp = $ENV{CLASSPATH} || '' ;
 	if (! $JVM){
-		$ENV{CLASSPATH} = make_classpath(get_server_jar()) ;
+		$ENV{CLASSPATH} = Inline::Java::Portable::make_classpath(
+			Inline::Java::Portable::get_server_jar()) ;
 		Inline::Java::debug(2, "classpath: $ENV{CLASSPATH}") ;
 		$JVM = new Inline::Java::JVM($o) ;
 		$ENV{CLASSPATH}	= $cp ;
 		Inline::Java::debug(2, "classpath: $ENV{CLASSPATH}") ;
 
 		my $pc = new Inline::Java::Protocol(undef, $o) ;
-		$pc->AddClassPath(portable("SUB_FIX_CLASSPATH", get_user_jar())) ;
+		$pc->AddClassPath(Inline::Java::Portable::portable("SUB_FIX_CLASSPATH", Inline::Java::Portable::get_user_jar())) ;
 
 		my $st = $pc->ServerType() ;
 		if ((($st eq "shared")&&(! $o->get_java_config('SHARED_JVM')))||
@@ -476,7 +484,7 @@ sub load {
 	}
 
 	$ENV{CLASSPATH}	= '' ;
-	my @cp = make_classpath($install_dir, $o->get_java_config('CLASSPATH')) ;
+	my @cp = Inline::Java::Portable::make_classpath($install_dir, $o->get_java_config('CLASSPATH')) ;
 	$ENV{CLASSPATH}	= $cp ;
 	
 	my $pc = new Inline::Java::Protocol(undef, $o) ;
@@ -1067,17 +1075,36 @@ sub dump_obj {
 ######################## Public Functions ########################
 
 
+# If we are dealing with a Java object, we simply ask for a new "reference"
+# with the requested class. 
 sub cast {
+	my $type = shift ;
+	my $val = shift ;
+
+	if (! UNIVERSAL::isa($val, "Inline::Java::Object")){
+		croak("Type casting can only be used on Java objects. Use 'coerce' instead.") ;
+	}
+
+	return $val->__cast($type) ;
+}
+
+
+# coerce is used to force a specific prototype to be used.
+sub coerce {
 	my $type = shift ;
 	my $val = shift ;
 	my $array_type = shift ;
 
+	if (UNIVERSAL::isa($val, "Inline::Java::Object")){
+		croak("Type coercing can't be used on Java objects. Use 'cast' instead.") ;
+	}
+
 	my $o = undef ;
 	eval {
-		$o = new Inline::Java::Class::Cast($type, $val, $array_type) ;
+		$o = new Inline::Java::Class::Coerce($type, $val, $array_type) ;
 	} ;
 	croak $@ if $@ ;
-
+	
 	return $o ;
 }
 

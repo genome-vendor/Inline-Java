@@ -34,8 +34,13 @@ use Inline(
 	STUDY => ['t.types'],
 	CLASSPATH => '.',
 ) ;
-
-
+use Inline(
+	Java => 'STUDY',
+	AUTOSTUDY => 1,
+	STUDY => ['t.types'],
+	CLASSPATH => '.',
+	PACKAGE => 'main',
+) ;
 package study ;
 
 use Inline::Java qw(study_classes) ;
@@ -43,7 +48,7 @@ use Inline::Java qw(study_classes) ;
 
 
 BEGIN {
-	plan(tests => 9) ;
+	plan(tests => 11) ;
 }
 
 study_classes([
@@ -65,6 +70,11 @@ my $t = new study::t::types() ;
 	ok($a->sa()->[1], 'titi') ;
 	ok($a->sb()->[0]->get('toto'), 'titi') ;
 	ok($a->sb()->[1]->get('error'), undef) ;
+
+	my $toto_t = new toto::t::types() ;
+	ok(1) ;
+	my $main_t = new t::types() ;
+	ok(1) ;
 }
 
 ok($t->__get_private()->{proto}->ObjectCount(), 1) ;

@@ -2,10 +2,12 @@ Revision history for Perl extension Inline::Java
 ------------------------------------------------
 0.49  
     - Added PerlInterpreter: require/eval Perl code directly from Java
+    - Reworked type casting: changes are NOT backwards compatible :(
     - Renamed PerlNatives stuff
     - Split and updated documentation
     - Applied JNI memory leak patch by Jeff Janes
     - Added external command line tool to start/stop a SHARED_JVM server
+    - Removed exports from Inline::Java::Portable
 
 0.47  Sat Feb 14 10:00:00 EST 2004
     - Fixed bugs in portability code and added HPUX, AIX and Solaris specifics

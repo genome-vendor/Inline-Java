@@ -1,6 +1,7 @@
 package org.perl.inline.java ;
 
 import java.util.* ;
+import java.lang.reflect.* ;
 
 
 class InlineJavaClass {
@@ -464,6 +465,16 @@ class InlineJavaClass {
 
 		if ((ClassIsReference(p))&&(name.startsWith("["))){
 			InlineJavaUtils.debug(4, "class " + name + " is array") ;
+			return true ;
+		}
+
+		return false ;
+	}
+
+
+	static boolean ClassIsPublic (Class p){
+		int pub = p.getModifiers() & Modifier.PUBLIC ;
+		if (pub != 0){
 			return true ;
 		}
 
