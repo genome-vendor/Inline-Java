@@ -8,6 +8,8 @@ use IO::File ;
 use IO::Socket ;
 use POSIX qw(setsid) ;
 
+$Inline::Java::JVM::VERSION = '0.43' ;
+
 my %SIGS = () ;
 
 my @SIG_LIST = ('HUP', 'INT', 'PIPE', 'TERM') ;
@@ -84,6 +86,7 @@ sub new {
 			}
 			else{
 				# Revert to the default.
+				# Try this maybe: 9000 + $$ ?
 				$this->{port} = - $this->{port} ;
 			}
 		}

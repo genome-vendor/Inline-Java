@@ -5,6 +5,8 @@ use Inline::Java::Object ;
 use Inline::Java::Array ;
 use Carp ;
 
+$Inline::Java::Protocol::VERSION = '0.43' ;
+
 my %CLASSPATH_ENTRIES = () ;
 
 
@@ -410,14 +412,16 @@ sub DeserializeObject {
 sub encode {
 	my $s = shift ;
 
-	return join(".", unpack("U*", $s)) ;
+	# If Perl version < 5.6, use C*
+	return join(".", unpack(($] < 5.006 ? "C*" : "U*"), $s)) ;
 }
 
 
 sub decode {
 	my $s = shift ;
 
-	return pack("U*", split(/\./, $s)) ;
+	# If Perl version < 5.6, use C*
+	return pack(($] < 5.006 ? "C*" : "U*"), split(/\./, $s)) ;
 }
 
 

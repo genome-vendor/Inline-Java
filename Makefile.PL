@@ -142,7 +142,8 @@ WriteMakefile(
 	VERSION_FROM => 'Java.pm',
 	DIR => ['Java'],
 	PREREQ_PM => {
-		Inline	=> 0.44
+		Inline	=> 0.44,
+		Test => 1.13,
 	},
 	PM => {
 		'Java.pm' => File::Spec->catfile('$(INST_LIBDIR)', 'Java.pm'),

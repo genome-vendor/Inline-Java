@@ -6,7 +6,7 @@ use Inline Config =>
 
 use Inline (
 	Java => 'DATA',
-	PORT => 7891,
+	PORT => 17890,
 	STARTUP_DELAY => 20,	
 ) ;
 

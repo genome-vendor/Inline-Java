@@ -1,5 +1,6 @@
 CODE:
 - Do more test for CLASSPATH combinations
+- PRIVATE mode
 
 TEST:
 - Alpha

@@ -11,6 +11,8 @@ use Cwd ;
 use File::Find ;
 use File::Spec ;
 
+$Inline::Java::Portable::VERSION = '0.43' ;
+
 # Here is some code to figure out if we are running on command.com
 # shell under Windows.
 my $COMMAND_COM =

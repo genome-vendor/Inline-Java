@@ -948,7 +948,6 @@ your Inline directory so that C<Inline::Java>'s own Java classes get
 rebuilt to match the Perl code.
 
 =back
-   Z<>
 
 =head1 AUTHOR
 

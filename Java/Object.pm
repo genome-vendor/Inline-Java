@@ -5,6 +5,8 @@ use strict ;
 use Inline::Java::Protocol ;
 use Carp ;
 
+$Inline::Java::Object::VERSION = '0.43' ;
+
 # Here we store as keys the knots and as values our blessed private objects
 my $PRIVATES = {} ;
 
