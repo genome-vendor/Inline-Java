@@ -10,7 +10,7 @@ use Config ;
 use File::Find ;
 use File::Spec ;
 
-$Inline::Java::Portable::VERSION = '0.48_90' ;
+$Inline::Java::Portable::VERSION = '0.48_91' ;
 
 # Here is some code to figure out if we are running on command.com
 # shell under Windows.
@@ -177,21 +177,21 @@ sub portable {
 			GOT_NEXT_FREE_PORT	=>	0,
 			GOT_SYMLINK			=>	0,
 			GOT_SAFE_SIGNALS	=>	0,
-			SUB_FIX_CMD_QUOTES	=>	($COMMAND_COM ? undef : sub {
-				my $val = shift ;
-				$val = qq{"$val"} ;
-				return $val ;
-			}),
 
 # Can't remember what this was supposed to fix, but it breaks
 # when there are spaces in the J2SDK directory...
 #
-#			SUB_FIX_MAKE_QUOTES	=>	sub {
+#			SUB_FIX_CMD_QUOTES	=>	($COMMAND_COM ? undef : sub {
 #				my $val = shift ;
 #				$val = qq{"$val"} ;
 #				return $val ;
-#			},
+#			}),
 #
+			SUB_FIX_MAKE_QUOTES	=>	sub {
+				my $val = shift ;
+				$val = qq{"$val"} ;
+				return $val ;
+			},
 			PRE_WHOLE_ARCHIVE	=>  '',
 			POST_WHOLE_ARCHIVE	=>  '',
 		},

@@ -83,7 +83,7 @@ object. Here is a example of a typical use:
 
 =head1 CALLBACK API
 
-Here are the various methods that one can use call into
+Here are the various methods that one can use to call into
 Perl:
 
 =over 4
@@ -95,8 +95,8 @@ throws InlineJavaException, InlineJavaPerlException
 Calls the specified subroutine with the supplied arguments and tries
 to create an object of type 'cast' with the result.
 
-Ex: Integer sum = (Integer)CallPerlSub("main::add", 
-new Object [] {new Integer(5), new Integer(3)}, Integer.class) ;
+   /* Example */
+   Integer sum = (Integer)CallPerlSub("main::add", new Object [] {new Integer(5), new Integer(3)}, Integer.class) ;
       
 =item public Object CallPerlStaticMethod(String pkg, String method,
 Object args[], Class cast)
@@ -106,8 +106,8 @@ Calls the specified static package method (using the $pkg->$method()
 notation) with the supplied arguments and tries to create an object 
 of type 'cast' with the result.
 
-Ex: Integer sum = (Integer)CallPerlStaticMethod("main", "add", 
-new Object [] {new Integer(5), new Integer}, Integer.class) ;
+   /* Example */
+   Integer sum = (Integer)CallPerlStaticMethod("main", "add", new Object [] {new Integer(5), new Integer(3)}, Integer.class) ;
 
 =item public Object eval(String code, Class cast) 
 throws InlineJavaPerlException, InlineJavaException
@@ -115,7 +115,8 @@ throws InlineJavaPerlException, InlineJavaException
 Evaluates the given Perl code and tries to create an object
 of type 'cast' with the result.
 
-Ex: Interger sum = (Integer)eval("5 + 3", Integer.class) ;
+   /* Example */
+   Integer sum = (Integer)eval("5 + 3", Integer.class) ;
 
 =item public Object require(String module_or_file) 
 throws InlineJavaPerlException, InlineJavaException
@@ -123,21 +124,24 @@ throws InlineJavaPerlException, InlineJavaException
 Requires the specified module/file by using the proper
 construct.
 
-Ex: require("Someting")
+   /* Example */
+   require("Someting")
       
 =item public Object require_file(String file) 
 throws InlineJavaPerlException, InlineJavaException
       
 Requires the specified file.
 
-Ex: require("./my_stuff.pl") ;
+   /* Example */
+   require("./my_stuff.pl") ;
 
 =item public Object require_module(String module) 
 throws InlineJavaPerlException, InlineJavaException
       
 Requires the specified module.
 
-Ex: require("Data::Dumper") ;
+   /* Example */
+   require("Data::Dumper") ;
 
 =back
 
