@@ -5,7 +5,7 @@ use Inline::Java::Object ;
 use Inline::Java::Array ;
 use Carp ;
 
-$Inline::Java::Protocol::VERSION = '0.48_94' ;
+$Inline::Java::Protocol::VERSION = '0.48_95' ;
 
 my %CLASSPATH_ENTRIES = () ;
 
@@ -293,7 +293,10 @@ sub ValidateArgs {
 			}
 			elsif ($arg =~ /^(.*?)=/){
 				my $id = Inline::Java::Callback::PutObject($arg) ;
-				push @ret, "perl_object:$1:$id" ;
+				# Bug. The delimiter is :, so we need to escape the package separator (::)
+				my $pkg = $1 ;
+				$pkg =~ s/:/\//g ;
+				push @ret, "perl_object:$pkg:$id" ;
 			}
 			else {
 				if (! $callback){
@@ -394,6 +397,7 @@ sub DeserializeObject {
 				if (Inline::Java::Class::ClassIsReference($elem_class)){
 					if (! Inline::Java::known_to_perl($pkg, $elem_class)){
 						if (($thrown)||($this->{inline}->get_java_config('AUTOSTUDY'))){
+							Inline::Java::debug(2, "autostudying $elem_class...") ;
 							$this->{inline}->_study([$elem_class]) ;
 						}
 						else{	

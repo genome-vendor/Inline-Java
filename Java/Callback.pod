@@ -154,9 +154,48 @@ C<InlineJavaPerlException> (both of these belong to the C<org.perl.inline.java>
 package). The former designates an internal C<Inline::Java> error and the 
 latter indicates that the Perl callback threw an exception (die() or croak()).
 The value of $@ (this can be a scalar or any valid "Inline::Java" object) can
-be retreived using the GetObject() method of the C<InlineJavaPerlException> object
-(if you are certain that $@ was a Perl scalar, you can use the GetString() 
-method).
+be retreived using the GetObject() method of the C<InlineJavaPerlException> 
+object (if you are certain that $@ was a Perl scalar, you can use the 
+GetString() method).
+   Z<>
+
+
+=head1 CALLBACK CONTEXT
+
+By default, callback are executed in scalar context. However if you want to
+call certain functions in list context, you must insert "@" in front of the
+function name. The result will then be passed on to Java as an Array:
+
+=for comment
+
+   use Inline Java => <<'END' ;
+      import org.perl.inline.java.* ;
+
+      class Pod_Context {
+         static private String dummy[] = {} ;
+
+         static public String [] get_list()
+            throws InlineJavaException, InlineJavaPerlException {
+            InlineJavaPerlCaller pc = new InlineJavaPerlCaller() ;
+            return (String [])pc.CallPerlSub("@main::list",
+                null, dummy.getClass()) ;
+         }
+      }
+   END
+
+   sub list {
+      return ('a', 'b', 'c') ;
+   }
+
+   print(Pod_Context->get_list()->[1] . "\n") ; # prints b
+
+=for comment
+
+Note: When calling a Perl function that returns a list or array, you will
+need to pass the Class object for the expected array type (in this case
+String []). Since these Class objects are fiddicult to access for array 
+types, the easiest way to do this is to create a dummy array of the desired 
+type and call the getClass() method on that object (as seen above).
    Z<>
 
 

@@ -14,7 +14,7 @@ use Inline::Java qw(caught) ;
 
 
 BEGIN {
-	my $cnt = 24 ;
+	my $cnt = 25 ;
 	plan(tests => $cnt) ;
 }
 
@@ -28,6 +28,8 @@ my $t = new t15() ;
 		ok($t->add_via_perl(5, 6), 11) ;
 		my $a = $t->incr_via_perl([7, 6, 5]) ;
 		ok($a->[1], 7) ;
+		$a = $t->incr_via_perl_ctx($a) ;
+		ok($a->[1], 8) ;
 		ok($t->mul(5, 6), 30) ;
 		ok($t->mul_via_perl(5, 6), 30) ;
 		ok($t->silly_mul(3, 2), 6) ;
@@ -115,7 +117,7 @@ sub incr {
 		$ija->[$i]++ ;
 	}
 
-	return $ija ;
+	return wantarray ? @{$ija} : $ija ;
 }
 
 
@@ -283,6 +285,13 @@ class t15 extends InlineJavaPerlCaller {
 
 	public int [] incr_via_perl(int a[]) throws InlineJavaException, InlineJavaPerlException {
 		int [] r = (int [])CallPerlSub("main::incr", 
+			new Object [] {a}, a.getClass()) ;
+
+		return r ;
+	}
+
+	public int [] incr_via_perl_ctx(int a[]) throws InlineJavaException, InlineJavaPerlException {
+		int [] r = (int [])CallPerlSub("@main::incr", 
 			new Object [] {a}, a.getClass()) ;
 
 		return r ;

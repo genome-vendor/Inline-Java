@@ -3,7 +3,7 @@ package Inline::Java::Callback ;
 use strict ;
 use Carp ;
 
-$Inline::Java::Callback::VERSION = '0.48_94' ;
+$Inline::Java::Callback::VERSION = '0.48_95' ;
 
 $Inline::Java::Callback::OBJECT_HOOK = undef ;
 
@@ -22,7 +22,7 @@ sub InterceptCallback {
 		$inline = $Inline::Java::JNI::INLINE_HOOK ;
 	}
 
-	if ($resp =~ s/^callback ([^ ]+) ([\w:]+) ([^ ]+)//){
+	if ($resp =~ s/^callback ([^ ]+) (\@?[\w:]+) ([^ ]+)//){
 		my $via = $1 ;
 		my $function = $2 ;
 		my $cast_return = $3 ;
@@ -50,9 +50,16 @@ sub ProcessCallback {
 	my $cast_return = shift ;
 	my @sargs = @_ ;
 
+	my $list_ctx = 0 ;
+	if ($function =~ s/^\@//){
+		$list_ctx = 1 ;
+	}
+
 	my $pc = new Inline::Java::Protocol(undef, $inline) ;
 	my $thrown = 'false' ;
+
 	my $ret = undef ;
+	my @ret = () ;
 	eval {
 		my @args = map {
 			my $a = $pc->DeserializeObject(0, $_) ;
@@ -66,13 +73,23 @@ sub ProcessCallback {
 			Inline::Java::debug(2, "processing callback $id" . "->" . "$function(" . 
 				join(", ", @args) . ")") ;
 			my $obj = Inline::Java::Callback::GetObject($id) ;
-			$ret = $obj->$function(@args) ;
+			if ($list_ctx){
+				@ret = $obj->$function(@args) ;
+			}
+			else{
+				$ret = $obj->$function(@args) ;
+			}
 		}
 		elsif ($via ne 'null'){
 			# Call via package
 			Inline::Java::debug(2, "processing callback $via" . "->" . "$function(" . 
 				join(", ", @args) . ")") ;
-			$ret = $via->$function(@args) ;
+			if ($list_ctx){
+				@ret = $via->$function(@args) ;
+			}
+			else{
+				$ret = $via->$function(@args) ;
+			}
 		}
 		else {
 			# Straight call
@@ -81,7 +98,16 @@ sub ProcessCallback {
 			if ($function !~ /::/){
 				$function = 'main' . '::' . $function ;
 			}
-			$ret = $function->(@args) ;
+			if ($list_ctx){
+				@ret = $function->(@args) ;
+			}
+			else{
+				$ret = $function->(@args) ;
+			}
+		}
+
+		if ($list_ctx){
+			$ret = \@ret ;
 		}
 	} ;
 	if ($@){

@@ -240,7 +240,9 @@ class InlineJavaClass {
 				InlineJavaUtils.debug(4, "class " + p.getName() + " is reference") ;
 
 				String pkg = (String)tokens.get(1) ;
+				pkg = pkg.replace('/', ':') ;
 				String objid = (String)tokens.get(2) ;
+
 
 				if (DoesExtend(p, org.perl.inline.java.InlineJavaPerlObject.class) > -1){
 					InlineJavaUtils.debug(4, " Perl object is a kind of " + p.getName()) ;
