@@ -66,15 +66,10 @@ second time you test loading of an already built module.
 -------------------------------------------------------------------------------
 FEATURES FOR THIS VERSION:
 
-Inline::Java version 0.49 is a major upgrade that includes:
-    - Added PerlInterpreter: require/eval Perl code directly from Java
-    - Reworked type casting: changes are NOT backwards compatible :(
-    - Callbacks can now be called in list context using "@function_name"
-    - Renamed PerlNatives stuff
-    - Added external command line tool to start/stop a SHARED_JVM server
-    - Applied JNI memory leak patch by Jeff Janes
-    - Removed exports from Inline::Java::Portable
-    - Split and updated documentation
+Inline::Java version 0.50 is a minor upgrade that includes:
+    - Added HOST configuration option to access JVM server remotely
+    - Fixed bug with paths in Cygwin
+    - Other minor bug fixes
 
 See CHANGES for a full change list.
 
@@ -92,4 +87,4 @@ Inline::Java's home page is http://inline.perl.org/java/.
 
 Please send questions and comments to Patrick LeBoutillier <patl@cpan.org>.
 
-Copyright (c) 2001-2004, Patrick LeBoutillier. All Rights Reserved.  
+Copyright (c) 2001-2005, Patrick LeBoutillier. All Rights Reserved.  

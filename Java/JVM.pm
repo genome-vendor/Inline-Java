@@ -8,7 +8,7 @@ use IPC::Open3 ;
 use IO::Socket ;
 use Inline::Java::Portable ;
 
-$Inline::Java::JVM::VERSION = '0.49' ;
+$Inline::Java::JVM::VERSION = '0.49_90' ;
 
 my %SIGS = () ;
 
@@ -65,7 +65,7 @@ sub new {
 		$this->{shared} = $o->get_java_config('SHARED_JVM') ;
 		$this->{start_jvm} = $o->get_java_config('START_JVM') ;
 		$this->{port} = $o->get_java_config('PORT') ;
-		$this->{host} = "localhost" ;
+		$this->{host} = $o->get_java_config('HOST') ;
 
 		# Grab the next free port number and release it.
 		if ((! $this->{shared})&&($this->{port} < 0)){

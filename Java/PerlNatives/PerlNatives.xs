@@ -73,7 +73,7 @@ jobject extract_va_arg(JNIEnv *env, va_list *list, char f){
 
 	/*
 		A bit of voodoo going on for J and F, but the rest I think is pretty
-		kosher (on a 32 bit machine at least)
+		kosher (on a 32 bit machine at least...)
 	*/
 	switch(f){
 		case 'B':
@@ -102,7 +102,7 @@ jobject extract_va_arg(JNIEnv *env, va_list *list, char f){
 			ret = create_primitive_object(env, f, "java/lang/Double", val) ;
 			break ;
 		case 'Z':
-			val.z = (jint)va_arg(*list, int) ;
+			val.z = (jboolean)va_arg(*list, int) ;
 			ret = create_primitive_object(env, f, "java/lang/Boolean", val) ;
 			break ;
 		case 'C':

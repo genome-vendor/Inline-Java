@@ -10,7 +10,7 @@ use Inline (
 
 
 BEGIN {
-	plan(tests => 99) ;
+	plan(tests => 103) ;
 }
 
 
@@ -65,65 +65,79 @@ my $t = new types2() ;
 	eval {$t->_Integer($max + 1)} ; ok($@, qr/out of range/) ;
 	eval {$t->_Integer($min - 1)} ; ok($@, qr/out of range/) ;
 	
-	$max = 2147483647 ;
-	$min = -2147483648 ;
+	$max = '9223372036854775807' ;
+	$min = '-9223372036854775808' ;
 	ok($t->_long(undef) == 1) ;
 	ok($t->_long(0) == 1) ;
-	ok($t->_long($max - 1) == $max) ;
-	ok($t->_long("$min") == $min + 1) ;
-	eval {$t->_long($max + 1)} ; ok($@, qr/out of range/) ;
-	eval {$t->_long($min - 1)} ; ok($@, qr/out of range/) ;
+	ok($t->_long('9223372036854775806') eq $max) ;
+	ok($t->_long("$min") eq '-9223372036854775807') ;
+	# Out of range testing is now impossible since Perl has a lesser range.
+	# eval {$t->_long($max + 1)} ; ok($@, qr/out of range/) ;
+	# eval {$t->_long($min - 1)} ; ok($@, qr/out of range/) ;
 	ok($t->_Long(undef) == 0) ;
 	ok($t->_Long(0) == 0) ;
 	ok($t->_Long($max) == $max) ;
 	ok($t->_Long("$min") == $min) ;
-	eval {$t->_Long($max + 1)} ; ok($@, qr/out of range/) ;
-	eval {$t->_Long($min - 1)} ; ok($@, qr/out of range/) ;
+	# Out of range testing is now impossible since Perl has a lesser range.
+	# eval {$t->_Long($max + 1)} ; ok($@, qr/out of range/) ;
+	# eval {$t->_Long($min - 1)} ; ok($@, qr/out of range/) ;
 	
 	$max = 3.4028235e38 ;
 	$min = -3.4028235e38 ;
 	ok($t->_float(undef) == 1) ;
 	ok($t->_float(0) == 1) ;
-	# The format changes in JNI sometimes
-	# ok($t->_float($max - 1) == $max) ;
-	# ok($t->_float("$min") == $min + 1) ;
+	ok($t->_float($max / 2)) ;
+	ok($t->_float($min / 2)) ;
+	# Equality tests for such large floating point number are not always reliable
+	ok($t->_float($max - 1)) ;
+	ok($t->_float("$min")) ;
 	eval {$t->_float($max + $max)} ; ok($@, qr/out of range/) ;
 	eval {$t->_float($min + $min)} ; ok($@, qr/out of range/) ;
 	ok($t->_Float(undef) == 0) ;
 	ok($t->_Float(0) == 0) ;
-	# The format changes in JNI sometimes
-	# ok($t->_Float($max) == $max) ;
-	# ok($t->_Float("$min") == $min) ;
+	ok($t->_Float($max / 2)) ;
+	ok($t->_Float($min / 2)) ;
+	# Equality tests for such large floating point number are not always reliable
+	ok($t->_Float($max)) ;
+	ok($t->_Float("$min")) ;
 	eval {$t->_Float($max + $max)} ; ok($@, qr/out of range/) ;
 	eval {$t->_Float($min + $min)} ; ok($@, qr/out of range/) ;
-	
-	$max = 3.4028235e38 ;
-	$min = -3.4028235e38 ;
+
+	$max = 1.7976931348623157e308 ;
+	$min = -1.7976931348623157e308 ;
 	ok($t->_double(undef) == 1) ;
 	ok($t->_double(0) == 1) ;
-	# The format changes in JNI sometimes
+	ok($t->_double($max / 2)) ;
+	ok($t->_double($min / 2)) ;
+	# Equality tests for such large floating point number are not always reliable
 	# ok($t->_double($max - 1) == $max) ;
 	# ok($t->_double("$min") == $min + 1) ;
-	eval {$t->_double($max + $max)} ; ok($@, qr/out of range/) ;
-	eval {$t->_double($min + $min)} ; ok($@, qr/out of range/) ;
+	# Out of range testing is impossible since Perl has an equal range.
+	# eval {$t->_double($max + $max)} ; ok($@, qr/out of range/) ;
+	# eval {$t->_double($min + $min)} ; ok($@, qr/out of range/) ;
 	ok($t->_Double(undef) == 0) ;
 	ok($t->_Double(0) == 0) ;
-	# The format changes in JNI sometimes
+	ok($t->_Double($max / 2)) ;
+	ok($t->_Double($min / 2)) ;
+	# Equality tests for such large floating point number are not always reliable
 	# ok($t->_Double($max) == $max) ;
 	# ok($t->_Double("$min") == $min) ;
-	eval {$t->_Double($max + $max)} ; ok($@, qr/out of range/) ;
-	eval {$t->_Double($min + $min)} ; ok($@, qr/out of range/) ;
+	# eval {$t->_Double($max + $max)} ; ok($@, qr/out of range/) ;
+	# eval {$t->_Double($min + $min)} ; ok($@, qr/out of range/) ;
 	
 	# Number is forced to Double
-	$max = 3.4028235e38 ;
-	$min = -3.4028235e38 ;
+	$max = 1.7976931348623157e308 ;
+	$min = -1.7976931348623157e308 ;
 	ok($t->_Number(undef) == 0) ;
 	ok($t->_Number(0) == 0) ;
-	# The format changes in JNI sometimes
+	ok($t->_Number($max / 2)) ;
+	ok($t->_Number($min / 2)) ;
+	# Equality tests for such large floating point number are not always reliable
 	# ok($t->_Number($max) == $max) ;
 	# ok($t->_Number("$min") == $min) ;
-	eval {$t->_Number($max + $max)} ; ok($@, qr/out of range/) ;
-	eval {$t->_Number($min + $min)} ; ok($@, qr/out of range/) ;
+	# Out of range testing is impossible since Perl has an equal range.
+	# eval {$t->_Number($max + $max)} ; ok($@, qr/out of range/) ;
+	# eval {$t->_Number($min + $min)} ; ok($@, qr/out of range/) ;
 	
 	ok(! $t->_boolean(undef)) ;
 	ok(! $t->_boolean(0)) ;

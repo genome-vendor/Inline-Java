@@ -78,7 +78,7 @@ J2SDK_PL
 close(J2SDK) ;
 
 print <<SAVE_J2SDK;
-Default J2SDK for Inline:Java will be '$jdk_dir'.
+Default J2SDK for Inline::Java will be '$jdk_dir'.
 See module documentation for information on how to use a different J2SDK
 or change this default value.
 

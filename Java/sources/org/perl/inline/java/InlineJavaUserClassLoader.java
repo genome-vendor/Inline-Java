@@ -24,7 +24,9 @@ class InlineJavaUserClassLoader extends URLClassLoader {
 
 
     public InlineJavaUserClassLoader(){
-        super(new URL [] {}) ;
+		// Added Thread.currentThread().getContextClassLoader() so that the code works
+		// in Tomcat and possibly other embedded environments asa well.
+        super(new URL [] {}, Thread.currentThread().getContextClassLoader()) ;
     }
 
 

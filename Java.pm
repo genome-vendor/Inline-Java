@@ -8,7 +8,7 @@ package Inline::Java ;
 use strict ;
 require 5.006 ;
 
-$Inline::Java::VERSION = '0.49' ;
+$Inline::Java::VERSION = '0.49_90' ;
 
 
 # DEBUG is set via the DEBUG config
@@ -131,27 +131,28 @@ sub validate {
 	my $jdk = Inline::Java::get_default_j2sdk() ;
 	my $dbg = $Inline::Java::DEBUG ;
 	my %opts = @_ ;
-	$o->set_option('DEBUG',					$dbg,	'i', 1, \%opts) ;
-	$o->set_option('J2SDK',					$jdk,	's', 1, \%opts) ;
-	$o->set_option('CLASSPATH',				'',		's', 1, \%opts) ;
+	$o->set_option('DEBUG',					$dbg,			'i', 1, \%opts) ;
+	$o->set_option('J2SDK',					$jdk,			's', 1, \%opts) ;
+	$o->set_option('CLASSPATH',				'',				's', 1, \%opts) ;
 
-	$o->set_option('PORT',					-1,		'i', 1, \%opts) ;
-	$o->set_option('STARTUP_DELAY',			15,		'i', 1, \%opts) ;
-	$o->set_option('SHARED_JVM',			0,		'b', 1, \%opts) ;
-	$o->set_option('START_JVM',				1,		'b', 1, \%opts) ;
-	$o->set_option('JNI',					0,		'b', 1, \%opts) ;
-	$o->set_option('EMBEDDED_JNI',			0,		'b', 1, \%opts) ;
+	$o->set_option('HOST',					'localhost',	's', 1, \%opts) ;
+	$o->set_option('PORT',					-1,				'i', 1, \%opts) ;
+	$o->set_option('STARTUP_DELAY',			15,				'i', 1, \%opts) ;
+	$o->set_option('SHARED_JVM',			0,				'b', 1, \%opts) ;
+	$o->set_option('START_JVM',				1,				'b', 1, \%opts) ;
+	$o->set_option('JNI',					0,				'b', 1, \%opts) ;
+	$o->set_option('EMBEDDED_JNI',			0,				'b', 1, \%opts) ;
 
-	$o->set_option('WARN_METHOD_SELECT',	0,		'b', 1, \%opts) ;
-	$o->set_option('STUDY',					undef,	'a', 0, \%opts) ;
-	$o->set_option('AUTOSTUDY',				0,		'b', 1, \%opts) ;
+	$o->set_option('WARN_METHOD_SELECT',	0,				'b', 1, \%opts) ;
+	$o->set_option('STUDY',					undef,			'a', 0, \%opts) ;
+	$o->set_option('AUTOSTUDY',				0,				'b', 1, \%opts) ;
 
-	$o->set_option('EXTRA_JAVA_ARGS',		'',		's', 1, \%opts) ;
-	$o->set_option('EXTRA_JAVAC_ARGS',		'',		's', 1, \%opts) ;
-	$o->set_option('DEBUGGER',				0,		'b', 1, \%opts) ;
+	$o->set_option('EXTRA_JAVA_ARGS',		'',				's', 1, \%opts) ;
+	$o->set_option('EXTRA_JAVAC_ARGS',		'',				's', 1, \%opts) ;
+	$o->set_option('DEBUGGER',				0,				'b', 1, \%opts) ;
 
-	$o->set_option('PRIVATE',				'',		'b', 1, \%opts) ;
-	$o->set_option('PACKAGE',				'',		's', 1, \%opts) ;
+	$o->set_option('PRIVATE',				'',				'b', 1, \%opts) ;
+	$o->set_option('PACKAGE',				'',				's', 1, \%opts) ;
 
 	my @left_overs = keys(%opts) ;
 	if (scalar(@left_overs)){
@@ -180,6 +181,9 @@ sub validate {
 	}
 	if (($o->get_java_config('JNI'))&&($o->get_java_config('DEBUGGER'))){
 		croak("You can't invoke the Java debugger ('DEBUGGER' option) in 'JNI' mode") ;
+	}
+	if ((! $o->get_java_config('SHARED_JVM'))&&(! $o->get_java_config('START_JVM'))){
+		croak("Disabling the 'START_JVM' option only makes sense in 'SHARED_JVM' mode") ;
 	}
 
 	if ($o->get_java_config('JNI')){
@@ -356,8 +360,9 @@ sub build {
 		$ENV{CLASSPATH} = Inline::Java::Portable::make_classpath($server_jar, @prev_install_dirs, $o->get_java_config('CLASSPATH')) ;
 		Inline::Java::debug(2, "classpath: $ENV{CLASSPATH}") ;
 		my $args = "-deprecation " . $o->get_java_config('EXTRA_JAVAC_ARGS') ;
+		my $pinstall_dir = Inline::Java::Portable::portable("SUB_FIX_JAVA_PATH", $install_dir) ;
 		my $cmd = Inline::Java::Portable::portable("SUB_FIX_CMD_QUOTES", 
-			"\"$javac\" $args -d \"$install_dir\" $source > cmd.out $redir") ;
+			"\"$javac\" $args -d \"$pinstall_dir\" $source > cmd.out $redir") ;
 		if ($o->get_config('UNTAINT')){
 			($cmd) = $cmd =~ /(.*)/ ;
 		}
@@ -474,7 +479,7 @@ sub load {
 		Inline::Java::debug(2, "classpath: $ENV{CLASSPATH}") ;
 
 		my $pc = new Inline::Java::Protocol(undef, $o) ;
-		$pc->AddClassPath(Inline::Java::Portable::portable("SUB_FIX_CLASSPATH", Inline::Java::Portable::get_user_jar())) ;
+		$pc->AddClassPath(Inline::Java::Portable::portable("SUB_FIX_JAVA_PATH", Inline::Java::Portable::get_user_jar())) ;
 
 		my $st = $pc->ServerType() ;
 		if ((($st eq "shared")&&(! $o->get_java_config('SHARED_JVM')))||
@@ -628,7 +633,8 @@ sub load_jdat {
 	my $data_idx = scalar(@{$o->{ILSM}->{data}}) ;
 	push @{$o->{ILSM}->{data}}, $d ;
 	
-	my $re = '[\w.\$\[;]+' ;
+	# my $re = '[\w.\$\[;]+' ;
+	my $re = '.+' ;
 
 	my $idx = 0 ;
 	my $current_class = undef ;

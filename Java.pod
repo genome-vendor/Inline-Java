@@ -146,6 +146,17 @@ Note: This configuration option only has an effect on the first
 'use Inline Java' call inside a Perl script, since all other calls
 make use of the same JVM.
 
+=item HOST
+
+Specifies the host on which the JVM server is running. This option
+really only makes sense in SHARED_JVM mode when START_JVM is disabled.
+
+   Ex: HOST => 'jvm.server.com'
+
+Note: This configuration option only has an effect on the first
+'use Inline Java' call inside a Perl script, since all other calls
+make use of the same JVM.
+
 =item STARTUP_DELAY
 
 Specifies the maximum number of seconds that the Perl script
@@ -1040,7 +1051,7 @@ Brian Ingerson <ingy@cpan.org> is the author of Inline.
 
 =head1 COPYRIGHT
 
-Copyright (c) 2001-2004, Patrick LeBoutillier.
+Copyright (c) 2001-2005, Patrick LeBoutillier.
 
 All Rights Reserved. This module is free software. It may be used,
 redistributed and/or modified under the terms of the Perl Artistic

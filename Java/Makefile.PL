@@ -60,7 +60,9 @@ print
 	"Note: You must build the extension if you wish to use PerlNatives or\n" .
 	"      PerlInterpreter.\n" ;
 
-if (($build_jni || AskYN("Do you wish to build the JNI extension?", 'y'))){
+my $build_jni_by_dflt = Inline::Java::Portable::portable("BUILD_JNI_BY_DFLT") ;
+if (($build_jni || AskYN("Do you wish to build the JNI extension?", 
+	($build_jni_by_dflt ? 'y' : 'n')))){
 	print "\nBuilding JNI extension.\n\n" ;
 
 	$jdk_dir = Inline::Java::get_default_j2sdk() ;

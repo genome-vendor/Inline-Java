@@ -3,10 +3,12 @@ package Inline::Java::Class ;
 use strict ;
 use Carp ;
 
-$Inline::Java::Class::VERSION = '0.49' ;
+$Inline::Java::Class::VERSION = '0.49_90' ;
 
 $Inline::Java::Class::MAX_SCORE = 10 ;
 
+# There is no use supporting exponent notation for integer types since
+# Jave does not support it without casting.
 my $INT_RE = '^[+-]?\d+$' ;
 my $FLOAT_RE = '^([+-]?)(?=\d|\.\d)\d*(\.\d*)?([Ee]([+-]?\d+))?$' ;
 
@@ -28,10 +30,8 @@ my $RANGE = {
 	},
 	'java.lang.Long' => {
 		REGEXP => $INT_RE,
-		MAX => 2147483647,
-		MIN => -2147483648,
-		# MAX => 9223372036854775807,
-		# MIN => -9223372036854775808,
+		MAX => 9223372036854775807,
+		MIN => -9223372036854775808,
 	},
 	'java.lang.Float' => {
 		REGEXP => $FLOAT_RE,
@@ -42,17 +42,15 @@ my $RANGE = {
 	},
 	'java.lang.Double' => {
 		REGEXP => $FLOAT_RE,
-		MAX => 3.4028235e38,
-		MIN => -3.4028235e38,
-		# MAX => 1.7976931348623157e308,
-		# MIN => -1.7976931348623157e308,
+		MAX => 1.7976931348623157e308,
+		MIN => -1.7976931348623157e308,
 		POS_MIN => 4.9e-324,
 		NEG_MAX => -4.9e-324,
 	},
 } ;
 $RANGE->{byte} = $RANGE->{'java.lang.Byte'} ;
 $RANGE->{short} = $RANGE->{'java.lang.Short'} ;
-$RANGE->{int} = $RANGE->{'java.lang.Integer'} ;
+$RANGE->{'int'} = $RANGE->{'java.lang.Integer'} ;
 $RANGE->{long} = $RANGE->{'java.lang.Long'} ;
 $RANGE->{float} = $RANGE->{'java.lang.Float'} ;
 $RANGE->{double} = $RANGE->{'java.lang.Double'} ;
@@ -163,7 +161,7 @@ sub CastArgument {
 						croak "Can't convert $arg to object $proto" ;
 					}
 				}
-				else{
+				else {
 					# Here we got a scalar
 					# Here we allow scalars to be passed in place of java.lang.Object
 					# They will wrapped on the Java side.
@@ -194,6 +192,8 @@ sub CastArgument {
 					return ($arg, 5.5) ;
 				}
 				croak "$arg out of range for type $proto" ;
+			}
+			elsif ($arg =~ /$FLOAT_RE/){
 			}
 			croak "Can't convert $arg to $proto" ;
 		}
