@@ -434,7 +434,7 @@ sub ValidateArray {
 	my $array = shift ;
 	my $level = shift || 0 ;
 
-	if (! UNIVERSAL::isa($ref, "ARRAY")){
+	if (! ((defined($ref))&&(UNIVERSAL::isa($ref, "ARRAY")))){
 		# We must start with an array of some kind...
 		croak "'$ref' is not an array reference" ;
 	}
@@ -443,7 +443,7 @@ sub ValidateArray {
 
 	my $map = $this->{map} ;
 	foreach my $elem (@{$ref}){
-		if (UNIVERSAL::isa($elem, "ARRAY")){
+		if ((defined($elem))&&(UNIVERSAL::isa($elem, "ARRAY"))){
 			# All the elements at this level are sub-arrays.
 			my $sarray = [] ;
 			$this->ValidateArray($elem, $sarray, $level + 1) ;
@@ -616,7 +616,7 @@ sub MakeElementList {
 
 	my @ret = () ;
 	foreach my $elem (@{$array}){
-		if (UNIVERSAL::isa($elem, "ARRAY")){
+		if ((defined($elem))&&(UNIVERSAL::isa($elem, "ARRAY"))){
 			my $sret = $this->MakeElementList($elem) ;
 			push @ret, @{$sret} ;			
 		}

@@ -70,7 +70,7 @@ jstring JNICALL jni_callback(JNIEnv *env, jobject obj, jstring cmd){
 	/*
 		Here is is important to understand that we cannot croak,
 		because our caller is Java and not Perl. Croaking here
-		scrwes up the Java stack royally and causes crashes.
+		screws up the Java stack royally and causes crashes.
 	*/
 
 	/* Check the eval */
@@ -94,7 +94,7 @@ jstring JNICALL jni_callback(JNIEnv *env, jobject obj, jstring cmd){
 		may be returned be the callback, and when it gets back to Java
 		it will already be deleted.
 	*/
-	hook = get_sv("Inline::Java::Callback::OBJECT_HOOK", FALSE) ;
+	hook = perl_get_sv("Inline::Java::Callback::OBJECT_HOOK", FALSE) ;
 	sv_setsv(hook, POPs) ;
 
 	r = (char *)POPp ;
@@ -232,7 +232,7 @@ process_command(this, data)
 	resp = (*(env))->CallObjectMethod(env, this->ijs, this->process_command_mid, cmd) ;
 	check_exception(env, "Can't call ProcessCommand in InlineJavaServer") ;
 
-	hook = get_sv("Inline::Java::Callback::OBJECT_HOOK", FALSE) ;
+	hook = perl_get_sv("Inline::Java::Callback::OBJECT_HOOK", FALSE) ;
 	sv_setsv(hook, &PL_sv_undef) ;
 
 	RETVAL = (char *)((*(env))->GetStringUTFChars(env, resp, NULL)) ;

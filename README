@@ -72,6 +72,10 @@ WARNING: THIS IS ALPHA SOFTWARE. It is incomplete and possibly unreliable.
          It is also possible that some elements of the interface (API) will 
          change in future releases.
 
+Inline::Java version 0.32 is a minor upgrade that includes:
++ Restored compatibiity with Perl 5.005_03
++ Other minor bug fixes
+
 Inline::Java version 0.31 is a major upgrade that includes:
 + Exception handling (Perl can 'catch' Java exceptions)
 + Callbacks to Perl from Java

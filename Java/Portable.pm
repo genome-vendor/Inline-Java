@@ -12,6 +12,7 @@ $Inline::Java::Portable::VERSION = '0.31' ;
 use Exporter ;
 use Carp ;
 use Config ;
+use File::Find ;
 
 # Here is some code to figure out if we are running on command.com
 # shell under Windows.
@@ -72,6 +73,21 @@ sub rmpath {
 } ;
 
 
+sub find_classes_in_dir {
+	my $dir = shift ;
+
+	my @ret = () ;
+	find(sub {
+		my $file = $_ ;
+		if ($file =~ /\.class$/){
+			push @ret, $file ;
+		}
+	}, $dir) ;	
+
+	return @ret ;
+}
+
+
 sub portable {
 	my $key = shift ;
 	my $val = shift ;
@@ -82,10 +98,13 @@ sub portable {
 		GOT_FORK			=>	$Config{d_fork} || 0,
 		ENV_VAR_PATH_SEP	=>	$Config{path_sep},
 		SO_EXT				=>	$Config{dlext},
+		PREFIX				=>	$Config{prefix},
+		LIBPERL				=>	$Config{libperl},
 		DETACH_OK			=>	1,
 		SO_LIB_PATH_VAR		=>	'LD_LIBRARY_PATH',
 		ENV_VAR_PATH_SEP_CP	=>	':',
 		IO_REDIR			=>  '2>&1',
+		DEV_NULL			=>  '/dev/null',
 		COMMAND_COM			=>  0,
 		SUB_FIX_CLASSPATH	=>	undef,
 		JVM_LIB				=>	'libjvm.so',
@@ -97,6 +116,7 @@ sub portable {
 			ENV_VAR_PATH_SEP_CP	=>	';',
 			# 2>&1 doesn't work under command.com
 			IO_REDIR			=>  ($COMMAND_COM ? '' : undef),
+			DEV_NULL			=>  'nul',
 			COMMAND_COM			=>	$COMMAND_COM,
 			SO_LIB_PATH_VAR		=>	'PATH',
 			DETACH_OK			=>	0,

@@ -91,14 +91,13 @@ if (($build_jni || AskYN("Do you wish to build the JNI extension?"))){
 		print "\n" ;
 
 		$done = 0 ;
-		# BS file used to be written here
-
 		if (! $done){
 			WriteMakefile(
 				NAME => 'Inline::Java::JNI',
 				VERSION_FROM => 'JNI.pm',
 				INC => "-I" . $files->{'jni.h'}->{selected} . " -I" . $files->{'jni_md.h'}->{selected},
 				LIBS => ["-L" . $files->{$jvm_lib}->{selected} . " -ljvm"],
+				# CCFLAGS => '-D_REENTRANT',
 			) ;
 
 			print
@@ -174,29 +173,6 @@ sub CleanSoDirs {
 		}
 	}
 	$so_dirs{$files->{$jvm_so}->{selected}} = 1 ;
-}
-
-
-
-sub WriteBSFile {
-	if (! open(BS, '>JNI_BS')){
-		return 1 ;
-	}
-
-	my $so = File::Spec->catfile($files->{$jvm_so}->{selected}, $jvm_so) ;
-	print BS <<BS_CODE;
-my \$so = '$so' ;
-push(\@dl_resolve_using, \$so) ;
-
-\$bscode = <<CODE ;
-dl_load_file('\$so', Inline::Java::JNI->dl_load_flags) or
-croak("Can't load '\$so' for module Inline::Java::JNI: " . dl_error()) ;
-CODE
-
-BS_CODE
-
-	close(BS) ;
-	return 0 ;
 }
 
 

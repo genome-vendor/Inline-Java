@@ -244,11 +244,14 @@ sub __get_member {
 
 	my $types = $fields->{$key} ;
 	if ($types){
-		my @typesk = keys %{$types} ;
-
 		# We take the last one, which is more specific. Eventually
 		# we should use a scoring method just like for the methods
-		my $sign = $types->{$typesk[-1]} ;
+		my $sign = undef ;
+		foreach my $s (values %{$types}){
+			if ((! defined($sign))||($s->{IDX} > $sign->{IDX})){
+				$sign = $s ;
+			}
+		}
 
 		my $proto = $sign->{TYPE} ;
 
@@ -278,11 +281,14 @@ sub __set_member {
 
 	my $types = $fields->{$key} ;
 	if ($types){
-		my @typesk = keys %{$types} ;
-
 		# We take the last one, which is more specific. Eventually
 		# we should use a scoring method just like for the methods
-		my $sign = $types->{$typesk[-1]} ;
+		my $sign = undef ;
+		foreach my $s (values %{$types}){
+			if ((! defined($sign))||($s->{IDX} > $sign->{IDX})){
+				$sign = $s ;
+			}
+		}
 
 		my $proto = $sign->{TYPE} ;
 		my $new_args = undef ;

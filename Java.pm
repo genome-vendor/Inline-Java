@@ -7,7 +7,7 @@ package Inline::Java ;
 
 use strict ;
 
-$Inline::Java::VERSION = '0.31' ;
+$Inline::Java::VERSION = '0.32' ;
 
 
 # DEBUG is set via the DEBUG config
@@ -28,6 +28,7 @@ use Cwd ;
 use Data::Dumper ;
 
 use IO::Socket ;
+use File::Spec ;
 
 use Inline::Java::Portable ;
 use Inline::Java::Class ;
@@ -356,7 +357,7 @@ sub build {
 	}
 
 	my $code = $o->get_api('code') ;
-	my $study_only = ($code =~ /(STUDY|SERVER)/) ;
+	my $study_only = ($code =~ /^(STUDY|SERVER)$/) ;
 
 	$o->write_java($study_only, $code) ;
 	$o->compile($study_only) ;
@@ -525,8 +526,7 @@ sub copy_classes {
 	my $src_dir = $build_dir ;
 	my $dest_dir = $install ;
 
-	my @flist = glob("*.class") ;
-
+	my @flist = Inline::Java::Portable::find_classes_in_dir(".") ;
 	if (portable('COMMAND_COM')){
 		if (! scalar(@flist)){
 			croak "No files to copy. Previous command failed under command.com?" ;
@@ -712,10 +712,10 @@ sub report {
 		$use_cache = 1 ;
 
 		# We need to take the classes that are in the directory...
-		my @cl = glob(File::Spec->catfile($install, "*.class")) ;
+		my @cl = Inline::Java::Portable::find_classes_in_dir($install) ;
 		foreach my $class (@cl){
-			if ($class =~ s/\.class$//){
-				my ($v, $d, $f) = File::Spec->splitpath($class) ;
+			if ($class =~ s/([\w\$]+)\.class$/$1/){
+				my $f = $1 ;
 				if ($f !~ /^InlineJava(Server|Perl)/){
 					push @{$classes}, $f ;
 				}
@@ -914,6 +914,8 @@ tie \$$class$colon:$field, "Inline::Java::Object::StaticMember",
 CODE
 					# We have at least one static version of this field,
 					# that's enough.
+					# Don't forget to reset the 'each' static pointer
+					keys %{$types} ;
 					last ;
 				}
 			}
@@ -1071,10 +1073,12 @@ sub info {
 
 			$info .= "    public member variables:\n" ;
 			while (my ($k, $v) = each %{$d->{classes}->{$class}->{fields}}){
-				my $static = ($v->{STATIC} ? "static " : "") ;
-				my $type = $v->{TYPE} ;
+				while (my ($k2, $v2) = each %{$d->{classes}->{$class}->{fields}->{$k}}){
+					my $static = ($v2->{STATIC} ? "static " : "") ;
+					my $type = $v2->{TYPE} ;
 
-				$info .= "      $static$type $k\n" ;
+					$info .= "      $static$type $k\n" ;
+				}
 			}
 		}
 	}

@@ -13,6 +13,8 @@ use POSIX qw(setsid) ;
 
 my %SIGS = () ;
 
+my @SIG_LIST = ('HUP', 'INT', 'PIPE', 'TERM') ;
+
 sub new {
 	my $class = shift ;
 	my $o = shift ;
@@ -20,7 +22,7 @@ sub new {
 	my $this = {} ;
 	bless($this, $class) ;
 
-	foreach my $sig ('HUP', 'INT', 'PIPE', 'TERM'){
+	foreach my $sig (@SIG_LIST){
 		local $SIG{__WARN__} = sub {} ;
 		if (exists($SIG{$sig})){
 			$SIGS{$sig} = $SIG{$sig} ;
@@ -51,14 +53,12 @@ sub new {
 
 		my $debug = (Inline::Java::get_DEBUG() ? "true" : "false") ;
 
-		my $shared_jvm = ($o->get_java_config('SHARED_JVM') ? "true" : "false") ;	
-		my $port = $o->get_java_config('PORT') ;
-
-		$this->{port} = $port ;
+		$this->{shared} = $o->get_java_config('SHARED_JVM') ;
+		$this->{port} = $o->get_java_config('PORT') ;
 		$this->{host} = "localhost" ;
 
 		# Check if JVM is already running
-		if ($shared_jvm eq "true"){
+		if ($this->{shared}){
 			eval {
 				$this->reconnect() ;
 			} ;
@@ -72,7 +72,8 @@ sub new {
 		my $java = File::Spec->catfile($o->get_java_config('BIN'), 
 			"java" . Inline::Java::portable("EXE_EXTENSION")) ;
 
-		my $cmd = "\"$java\" InlineJavaServer $debug $this->{port} $shared_jvm" ;
+		my $shared_arg = ($this->{shared} ? "true" : "false") ;
+		my $cmd = "\"$java\" InlineJavaServer $debug $this->{port} $shared_arg" ;
 		Inline::Java::debug($cmd) ;
 
 		if ($o->get_config('UNTAINT')){
@@ -104,7 +105,7 @@ sub launch {
 
 	local $SIG{__WARN__} = sub {} ;
 
-	my $dn = File::Spec->devnull() ;
+	my $dn = Inline::Java::portable("DEV_NULL") ;
 	my $in = new IO::File("<$dn") ;
 	if (! defined($in)){
 		croak "Can't open $dn for reading" ;
@@ -189,7 +190,7 @@ sub shutdown {
 			if ($this->{socket}){
 				# This asks the Java server to stop and die.
 				my $sock = $this->{socket} ;
-				if ($sock->connected()){
+				if ($sock->peername()){
 					Inline::Java::debug("Sending 'die' message to JVM...") ;
 					print $sock "die\n" ;
 				}
@@ -295,7 +296,7 @@ sub setup_socket {
 sub reconnect {
 	my $this = shift ;
 
-	if ($this->{JNI}){
+	if (($this->{JNI})||(! $this->{shared})){
 		return ;
 	}
 
@@ -321,11 +322,11 @@ sub reconnect {
 sub capture {
 	my $this = shift ;
 
-	if ($this->{JNI}){
+	if (($this->{JNI})||(! $this->{shared})){
 		return ;
 	}
 
-	foreach my $sig ('HUP', 'INT', 'PIPE', 'TERM'){
+	foreach my $sig (@SIG_LIST){
 		if (exists($SIG{$sig})){
 			$SIG{$sig} = \&Inline::Java::done ;
 		}
@@ -345,11 +346,11 @@ sub am_owner {
 sub release {
 	my $this = shift ;
 
-	if ($this->{JNI}){
+	if (($this->{JNI})||(! $this->{shared})){
 		return ;
 	}
 
-	foreach my $sig qw(HUP INT PIPE TERM){
+	foreach my $sig (@SIG_LIST){
 		local $SIG{__WARN__} = sub {} ;
 		if (exists($SIG{$sig})){
 			$SIG{$sig} = $SIGS{$sig} ;

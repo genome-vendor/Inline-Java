@@ -1,11 +1,13 @@
 use ExtUtils::MakeMaker ;
 
 use strict ;
+use File::Spec ;
 
 require "Java/Portable.pm" ;
 
 # Replace everything just like out-of-the-box...
-rename("Java/JNI.xs_", "Java/JNI.xs") ;
+my $xs = File::Spec->catfile("Java", "JNI.xs") ;
+rename($xs . "_", "$xs") ;
 
 print "\nWelcome to the Inline::Java installation procedure.\n\n" ;
 
@@ -13,7 +15,7 @@ WriteMakefile(
 	NAME => 'Inline::Java',
 	VERSION_FROM => 'Java.pm',
 	PREREQ_PM => {
-		Inline	=> 0.41
+		Inline	=> 0.43
 	},
 	clean => {FILES => '_Inline_test/'},
 ) ;
