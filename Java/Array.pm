@@ -305,6 +305,7 @@ sub new {
 	$this->{map} = {} ;
 	$this->{ref} = $ref ;
 	$this->{array} = [] ;
+	$this->{score} = 0 ;
 	
 	bless ($this, $class) ;
 
@@ -500,8 +501,9 @@ sub ValidateElements {
 				(UNIVERSAL::isa($elem, "Inline::Java::Object"))||
 				(! ref($elem))){
 				$this->CheckMap("BASE_ELEMENT", $level) ;
-				$elem = $this->CastArrayArgument($elem) ;
-				$array->[$i] = $elem ;
+				my @ret = $this->CastArrayArgument($elem) ;
+				$array->[$i] = $ret[0] ;
+				$this->{score} += $ret[1] ;
 			}
 			else{
 				croak "A Java array can only contain scalars, Java objects or array references" ;
@@ -536,7 +538,7 @@ sub CastArrayArgument {
 
 	my ($new_arg, $score) = Inline::Java::Class::CastArgument($arg, $element_class) ;
 
-	return $new_arg ;
+	return ($new_arg, $score) ;
 }
 
 

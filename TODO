@@ -1,5 +1,6 @@
 CODE:
-- Add support for multiple sections (waiting for Inline 0.40)
+- Localize filehandles
+
 
 TEST:
 - Add test script for configuration options (other than BIN)

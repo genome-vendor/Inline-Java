@@ -492,6 +492,46 @@ and immediately studies the class. After that call the java::lang::HashMap
 class is available to use through Perl.
 
 
+=head1 USING MULTIPLE SECTIONS
+
+If you wish to use more than one C<Inline::Java> section in your Perl script,
+you will need to use the Inline NAME option to name your modules. You can then
+use a special syntax in your CLASSPATH (either the environment variable or the 
+configuration option) to tell what Inline::Java modules it will need to load
+at runtime:
+
+   package Foo ;
+   use Inline {
+      Java => '<<END',
+        class Foo {
+           public Foo() {
+           }
+        } 
+   END
+      NAME => "Foo",
+      CLASSPATH => "[PERL_INLINE_JAVA=Foo, Bar]",
+   ) ;
+
+   package Bar ;
+   use Inline {
+      Java => '<<END',
+        class Bar {
+           public Bar() {
+           }
+        } 
+   END
+      NAME => "Bar",
+   ) 
+
+   package main ;
+   my $f = new Foo() ;
+   my $b = new Bar() ;
+
+If you set the CLASSPATH via the configuration option, remember to do so in the
+first Inline::Java section. Also remember that you can't use Java packages with
+Inline::Java. Your classes must be in the unnamed package.
+
+
 =head1 JNI vs CLIENT/SERVER MODES
 
 Starting in version 0.20, it is possible to use the JNI (Java Native 
@@ -521,7 +561,7 @@ focus for future releases. It has been tested on:
    - Solaris 2.8            + Perl 5.6 + Java SDK 1.3.0
    - Linux Redhat 6.2 Alpha + Perl 5.6 + Java SDK 1.3.1
    - Windows 2000           + Perl 5.6 + Java SDK 1.3.0
-   - Windows 95             + Perl 5.6 + Java SDK 1.2.2 (fix required in Makefile)
+   - Windows 95             + Perl 5.6 + Java SDK 1.2.2 (use 'fix' option) 
 
 It likely will work with many other configurations.
 

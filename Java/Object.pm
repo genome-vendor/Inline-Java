@@ -122,7 +122,18 @@ sub __validate_prototype {
 			STATIC =>	$stat,
 			IDX =>		$idx,
 		} ;
-		push @matched, $h ;
+
+		# Tiny optimization: abort if type cast was used and matched for
+		# every parameter
+		if (Inline::Java::Class::IsMaxArgumentsScore($new_args, $score)){
+			Inline::Java::debug("Perfect match found, aborting search") ;
+			@matched = () ;
+			push @matched, $h ;
+			last ;
+		}
+		else{
+			push @matched, $h ;
+		}
 	}
 
 	my $nb_matched = scalar(@matched) ;
@@ -302,12 +313,29 @@ sub DESTROY {
 		Inline::Java::debug("Destroying Inline::Java::Object::Tie") ;
 		
 		if (! Inline::Java::get_DONE()){
+			# This one is very tricky:
+			# Here we want to be carefull since this can be called
+			# at scope end, but the scope end might be triggered
+			# by another croak, so we need to record and propagate 
+			# the current $@
+			my $prev_dollar_at = $@ ;
 			eval {
 				$this->__get_private()->{proto}->DeleteJavaObject($this) ;
 			} ;
-			my $name = $this->__get_private()->{class} ;
-			croak "In method DESTROY of class $name: $@" if $@ ;
-		
+			if ($@){
+				# We croaked here. Was there already a pending $@?
+				my $name = $this->__get_private()->{class} ;
+				my $msg = "In method DESTROY of class $name: $@" ;
+				if ($prev_dollar_at){
+					$msg = "$prev_dollar_at\n$msg" ;
+				}
+				croak $msg ;
+			}
+			else{
+				# Put back the previous $@
+				$@ = $prev_dollar_at ;
+			}
+
 			# Here we have a circular reference so we need to break it
 			# so that the memory is collected.
 			my $priv = $this->__get_private() ;
@@ -315,6 +343,9 @@ sub DESTROY {
 			$priv->{proto} = undef ;
 			$proto->{obj_priv} = undef ;
 			$PRIVATES->{$this} = undef ;
+		}
+		else{
+			Inline::Java::debug(" Script marked as DONE, object destruction not propagated to Java") ;
 		}
 	}
 	else{

@@ -83,6 +83,10 @@ WARNING: THIS IS ALPHA SOFTWARE. It is incomplete and possibly unreliable.
          It is also possible that some elements of the interface (API) will 
          change in future releases.
 
+Inline::Java version 0.23 is a minor upgrade that includes:
++ Support for multiple Inline::Java sections
++ Other minor bug fixes
+
 Inline::Java version 0.22 is a minor upgrade that includes:
 + Support for Inline 0.41
 + Addition of java.lang.Number as primitive numeric type

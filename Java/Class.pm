@@ -5,6 +5,9 @@ use strict ;
 
 $Inline::Java::Class::VERSION = '0.22' ;
 
+$Inline::Java::Class::MAX_SCORE = 10 ;
+
+
 use Carp ;
 
 
@@ -125,6 +128,8 @@ sub CastArgument {
 	my $arg_ori = $arg ;
 	my $proto_ori = $proto ;
 
+	my $array_score = 0 ;
+
 	my $sub = sub {
 		my $array_type = undef ;
 		if ((defined($arg))&&(UNIVERSAL::isa($arg, "Inline::Java::Class::Cast"))){
@@ -142,6 +147,7 @@ sub CastArgument {
 			if (UNIVERSAL::isa($arg, "ARRAY")){
 				if (! UNIVERSAL::isa($arg, "Inline::Java::Array")){
 					my $an = new Inline::Java::Array::Normalizer($array_type || $proto, $arg) ;
+					$array_score = $an->{score} ;
 					my $flat = $an->FlattenArray() ; 
 					my $inline = Inline::Java::get_INLINE($module) ;
 					my $obj = Inline::Java::Object->__new($array_type || $proto, $inline, -1, $flat->[0], $flat->[1]) ;
@@ -257,9 +263,15 @@ sub CastArgument {
 					return ($arg, 1) ;
 				}
 				
-				# Here we deduce point the more our argument is "far"
+				# Here we deduce points the more our argument is "far"
 				# from the prototype.
-				return ($arg, 7 - ($score * 0.01)) ;
+				if (! UNIVERSAL::isa($arg, "Inline::Java::Array")){
+					return ($arg, 7 - ($score * 0.01)) ;
+				}
+				else{
+					# We need to keep the array score somewhere...
+					return ($arg, $array_score) ;
+				}
 			}
 
 			# Here we are passing a scalar as an object, this is pretty
@@ -269,12 +281,12 @@ sub CastArgument {
 	} ;
 
 	my @ret = $sub->() ;
-	
+
 	if ((defined($arg_ori))&&(UNIVERSAL::isa($arg_ori, "Inline::Java::Class::Cast"))){
 		# It seems we had casted the variable to a specific type
 		if ($arg_ori->matches($proto_ori)){
 			Inline::Java::debug("Type cast match!") ;
-			$ret[1] = 10 ;
+			$ret[1] = $Inline::Java::Class::MAX_SCORE ;
 		}
 		else{
 			# We have casted to something that doesn't exactly match
@@ -285,6 +297,18 @@ sub CastArgument {
 	}
 
 	return @ret ;
+}
+
+
+sub IsMaxArgumentsScore {
+	my $args = shift ;
+	my $score = shift ;
+
+	if ((scalar(@{$args}) * 10) == $score){
+		return 1 ;
+	}
+
+	return 0 ;
 }
 
 

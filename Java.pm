@@ -7,7 +7,7 @@ package Inline::Java ;
 
 use strict ;
 
-$Inline::Java::VERSION = '0.22' ;
+$Inline::Java::VERSION = '0.23' ;
 
 
 # DEBUG is set via the DEBUG config
@@ -104,18 +104,20 @@ END {
 # Signal stuff, not really needed with JNI
 use sigtrap 'handler', \&done, 'normal-signals' ;
 
-$SIG{__DIE__} = sub {
+# This whole $SIG{__DIE__} thing doesn't work because it is called
+# even if the die is trapped inside an eval...
+# $SIG{__DIE__} = sub {
 	# Setting this to -1 will prevent Inline::Java::Object::DESTROY
 	# from executing it's code for object destruction, since the state
 	# in possibly unstable.
-	$DONE = -1 ;
-	die @_ ;
-} ;
+	# $DONE = -1 ;
+#	die @_ ;
+# } ;
 
 
 # To export the cast function.
 sub import {
-    Inline::Java->export_to_level(1,@_) ;
+    Inline::Java->export_to_level(1, @_) ;
 }
 
 
@@ -148,9 +150,9 @@ sub _validate {
 	my $o = shift ;
 	my $ignore_other_configs = shift ;
 
-	if ($o->get_INLINE_nb() == 1){
-		croak "Inline::Java does not currently support multiple Inline sections" ;
-	}
+	# if ($o->get_INLINE_nb() == 1){
+	# 	croak "Inline::Java does not currently support multiple Inline sections" ;
+	# }
 
 	if (! exists($o->{ILSM}->{PORT})){
 		$o->{ILSM}->{PORT} = 7890 ;
@@ -646,6 +648,24 @@ sub set_classpath {
 	my @cp = split(/$sep/, join($sep, @list)) ;
 	my %cp = map { ($_ !~ /^\s*$/ ? ($_, 1) : ()) } @cp ;
 
+	foreach my $k (keys %cp){
+		if ($k =~ /\s*\[PERL_INLINE_JAVA=(.*?)\]\s*/){
+			my $modules = $1 ;
+			Inline::Java::debug("   found special CLASSPATH entry: $modules") ;
+
+			my @modules = split(/\s*,\s*/, $modules) ;
+			my $sep = portable("PATH_SEP") ;
+			my $sep_re = portable("PATH_SEP_RE") ;
+			my $dir = $o->get_config('DIRECTORY') . $sep . "lib" . $sep ."auto" ;
+
+			foreach my $m (@modules){
+				$m =~ s/::/$sep_re/g ;
+				$cp{"$dir$sep$m"} = 1 ;
+			}
+
+			delete $cp{$k} ;
+		}
+	}
 	$ENV{CLASSPATH} = join($sep, keys %cp) ;
 
 	Inline::Java::debug("  classpath: " . $ENV{CLASSPATH}) ;

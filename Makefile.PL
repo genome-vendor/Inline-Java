@@ -9,6 +9,7 @@ $main::JNI_BUILD = 0 ;
 rename("Java/JNI.xs_", "Java/JNI.xs") ;
 
 
+my $fix_makefile = 0 ;
 foreach my $arg (@ARGV){
 	my $a = $arg ;
 	$a =~ s/^\s+// ;
@@ -16,7 +17,9 @@ foreach my $arg (@ARGV){
 
 	if ($a =~ /^JNI$/i){
 		$JNI_BUILD = 1 ;
-		last ;
+	}
+	elsif ($a =~ /^FIX$/i){
+		$fix_makefile = 1 ;
 	}
 }
 
@@ -29,3 +32,19 @@ WriteMakefile(
 	},
 	clean => {FILES => '_Inline_test/'},
 ) ;
+
+
+if ($fix_makefile){
+	print "\nFixing Makefile for Win32...\n" ;
+	open(MAKEFILE, "<Makefile") or die "Can't open Makefile for reading" ;
+	my @lines = <MAKEFILE> ;
+	close(MAKEFILE) ;
+	open(MAKEFILE, ">Makefile") or die "Can't open Makefile for writing" ;
+	foreach my $line (@lines){
+		if ($line !~ /^\s*((\@\[)|(\]))\s*$/){
+			print MAKEFILE $line ;
+		}
+	}
+	close(MAKEFILE) ;
+}
+

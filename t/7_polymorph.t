@@ -5,14 +5,14 @@ use Inline Config =>
            DIRECTORY => './_Inline_test';
 
 use Inline(
-	Java => 'DATA'
+	Java => 'DATA',
 ) ;
 
 use Inline::Java qw(cast) ;
 
 
 BEGIN {
-	plan(tests => 15) ;
+	plan(tests => 16) ;
 }
 
 
@@ -29,6 +29,8 @@ ok($t->f($t->{hm}), "hashmap") ;
 ok($t->f(cast("java.lang.Object", $t->{hm})), "object") ;
 
 ok($t->f(["a", "b", "c"]), "string[]") ;
+
+ok($t->f(["12.34", "45.67"]), "double[]") ;
 ok($t->f(cast("java.lang.Object", ['a'], "[Ljava.lang.String;")), "object") ;
 
 eval {$t->func($t1)} ; ok($@, qr/Can't find any signature/) ;
@@ -100,6 +102,10 @@ class types {
 
 	public String f(String o[]){
 		return "string[]" ;
+	}
+
+	public String f(double o[]){
+		return "double[]" ;
 	}
 }
 
