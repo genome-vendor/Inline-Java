@@ -33,6 +33,10 @@ Java/sources/org/perl/inline/java/InlineJavaUserClassLoader.java
 Java/sources/org/perl/inline/java/InlineJavaUtils.java
 Java/sources/org/perl/inline/java/InlineJavaCallback.java
 Java/sources/org/perl/inline/java/InlineJavaCallbackQueue.java
+Java/sources/org/perl/inline/java/InlineJavaPerlNatives.java
+Java/Natives/Makefile.PL
+Java/Natives/Natives.pm
+Java/Natives/Natives.xs
 t/01_init.t
 t/02_primitives.t
 t/03_objects.t
@@ -49,7 +53,8 @@ t/10_4_shared_stop.t
 t/10_5_shared_fork.t
 t/10_6_shared_sim.t
 t/11_exceptions.t
-t/12_callbacks.t
+t/12_1_callbacks.t
+t/12_2_perl_natives.t
 t/13_end.t
 t/types.java
 t/types.class

@@ -1,6 +1,8 @@
 CODE:
 - Do more test for CLASSPATH combinations
 - Does STDIN still need to be closed in the JVM?
+- Review all changes for 0.45 (PerlNatives)
+- Document PerlNatives
 
 TEST:
 - Alpha

@@ -1,26 +1,22 @@
 use ExtUtils::MakeMaker ;
-# $Verbose = 2 ;
 
 use strict ;
 use File::Spec ;
 use Config ;
+use Cwd ;
 
 require "Java/Portable.pm" ;
 
 print "\nWelcome to the Inline::Java installation procedure.\n\n" ;
 
 # Grab the J2SDK argument
-my @new_args = () ;
 my $jdk_dir = '' ;
-foreach my $arg (@ARGV){
-	if ($arg =~ /^J2SDK=(.+)$/){
+for (my $i = 0 ; $i < scalar(@ARGV) ; $i++){
+	if ($ARGV[$i] =~ /^J2SDK=(.+)$/){
 		$jdk_dir = $1 ;
-	}
-	else {
-		push @new_args, $_ ;
+		splice(@ARGV, $i, 1) ;
 	}
 }
-@ARGV = @new_args ;
 
 if (! $jdk_dir){
 	my $def_pl = File::Spec->catfile('Java', 'default_j2sdk.pl') ;
@@ -58,7 +54,7 @@ foreach my $f ('javac', 'jar', 'java'){
 }
 
 
-# Now we have the J2SDK directory and it exists. 
+# Now we have the J2SDK directory and it exists.
 # We will create the default_j2sdk.pl file that
 # will contain that value for future use.
 my $def_jdk = File::Spec->catfile('Java', 'default_j2sdk.pl') ;
@@ -66,7 +62,7 @@ open(J2SDK, ">$def_jdk") or
 	die("Can't open '$def_jdk' for writing: $!") ;
 print J2SDK <<J2SDK_PL;
 # This file is created by the Makefile.PL for Inline::Java
-# You can modify it if you which
+# You can modify it if you wish
 use strict ;
 
 # The default J2SDK to use for Inline::Java. You can change
@@ -79,7 +75,6 @@ sub Inline::Java::get_default_j2sdk {
 J2SDK_PL
 close(J2SDK) ;
 
-my $ij_site_lib = File::Spec->catdir($Config{installsitelib}, 'Inline', 'Java') ;
 print <<SAVE_J2SDK;
 Default J2SDK for Inline:Java will be '$jdk_dir'.
 See module documentation for information on how to use a different J2SDK
@@ -97,6 +92,12 @@ my $obj_dir = File::Spec->catdir('Java', 'classes') ;
 my $server_arch = File::Spec->catfile('Java', 'InlineJavaServer.jar') ;
 my $user_arch = File::Spec->catfile('Java', 'InlineJavaUser.jar') ;
 
+# Create the object diretory because later we need to put the properties
+# file inside it.
+if (! -e $obj_dir){
+	mkdir($obj_dir) or
+		die("Can't create object directory '$obj_dir': $!") ;
+}
 
 sub MY::top_targets {
 	my $this = shift ;
@@ -110,6 +111,8 @@ MAKE
 }
 
 
+my $INSTALLSITEARCH = '' ;
+my $INST_ARCHLIB = '' ;
 sub MY::postamble {
 	my $this = shift ;
 
@@ -118,9 +121,16 @@ sub MY::postamble {
 java ::
 	\@\$(MKPATH) $obj_dir
 	"$javac" -g -d $obj_dir $src
-	"$jar" cf $server_arch -C $obj_dir org
+	"$jar" cf $server_arch -C $obj_dir org -C $obj_dir InlineJava.properties
 	"$jar" cf $user_arch -C $obj_dir InlineJavaUserClassLink.class
 MAKE
+
+	# Used for PerlNatives
+	$INSTALLSITEARCH = $this->{INSTALLSITEARCH} ;
+	$INSTALLSITEARCH =~ s/\\/\\\\/g ;
+	
+	$INST_ARCHLIB = $this->{INST_ARCHLIB} ;
+	$INST_ARCHLIB =~ s/\\/\\\\/g ;
 
 	return $make ;
 }
@@ -156,6 +166,23 @@ WriteMakefile(
 ) ;
 
 
+# Create the properties that will be included in the jar.
+my @natives_so_parts = ("auto", "Inline", "Java", "Natives", 
+	"Natives." . Inline::Java::Portable::portable('SO_EXT')) ;
+my $install_natives_so = File::Spec->catfile($INSTALLSITEARCH, @natives_so_parts) ;
+$install_natives_so =~ s/\\/\\\\/g ;
+my $test_natives_so = File::Spec->rel2abs(File::Spec->catfile($INST_ARCHLIB, @natives_so_parts)) ;
+$test_natives_so =~ s/\\/\\\\/g ;
+my $prop = File::Spec->catfile($obj_dir, 'InlineJava.properties') ;
+open(PROP, ">$prop") or
+	die("Can't open '$prop' for writing: $!") ;
+print PROP <<PROP;
+# This file is created by the Makefile.PL for Inline::Java
+inline_java_natives_so_install = $install_natives_so
+inline_java_natives_so_test    = $test_natives_so
+PROP
+close(PROP) ;
+
 # Clean up the Makefile for Win95/98/Me
 if (Inline::Java::Portable::portable('COMMAND_COM')){
 	print "\nFixing Makefile for Win95/98/Me...\n" ;
@@ -175,4 +202,5 @@ my $make = Inline::Java::Portable::portable('MAKE') ;
 print "\nYou can continue the installation with the following commands:\n" ;
 print "  % $make java\n" ;
 print "  % $make\n" ;
-print "  % $make test\n" ; 
+print "  % $make test\n" ;
+print "  % $make install\n" ; 

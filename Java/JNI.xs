@@ -1,6 +1,7 @@
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
+#include "stdarg.h"
 
 
 /* Include the JNI header file */
@@ -38,11 +39,28 @@ JNIEnv *get_env(InlineJavaJNIVM *this){
 }
 
 
-void check_exception(JNIEnv *env, char *msg){
+/*
+	This is only used to trap exceptions from Perl.
+*/
+void check_exception_from_perl(JNIEnv *env, char *msg){
 	if ((*(env))->ExceptionCheck(env)){
 		(*(env))->ExceptionDescribe(env) ;
+		(*(env))->ExceptionClear(env) ;
 		croak(msg) ;
 	}
+}
+
+
+void throw_ije(JNIEnv *env, char *msg){
+	jclass ije ;
+
+	ije = (*(env))->FindClass(env, "org/perl/inline/java/InlineJavaException") ;
+	if ((*(env))->ExceptionCheck(env)){
+		(*(env))->ExceptionDescribe(env) ;
+		(*(env))->ExceptionClear(env) ;
+		(*(env))->FatalError(env, "Can't find class InlineJavaException: exiting...") ;
+	}
+	(*(env))->ThrowNew(env, ije, msg) ;
 }
 
 
@@ -53,6 +71,7 @@ jstring JNICALL jni_callback(JNIEnv *env, jobject obj, jstring cmd){
 	char *r = NULL ;
 	int count = 0 ;
 	SV *hook = NULL ;
+	char msg[128] ;
 
 	ENTER ;
 	SAVETMPS ;
@@ -68,23 +87,16 @@ jstring JNICALL jni_callback(JNIEnv *env, jobject obj, jstring cmd){
 
 	SPAGAIN ;
 
-	/*
-		Here is is important to understand that we cannot croak,
-		because our caller is Java and not Perl. Croaking here
-		screws up the Java stack royally and causes crashes.
-	*/
-
 	/* Check the eval */
 	if (SvTRUE(ERRSV)){
 		STRLEN n_a ;
-		fprintf(stderr, "Exception caught in JNI callback: %s", SvPV(ERRSV, n_a)) ;
-		exit(-1) ;
+		throw_ije(env, SvPV(ERRSV, n_a)) ;
 	}
 	else{
 		if (count != 2){
-			fprintf(stderr, "%s", "Invalid return value from Inline::Java::Callback::InterceptCallback: %d",
+			sprintf(msg, "%s", "Invalid return value from Inline::Java::Callback::InterceptCallback: %d",
 				count) ;
-			exit(-1) ;
+			throw_ije(env, msg) ;
 		}
 	}
 
@@ -110,13 +122,17 @@ jstring JNICALL jni_callback(JNIEnv *env, jobject obj, jstring cmd){
 
 
 
+/*****************************************************************************/
+
+
+
 MODULE = Inline::Java::JNI   PACKAGE = Inline::Java::JNI
 
 
 PROTOTYPES: DISABLE
 
 
-InlineJavaJNIVM * 
+InlineJavaJNIVM *
 new(CLASS, classpath, args, embedded, debug)
 	char * CLASS
 	char * classpath
@@ -185,25 +201,25 @@ new(CLASS, classpath, args, embedded, debug)
 
 	/* Load the classes that we will use */
 	RETVAL->ijs_class = (*(env))->FindClass(env, "org/perl/inline/java/InlineJavaServer") ;
-	check_exception(env, "Can't find class InlineJavaServer") ;
+	check_exception_from_perl(env, "Can't find class InlineJavaServer") ;
 	RETVAL->string_class = (*(env))->FindClass(env, "java/lang/String") ;
-	check_exception(env, "Can't find class java.lang.String") ;
-	
+	check_exception_from_perl(env, "Can't find class java.lang.String") ;
+
 	/* Get the method ids that are needed later */
-	RETVAL->jni_main_mid = (*(env))->GetStaticMethodID(env, RETVAL->ijs_class, "jni_main", 
+	RETVAL->jni_main_mid = (*(env))->GetStaticMethodID(env, RETVAL->ijs_class, "jni_main",
 		"(I)Lorg/perl/inline/java/InlineJavaServer;") ;
-	check_exception(env, "Can't find method jni_main in class InlineJavaServer") ;
-	RETVAL->process_command_mid = (*(env))->GetMethodID(env, RETVAL->ijs_class, "ProcessCommand", 
+	check_exception_from_perl(env, "Can't find method jni_main in class InlineJavaServer") ;
+	RETVAL->process_command_mid = (*(env))->GetMethodID(env, RETVAL->ijs_class, "ProcessCommand",
 		"(Ljava/lang/String;)Ljava/lang/String;") ;
-	check_exception(env, "Can't find method ProcessCommand in class InlineJavaServer") ;
+	check_exception_from_perl(env, "Can't find method ProcessCommand in class InlineJavaServer") ;
 
 	/* Register the callback function */
 	nm.name = "jni_callback" ;
 	nm.signature = "(Ljava/lang/String;)Ljava/lang/String;" ;
 	nm.fnPtr = jni_callback ;
-	(*(env))->RegisterNatives(env, RETVAL->ijs_class, &nm, 1) ;	
-	check_exception(env, "Can't register method jni_callback in class InlineJavaServer") ;
-	
+	(*(env))->RegisterNatives(env, RETVAL->ijs_class, &nm, 1) ;
+	check_exception_from_perl(env, "Can't register method jni_callback in class InlineJavaServer") ;
+
     OUTPUT:
 	RETVAL
 
@@ -238,7 +254,7 @@ create_ijs(this)
 	CODE:
 	env = get_env(this) ;
 	this->ijs = (*(env))->CallStaticObjectMethod(env, this->ijs_class, this->jni_main_mid, this->debug) ;
-	check_exception(env, "Can't call jni_main in class InlineJavaServer") ;
+	check_exception_from_perl(env, "Can't call jni_main in class InlineJavaServer") ;
 
 
 
@@ -256,13 +272,13 @@ process_command(this, data)
 	CODE:
 	env = get_env(this) ;
 	cmd = (*(env))->NewStringUTF(env, data) ;
-	check_exception(env, "Can't create java.lang.String") ;
+	check_exception_from_perl(env, "Can't create java.lang.String") ;
 
 	resp = (*(env))->CallObjectMethod(env, this->ijs, this->process_command_mid, cmd) ;
 	/* Thanks Dave Blob for spotting this. This is necessary since this codes never really returns to Java
 	   It simply calls into Java and comes back. */
 	(*(env))->DeleteLocalRef(env, cmd);
-	check_exception(env, "Can't call ProcessCommand in InlineJavaServer") ;
+	check_exception_from_perl(env, "Can't call ProcessCommand in class InlineJavaServer") ;
 
 	hook = perl_get_sv("Inline::Java::Callback::OBJECT_HOOK", FALSE) ;
 	sv_setsv(hook, &PL_sv_undef) ;

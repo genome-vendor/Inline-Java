@@ -1,12 +1,18 @@
 Revision history for Perl extension Inline::Java
 ------------------------------------------------
+0.45  Fri Jan 30 20:00:00 EST 2004
+    - Fixed Makefile.PL arguments that were getting lost
+    - Fixed deprecated require call
+    - Fixed support for symbolic links in J2SDK directory
+    - Basic support for J2SDK 1.5
+    - Added new experimental feature: PerlNatives
 
 0.44  Sun Nov 23 15:47:06 EST 2003
     - Callbacks from multiple threads are now supported
     - Refactored (again...) studying/.jdat/cache stuff
     - Added PRIVATE mode for use with SHARED_JVM
     - Added DEBUGGER mode that launches jdb
-    - Fixed memory leak in JNI coded (patch submitted by Dave Blob)
+    - Fixed memory leak in JNI code (patch submitted by Dave Blob)
 
 0.43  Tue Oct 14 13:18:25 EDT 2003
     - Restored $VERSION in each .pm file

@@ -16,9 +16,6 @@ use Inline::Java qw(caught) ;
 
 BEGIN {
 	my $cnt = 23 ;
-	if ($ENV{PERL_INLINE_JAVA_JNI}){
-		$cnt-- ;
-	}
 	plan(tests => $cnt) ;
 }
 
@@ -67,12 +64,7 @@ my $t = new t15() ;
 
 		ok($t->perlt()->add(5, 6), 11) ;
 
-		if (! $ENV{PERL_INLINE_JAVA_JNI}){
-			# This a fatal error under JNI since we cannot croak inside callbacks
-			# because there is some Java in the stack (see JNI.xs, jni_callback for
-			# more info).
-			eval {$t->perldummy()} ; ok($@, qr/Can't propagate non-/) ;
-		}
+		eval {$t->perldummy()} ; ok($@, qr/Can't propagate non-/) ;
 
 		$t->mtc_callbacks(20) ;
 		$t->StartCallbackLoop() ;

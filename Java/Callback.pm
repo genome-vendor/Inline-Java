@@ -24,6 +24,12 @@ sub InterceptCallback {
 		my $function = $2 ;
 		my $cast_return = $3 ;
 		my @args = split(' ', $resp) ;
+
+		# "Relative" namespace...
+		if ($module =~ /^::/){
+			$module = $inline->get_api('pkg') . $module ;
+		}
+
 		return Inline::Java::Callback::ProcessCallback($inline, $module, $function, $cast_return, @args) ;
 	}
 

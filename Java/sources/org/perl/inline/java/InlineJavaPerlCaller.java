@@ -11,6 +11,8 @@ public class InlineJavaPerlCaller {
 	private InlineJavaServer ijs = InlineJavaServer.GetInstance() ;
 	private Thread creator = null ;
 	static private HashMap thread_callback_queues = new HashMap() ;
+	static private ResourceBundle resources = null ;
+	static private boolean inited = false ;
 
 
 	/*
@@ -18,6 +20,7 @@ public class InlineJavaPerlCaller {
 		this is where we get the thread that needs to be notified when the callbacks come in.
 	*/
 	public InlineJavaPerlCaller() throws InlineJavaException {
+		init() ;
 		Thread t = Thread.currentThread() ;
 		if (ijs.IsThreadPerlContact(t)){
 			creator = t ;
@@ -25,6 +28,25 @@ public class InlineJavaPerlCaller {
 		else{
 			throw new InlineJavaException("InlineJavaPerlCaller objects can only be created by threads that communicate directly with Perl") ;
 		}
+	}
+
+
+	synchronized static protected void init() throws InlineJavaException {
+       if (! inited){
+            try {
+                resources = ResourceBundle.getBundle("InlineJava") ;
+
+                inited = true ;
+            }
+            catch (MissingResourceException mre){
+                throw new InlineJavaException("Error loading InlineJava.properties: " + mre.getMessage()) ;
+            }
+        }
+	}
+
+
+	static protected ResourceBundle GetBundle(){
+		return resources ;
 	}
 
 

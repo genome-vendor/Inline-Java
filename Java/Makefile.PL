@@ -3,6 +3,7 @@ use File::Find ;
 
 use strict ;
 use File::Spec ;
+use Config ;
 
 require "Portable.pm" ;
 # The file we just produced in the parent Makefile.PL
@@ -55,14 +56,22 @@ print
 	"(JVM) to be dynamically linked with Perl instead of running as a separate\n" .
 	"process. The use of this extension is optional, and building it still\n" .
 	"allows Inline::Java to run the JVM in the default (separate process)\n" .
-	"fashion. Note: You need a C compiler to build the extension.\n\n" ;
+	"fashion.\n" .
+	"Note: You need a C compiler to build the extension.\n" ;
+	"Note: You must build the extension if you wish to use PerlNatives.\n" ;
 
 if (($build_jni || AskYN("Do you wish to build the JNI extension?", 'y'))){
 	print "\nBuilding JNI extension.\n\n" ;
 
 	$jdk_dir = Inline::Java::get_default_j2sdk() ;
 
-	find(\&search, $jdk_dir) ;
+	my $symlink = Inline::Java::Portable::portable("GOT_SYMLINK") ;
+	find(
+		{
+			wanted => \&search,
+			($symlink ? (follow => 1, follow_skip => 2) : ()),
+		},
+		$jdk_dir) ;
 
 	my $type = FindDefaultVMType() ;
 	if (defined($type)){
@@ -111,21 +120,22 @@ if (($build_jni || AskYN("Do you wish to build the JNI extension?", 'y'))){
 			map {print "  $_\n"; } keys %so_dirs ;
 			print "See README.JNI for more information.\n\n" ;
 
-			my @I = (
+			@main::I = (
 				Inline::Java::Portable::portable('SUB_FIX_MAKE_QUOTES', 
 					"-I" . $files->{'jni.h'}->{selected}), 
 				Inline::Java::Portable::portable('SUB_FIX_MAKE_QUOTES', 
 					"-I" . $files->{'jni_md.h'}->{selected})) ; 
-			my @L = (
+			@main::L = (
 				Inline::Java::Portable::portable('SUB_FIX_MAKE_QUOTES', 
 					"-L" . $files->{$jvm_lib}->{selected})) ;
+
 			WriteMakefile(
 				NAME => 'Inline::Java::JNI',
 				VERSION_FROM => 'JNI.pm',
-				DIR => [],
+				DIR => ['Natives'],
 				PMLIBDIRS => [File::Spec->catdir('sources', 'org', 'perl', 'inline', 'java')],
-				INC => join(' ', @I),
-				LIBS => [join(' ', @L) . " -ljvm"],
+				INC => join(' ', @main::I),
+				LIBS => [join(' ', @main::L) . " -ljvm"],
 				# CCFLAGS => '-D_REENTRANT',
 			) ;
 		}
@@ -182,6 +192,12 @@ sub CleanSoDirs {
 				delete $so_dirs{$d} ;
 		}
 		elsif ($d =~ /javaws/){
+				delete $so_dirs{$d} ;
+		}
+		elsif ($d =~ /headless/){
+				delete $so_dirs{$d} ;
+		}
+		elsif ($d =~ /xawt/){
 				delete $so_dirs{$d} ;
 		}
 		elsif ($d =~ /_threads/){

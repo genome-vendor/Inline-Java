@@ -209,10 +209,12 @@ sub shutdown {
 					# Here we go ahead and send the signals anyway to be very 
 					# sure it's dead...
 					# Always be polite first, and then insist.
-					Inline::Java::debug(1, "Sending 15 signal to JVM...") ;
-					kill(15, $this->{pid}) ;
-					Inline::Java::debug(1, "Sending 9 signal to JVM...") ;
-					kill(9, $this->{pid}) ;
+					if (Inline::Java::Portable::portable('GOT_SAFE_SIGNALS')){
+						Inline::Java::debug(1, "Sending 15 signal to JVM...") ;
+						kill(15, $this->{pid}) ;
+						Inline::Java::debug(1, "Sending 9 signal to JVM...") ;
+						kill(9, $this->{pid}) ;
+					}
 		
 					# Reap the child...
 					waitpid($this->{pid}, 0) ;

@@ -6,9 +6,9 @@ package Inline::Java ;
 
 
 use strict ;
-require 5.6.0 ;
+require 5.006 ;
 
-$Inline::Java::VERSION = '0.44' ;
+$Inline::Java::VERSION = '0.45' ;
 
 
 # DEBUG is set via the DEBUG config
@@ -593,12 +593,16 @@ sub load_jdat {
 	my $current_class = undef ;
 	foreach my $line (@{$lines}){
 		chomp($line) ;
-		if ($line =~ /^class ($re)$/){
+		if ($line =~ /^class ($re) ($re|null)$/){
 			# We found a class definition
 			my $java_class = $1 ;
+			my $parent_java_class = $2 ;
 			$current_class = Inline::Java::java2perl($o->get_api('pkg'), $java_class) ;
 			$d->{classes}->{$current_class} = {} ;
 			$d->{classes}->{$current_class}->{java_class} = $java_class ;
+			if ($parent_java_class ne "null"){
+				$d->{classes}->{$current_class}->{parent_java_class} = $parent_java_class ;
+			}
 			$d->{classes}->{$current_class}->{constructors} = {} ;
 			$d->{classes}->{$current_class}->{methods} = {} ;
 			$d->{classes}->{$current_class}->{fields} = {} ;
@@ -674,18 +678,30 @@ sub bind_jdat {
 		$class_name =~ s/^(.*)::// ;
 
 		my $java_class = $d->{classes}->{$class}->{java_class} ;
+		# This parent stuff is needed for PerlNatives (so that you can call PerlNatives methods
+		# from Perl...)
+		my $parent_java_class = $d->{classes}->{$class}->{parent_java_class} ;
+		my $parent_module = '' ;
+		my $parent_module_declare = '' ;
+		if (defined($parent_java_class)){
+			$parent_module = java2perl($o->get_api('pkg'), $parent_java_class) ;
+			$parent_module_declare = "\$$parent_module" . "::EXISTS_AS_PARENT = 1 ;" ;
+			$parent_module .= ' ' ;
+		}
 		if (Inline::Java::known_to_perl($o->get_api('pkg'), $java_class)){
 			next ;
 		}
 
 		my $colon = ":" ;
 		my $dash = "-" ;
+		my $ijo = 'Inline::Java::Object' ;
 		
 		my $code = <<CODE;
 package $class ;
 use vars qw(\@ISA \$INLINE \$EXISTS \$JAVA_CLASS \$DUMMY_OBJECT) ;
 
-\@ISA = qw(Inline::Java::Object) ;
+$parent_module_declare
+\@ISA = qw($parent_module$ijo) ;
 \$INLINE = \$INLINES[$inline_idx] ;
 \$EXISTS = 1 ;
 \$JAVA_CLASS = '$java_class' ;

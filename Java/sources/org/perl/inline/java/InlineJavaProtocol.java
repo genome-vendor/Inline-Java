@@ -95,8 +95,10 @@ class InlineJavaProtocol {
 			Class c = ijc.ValidateClass(name) ;
 
 			InlineJavaUtils.debug(3, "reporting for " + c) ;
-													
-			pw.append("class " + c.getName() + "\n") ;
+
+			Class parent = c.getSuperclass() ;
+			String pname = (parent == null ? "null" : parent.getName()) ;
+			pw.append("class " + c.getName() + " " + pname + "\n") ;
 			Constructor constructors[] = c.getConstructors() ;
 			Method methods[] = c.getMethods() ;
 			Field fields[] = c.getFields() ;
@@ -110,8 +112,13 @@ class InlineJavaProtocol {
 					pw.append("constructor " + noarg_sign + "\n") ;	
 				}
 			}
+
+			boolean pn = InlineJavaPerlNatives.class.isAssignableFrom(c) ;
 			for (int j = 0 ; j < constructors.length ; j++){
 				Constructor x = constructors[j] ;
+				if ((pn)&&(Modifier.isNative(x.getModifiers()))){
+					continue ;
+				}
 				Class params[] = x.getParameterTypes() ;
 				String sign = InlineJavaUtils.CreateSignature(params) ;
 				Class decl = x.getDeclaringClass() ;
@@ -120,6 +127,9 @@ class InlineJavaProtocol {
 
 			for (int j = 0 ; j < methods.length ; j++){
 				Method x = methods[j] ;
+				if ((pn)&&(Modifier.isNative(x.getModifiers()))){
+					continue ;
+				}
 				String stat = (Modifier.isStatic(x.getModifiers()) ? " static " : " instance ") ;
 				String sign = InlineJavaUtils.CreateSignature(x.getParameterTypes()) ;
 				Class decl = x.getDeclaringClass() ;

@@ -7,7 +7,6 @@ use strict ;
 use Exporter ;
 use Carp ;
 use Config ;
-use Cwd ;
 use File::Find ;
 use File::Spec ;
 
@@ -62,7 +61,7 @@ sub make_classpath {
 	foreach my $p (@cp){
 		if (($p)&&(-e $p)){
 			if ($cp{$p}){
-				my $fp = (-d $p ? Cwd::abs_path($p) : $p) ;
+				my $fp = (-d $p ? File::Spec->rel2abs($p) : $p) ;
 				push @fcp, portable("SUB_FIX_CLASSPATH", $fp) ;
 				delete $cp{$p} ;
 			}
@@ -85,7 +84,7 @@ sub get_jar_dir {
 	# This undef for the file should be ok.
 	my $dir = File::Spec->catpath($v, $d, 'Java', undef) ;
 
-	return Cwd::abs_path($dir) ;
+	return File::Spec->rel2abs($dir) ;
 }
 
 
@@ -141,6 +140,8 @@ sub portable {
 		GOT_ALARM			=>  $Config{d_alarm} || 0,
 		GOT_FORK			=>	$Config{d_fork} || 0,
 		GOT_NEXT_FREE_PORT	=>	1,
+		GOT_SYMLINK			=>	1,
+		GOT_SAFE_SIGNALS	=>	1,
 		ENV_VAR_PATH_SEP	=>	$Config{path_sep},
 		SO_EXT				=>	$Config{dlext},
 		PREFIX				=>	$Config{prefix},
@@ -172,6 +173,8 @@ sub portable {
 			JVM_LIB				=>	'jvm.lib',
 			JVM_SO				=>	'jvm.dll',
 			GOT_NEXT_FREE_PORT	=>	0,
+			GOT_SYMLINK			=>	0,
+			GOT_SAFE_SIGNALS	=>	0,
 			SUB_FIX_CMD_QUOTES	=>	($COMMAND_COM ? undef : sub {
 				my $val = shift ;
 				$val = qq{"$val"} ;

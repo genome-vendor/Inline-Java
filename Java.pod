@@ -732,6 +732,71 @@ StopCallbackLoop methods.
    Z<>
 
 
+=head1 PerlNatives CALLBACKS (EXPERIMENTAL)
+
+Note: PerlNatives requires J2SDK version >= 1.4
+
+As of 0.45, it is now possible to define your callbacks as native Java methods
+that are automatically linked to Perl subroutines. You implement the Perl
+subroutine directly in the package in which C<Inline::Java> binds your class.
+Let's revisit the example from the previous section:
+
+=for comment
+
+   use Inline Java => <<'END' ;
+      import java.util.* ;
+      import org.perl.inline.java.* ;
+      import javax.swing.* ;
+      import java.awt.event.* ;
+
+      class Pod_Button_PN extends InlineJavaPerlNatives
+                          implements ActionListener {
+         public Pod_Button_PN() throws InlineJavaException {
+            JFrame frame = new JFrame("Pod_Button") ;
+            frame.setSize(100,100) ;
+            JButton button = new JButton("Click Me!") ;
+            frame.getContentPane().add(button) ;
+            button.addActionListener(this) ;
+            frame.show() ;
+         }
+
+         public void actionPerformed(ActionEvent e){
+            button_pressed() ;
+         }
+
+         native public void button_pressed() ;
+      }
+   END
+
+   package Pod_Button_PN ;
+   sub button_pressed {
+      print("click!\n") ; # prints click!
+      $b->StopCallbackLoop() ;
+   }
+
+   package main ;
+   my $b = new Pod_Button_PN() ;
+   $b->StartCallbackLoop() ;
+
+=for comment
+
+Extending InlineJavaPerlNatives tells C<Inline::Java> that all native methods 
+declared in that class should be linked to Perl subroutines implemented in the 
+approriate package. You can then call these methods from Java just like regular 
+methods. You can even call them from Perl if they are public. However, here are 
+a few things to remember:
+
+  - You cannot declare 2 native methods with the same name in a class (even if
+    they have different signatures)
+  - Native methods can have arguments of any type, but they must return either
+    void or an Object (use wrappers like Integer and Double to return primitive
+    types)
+  - Even if you do not declare them, InlineJavaException and 
+    InlineJavaPerlException exceptions (as well as others) may be thrown from
+    within the native methods
+   Z<>
+
+
 =head1 STUDYING
 
 As of version 0.21, C<Inline::Java> can learn about other Java classes
