@@ -12,6 +12,8 @@ use Inline::Java qw(caught) ;
 
 
 BEGIN {
+	# Leave previous server enough time to die...
+	sleep(1) ;
 	plan(tests => 8) ;
 }
 

@@ -1,7 +1,7 @@
 package Inline::Java::Portable ;
 @Inline::Java::Portable::ISA = qw(Exporter) ;
 
-@EXPORT = qw(portable make_classpath get_server_jar get_user_jar) ;
+@EXPORT = qw(portable make_classpath get_server_jar get_user_jar get_source_dir) ;
 
 use strict ;
 use Exporter ;
@@ -11,7 +11,7 @@ use Cwd ;
 use File::Find ;
 use File::Spec ;
 
-$Inline::Java::Portable::VERSION = '0.43' ;
+$Inline::Java::Portable::VERSION = '0.44' ;
 
 # Here is some code to figure out if we are running on command.com
 # shell under Windows.
@@ -96,6 +96,11 @@ sub get_server_jar {
 
 sub get_user_jar {
 	return File::Spec->catfile(get_jar_dir(), 'InlineJavaUser.jar') ;
+}
+
+
+sub get_source_dir {
+	return File::Spec->catdir(get_jar_dir(), 'sources') ;
 }
 
 

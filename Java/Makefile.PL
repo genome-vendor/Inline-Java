@@ -123,6 +123,7 @@ if (($build_jni || AskYN("Do you wish to build the JNI extension?", 'y'))){
 				NAME => 'Inline::Java::JNI',
 				VERSION_FROM => 'JNI.pm',
 				DIR => [],
+				PMLIBDIRS => [File::Spec->catdir('sources', 'org', 'perl', 'inline', 'java')],
 				INC => join(' ', @I),
 				LIBS => [join(' ', @L) . " -ljvm"],
 				# CCFLAGS => '-D_REENTRANT',
@@ -136,8 +137,10 @@ else{
 		NAME => 'Inline::Java::JNI',
 		VERSION_FROM => 'JNI.pm',
 		DIR => [],
+		PMLIBDIRS => [File::Spec->catdir('sources', 'org', 'perl', 'inline', 'java')],
 		XS => {},
-		C => []) ;
+		C => []
+	) ;
 }
 
 
@@ -176,6 +179,9 @@ sub CleanSoDirs {
 				delete $so_dirs{$d} ;
 		}
 		elsif ($d =~ /motif/){
+				delete $so_dirs{$d} ;
+		}
+		elsif ($d =~ /javaws/){
 				delete $so_dirs{$d} ;
 		}
 		elsif ($d =~ /_threads/){

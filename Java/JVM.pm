@@ -6,9 +6,8 @@ use Carp ;
 use IPC::Open3 ;
 use IO::File ;
 use IO::Socket ;
-use POSIX qw(setsid) ;
 
-$Inline::Java::JVM::VERSION = '0.43' ;
+$Inline::Java::JVM::VERSION = '0.44' ;
 
 my %SIGS = () ;
 
@@ -33,6 +32,8 @@ sub new {
 	$this->{embedded} = $o->get_java_config('EMBEDDED_JNI') ;
 	$this->{owner} = 1 ;
 	$this->{destroyed} = 0 ;
+	$this->{private} = $o->get_java_config('PRIVATE') ;
+	$this->{debugger} = $o->get_java_config('DEBUGGER') ;
 
 	if ($this->{embedded}){
 		Inline::Java::debug(1, "using embedded JVM...") ;
@@ -103,10 +104,12 @@ sub new {
 		}
 
 		my $java = File::Spec->catfile($o->get_java_config('J2SDK'), 'bin',
-			"java" . Inline::Java::portable("EXE_EXTENSION")) ;
+			($this->{debugger} ? "jdb" : "java") . 
+			Inline::Java::portable("EXE_EXTENSION")) ;
 
 		my $shared = ($this->{shared} ? "true" : "false") ;
-		my $cmd = Inline::Java::portable("SUB_FIX_CMD_QUOTES", "\"$java\" $args org.perl.inline.java.InlineJavaServer $debug $this->{port} $shared") ;
+		my $priv = ($this->{private} ? "true" : "false") ;
+		my $cmd = Inline::Java::portable("SUB_FIX_CMD_QUOTES", "\"$java\" $args org.perl.inline.java.InlineJavaServer $debug $this->{port} $shared $priv") ;
 		Inline::Java::debug(2, $cmd) ;
 		if ($o->get_config('UNTAINT')){
 			($cmd) = $cmd =~ /(.*)/ ;
@@ -130,7 +133,8 @@ sub new {
 		$this->{socket}	= $this->setup_socket(
 			$this->{host}, 
 			$this->{port}, 
-			int($o->get_java_config('STARTUP_DELAY')),
+			# Give the user an extra hour's time set breakpoints and the like...
+			($this->{debugger} ? 3600 : 0) + int($o->get_java_config('STARTUP_DELAY')),
 			0
 		) ;
 	}
@@ -146,7 +150,7 @@ sub launch {
 	local $SIG{__WARN__} = sub {} ;
 
 	my $dn = Inline::Java::portable("DEV_NULL") ;
-	my $in = new IO::File("<$dn") ;
+	my $in = ($this->{debugger} ? ">&STDIN" : new IO::File("<$dn")) ;
 	if (! defined($in)){
 		croak "Can't open $dn for reading" ;
 	}
@@ -159,7 +163,9 @@ sub launch {
 	}
 	my $pid = open3($in, $out, ">&STDERR", $cmd) ;
 
-	close($in) ;
+	if (! $this->{debugger}){
+		close($in) ;
+	}
 	if ($this->{shared}){
 		close($out) ;
 	}
@@ -265,6 +271,7 @@ sub setup_socket {
 			if (($socket)||($one_shot)){
 				last ;
 			}
+			select(undef, undef, undef, 0.1) ;
 		}
 
 		if ($got_alarm){
@@ -288,7 +295,7 @@ sub setup_socket {
 	}
 
 	$socket->autoflush(1) ;
-
+	
 	return $socket ;
 }
 

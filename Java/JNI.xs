@@ -77,7 +77,7 @@ jstring JNICALL jni_callback(JNIEnv *env, jobject obj, jstring cmd){
 	/* Check the eval */
 	if (SvTRUE(ERRSV)){
 		STRLEN n_a ;
-		fprintf(stderr, "%s", SvPV(ERRSV, n_a)) ;
+		fprintf(stderr, "Exception caught in JNI callback: %s", SvPV(ERRSV, n_a)) ;
 		exit(-1) ;
 	}
 	else{
@@ -259,6 +259,9 @@ process_command(this, data)
 	check_exception(env, "Can't create java.lang.String") ;
 
 	resp = (*(env))->CallObjectMethod(env, this->ijs, this->process_command_mid, cmd) ;
+	/* Thanks Dave Blob for spotting this. This is necessary since this codes never really returns to Java
+	   It simply calls into Java and comes back. */
+	(*(env))->DeleteLocalRef(env, cmd);
 	check_exception(env, "Can't call ProcessCommand in InlineJavaServer") ;
 
 	hook = perl_get_sv("Inline::Java::Callback::OBJECT_HOOK", FALSE) ;

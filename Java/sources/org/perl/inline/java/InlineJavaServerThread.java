@@ -13,8 +13,8 @@ class InlineJavaServerThread extends Thread {
 	private InlineJavaUserClassLoader ijucl ;
 
 
-	InlineJavaServerThread(InlineJavaServer _ijs, Socket _client, InlineJavaUserClassLoader _ijucl) throws IOException {
-		super() ;
+	InlineJavaServerThread(String name, InlineJavaServer _ijs, Socket _client, InlineJavaUserClassLoader _ijucl) throws IOException {
+		super(name) ;
 		client = _client ;
 		ijs = _ijs ;
 		ijucl = _ijucl ;
@@ -43,7 +43,7 @@ class InlineJavaServerThread extends Thread {
 
 	public void run(){
 		try {
-			ijs.AddThread(getName()) ;
+			ijs.AddThread(this) ;
 
 			while (true){
 				String cmd = br.readLine() ;
@@ -62,7 +62,7 @@ class InlineJavaServerThread extends Thread {
 			System.err.println("IO error: " + e.getMessage()) ;
 		}
 		finally {
-			ijs.RemoveThread(getName()) ;
+			ijs.RemoveThread(this) ;
 		}
 	}
 }

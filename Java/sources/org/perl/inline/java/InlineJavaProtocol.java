@@ -65,7 +65,7 @@ class InlineJavaProtocol {
 		}
 		else if (c.equals("die")){
 			InlineJavaUtils.debug(1, "received a request to die...") ;
-			System.exit(0) ;
+			ijs.Shutdown() ;
 		}
 		else {
 			throw new InlineJavaException("Unknown command " + c) ;

@@ -7,6 +7,7 @@ use Inline Config =>
 use Inline (
 	Java => 'DATA',
 	PORT => 17890,
+	STUDY => ['org.perl.inline.java.InlineJavaPerlCaller'],
 	STARTUP_DELAY => 20,	
 ) ;
 
@@ -14,13 +15,15 @@ use Inline::Java qw(caught) ;
 
 
 BEGIN {
-	my $cnt = 20 ;
+	my $cnt = 23 ;
 	if ($ENV{PERL_INLINE_JAVA_JNI}){
 		$cnt-- ;
 	}
 	plan(tests => $cnt) ;
 }
 
+my $mtc_cnt = 0 ;
+my $mtc_mode = 0 ;
 my $t = new t15() ;
 
 {
@@ -65,9 +68,30 @@ my $t = new t15() ;
 		ok($t->perlt()->add(5, 6), 11) ;
 
 		if (! $ENV{PERL_INLINE_JAVA_JNI}){
-			# This a fatal error under JNI.
+			# This a fatal error under JNI since we cannot croak inside callbacks
+			# because there is some Java in the stack (see JNI.xs, jni_callback for
+			# more info).
 			eval {$t->perldummy()} ; ok($@, qr/Can't propagate non-/) ;
 		}
+
+		$t->mtc_callbacks(20) ;
+		$t->StartCallbackLoop() ;
+		ok($mtc_cnt, 20) ;
+
+		$mtc_cnt = -30 ;
+		$t->mtc_callbacks2(50) ;
+		$t->StartCallbackLoop() ;
+		ok($mtc_cnt, 20) ;
+
+		$mtc_cnt = 0 ;
+		$mtc_mode = 1 ;
+		$t->mtc_callbacks2(20) ;
+		$t->StartCallbackLoop() ;
+		ok($mtc_cnt, 20) ;
+
+		# Unfortunately we can't test this because the Thread.run method doesn't allow us
+		# to throw any exceptions...
+		# $t->mtc_callbacks_error() ;
 	} ;
 	if ($@){
 		if (caught("java.lang.Throwable")){
@@ -165,6 +189,21 @@ sub dummy {
 
 
 
+sub mt_callback {
+	my $pc = shift ;
+	$mtc_cnt++ ;
+	if ($mtc_cnt >= 20){
+		if (! $mtc_mode){
+			$pc->StopCallbackLoop() ;
+		}
+		else{
+			my $o = new org::perl::inline::java::InlineJavaPerlCaller() ;
+			$o->StopCallbackLoop() ;
+		}
+	}	
+}
+
+
 __END__
 
 __Java__
@@ -180,8 +219,35 @@ class t15 extends InlineJavaPerlCaller {
 		}
 	}
 
+	class OwnThread extends Thread {
+		InlineJavaPerlCaller pc = null ;
+		boolean error = false ;
 
-	public t15() {
+		OwnThread(InlineJavaPerlCaller _pc, int nb, boolean err){
+			super("CALLBACK-TEST-THREAD-#" + nb) ;
+			pc = _pc ;
+			error = err ;
+		}
+
+		public void run(){
+			try {
+				if (! error){
+					pc.CallPerl("main", "mt_callback", new Object [] {pc}) ;
+				}
+				else {
+					new InlineJavaPerlCaller() ;
+				}
+			}
+			catch (InlineJavaException ie){
+				ie.printStackTrace() ;
+			}
+			catch (InlineJavaPerlException ipe){
+				ipe.printStackTrace() ;
+			}
+		}
+	}
+
+	public t15() throws InlineJavaException {
 	}
 
 	public int add(int a, int b){
@@ -300,5 +366,25 @@ class t15 extends InlineJavaPerlCaller {
 
 	public Object perldummy() throws InlineJavaException, InlineJavaPerlException, OwnException {
 		return CallPerl("main", "dummy", null) ;
+	}
+
+	public void mtc_callbacks(int n){
+		for (int i = 0 ; i < n ; i++){
+			OwnThread t = new OwnThread(this, i, false) ;
+			t.start() ;
+		}
+	}
+
+	public void mtc_callbacks2(int n) throws InlineJavaException, InlineJavaPerlException {
+		for (int i = 0 ; i < n ; i++){
+			InlineJavaPerlCaller pc = new InlineJavaPerlCaller() ;
+			OwnThread t = new OwnThread(pc, i, false) ;
+			t.start() ;
+		}
+	}
+
+	public void mtc_callbacks_error(){
+		OwnThread t = new OwnThread(this, 0, true) ;
+		t.start() ;
 	}
 }

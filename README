@@ -66,9 +66,12 @@ second time you test loading of an already built module.
 -------------------------------------------------------------------------------
 FEATURES:
 
-WARNING: THIS IS ALPHA SOFTWARE. It is incomplete and possibly unreliable. 
-         It is also possible that some elements of the interface (API) will 
-         change in future releases.
+Inline::Java version 0.44 is a major upgrade that includes:
++ Callbacks from multiple threads are now supported
++ Refactored (again...) studying/.jdat/cache stuff
++ Added PRIVATE mode for use with SHARED_JVM
++ Added DEBUGGER mode that launches jdb
++ Fixed memory leak in JNI coded (patch submitted by Dave Blob)
 
 Inline::Java version 0.43 is a minor upgrade that includes:
 + Restored $VERSION in each .pm file

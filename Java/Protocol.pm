@@ -5,7 +5,7 @@ use Inline::Java::Object ;
 use Inline::Java::Array ;
 use Carp ;
 
-$Inline::Java::Protocol::VERSION = '0.43' ;
+$Inline::Java::Protocol::VERSION = '0.44' ;
 
 my %CLASSPATH_ENTRIES = () ;
 
@@ -57,6 +57,7 @@ sub ServerType {
 }
 
 
+# Known issue: $classes must contain at least one class name.
 sub Report {
 	my $this = shift ;
 	my $classes = shift ;
@@ -361,7 +362,7 @@ sub DeserializeObject {
 				if (Inline::Java::Class::ClassIsReference($elem_class)){
 					if (! Inline::Java::known_to_perl($pkg, $elem_class)){
 						if (($thrown)||($this->{inline}->get_java_config('AUTOSTUDY'))){
-							$this->{inline}->_study([$elem_class], 0) ;
+							$this->{inline}->_study([$elem_class]) ;
 						}
 						else{	
 							# Object is not known to Perl, it lives as a 
@@ -413,7 +414,7 @@ sub encode {
 	my $s = shift ;
 
 	# If Perl version < 5.6, use C*
-	return join(".", unpack(($] < 5.006 ? "C*" : "U*"), $s)) ;
+	return join(".", unpack("U*", $s)) ;
 }
 
 
@@ -421,7 +422,7 @@ sub decode {
 	my $s = shift ;
 
 	# If Perl version < 5.6, use C*
-	return pack(($] < 5.006 ? "C*" : "U*"), split(/\./, $s)) ;
+	return pack("U*", split(/\./, $s)) ;
 }
 
 

@@ -1,6 +1,6 @@
 CODE:
 - Do more test for CLASSPATH combinations
-- PRIVATE mode
+- Does STDIN still need to be closed in the JVM?
 
 TEST:
 - Alpha
