@@ -53,7 +53,7 @@ sub __new {
 	}
 	else{
 		$this->__get_private()->{id} = $objid ;
-		Inline::Java::debug("Object created in java ($class):") ;
+		Inline::Java::debug(2, "creating object in java ($class):") ;
 	}
 
 	Inline::Java::debug_obj($this) ;
@@ -97,7 +97,7 @@ sub __validate_prototype {
 		my $score = undef ;
 
 		my $sig = Inline::Java::Protocol->CreateSignature($proto) ;
-		Inline::Java::debug("Matching arguments to $method$sig") ;
+		Inline::Java::debug(3, "matching arguments to $method$sig") ;
 		
 		eval {
 			($new_args, $score) = Inline::Java::Class::CastArguments($args, $proto, $inline->get_api('modfname')) ;
@@ -108,12 +108,12 @@ sub __validate_prototype {
 				croak $@ ;
 			}
 			push @errors, $@ ;
-			Inline::Java::debug("Error trying to fit args to prototype: $@") ;
+			Inline::Java::debug(3, "error trying to fit args to prototype: $@") ;
 			next ;
 		}
 
 		# We passed!
-		Inline::Java::debug("Match successful: score is $score") ;
+		Inline::Java::debug(3, "match successful: score is $score") ;
 		my $h = {
 			PROTO =>	$proto,
 			NEW_ARGS =>	$new_args,
@@ -126,7 +126,7 @@ sub __validate_prototype {
 		# Tiny optimization: abort if type cast was used and matched for
 		# every parameter
 		if (Inline::Java::Class::IsMaxArgumentsScore($new_args, $score)){
-			Inline::Java::debug("Perfect match found, aborting search") ;
+			Inline::Java::debug(3, "perfect match found, aborting search") ;
 			@matched = () ;
 			push @matched, $h ;
 			last ;
@@ -237,7 +237,7 @@ sub __get_member {
 		croak "Can't get member '$key' for an object that is not bound to Perl" ;
 	}
 
-	Inline::Java::debug("fetching member variable '$key'") ;
+	Inline::Java::debug(3, "fetching member variable '$key'") ;
 
 	my $inline = Inline::Java::get_INLINE($this->__get_private()->{module}) ;
 	my $fields = $inline->get_fields($this->__get_private()->{class}) ;
@@ -256,7 +256,7 @@ sub __get_member {
 		my $proto = $sign->{TYPE} ;
 
 		my $ret = $this->__get_private()->{proto}->GetJavaMember($key, [$proto], [undef]) ;
-		Inline::Java::debug("returning member (" . ($ret || '') . ")") ;
+		Inline::Java::debug(3, "returning member (" . ($ret || '') . ")") ;
 	
 		return $ret ;
 	}
@@ -314,7 +314,7 @@ sub AUTOLOAD {
 	# method.
 	$func_name =~ s/^(.*)::// ;
 
-	Inline::Java::debug("$func_name") ;
+	Inline::Java::debug(5, "$func_name") ;
 
 	my $name = (ref($this) ? $this->__get_private()->{class} : $this) ;
 	if ($name eq "Inline::Java::Object"){
@@ -330,7 +330,7 @@ sub DESTROY {
 	
 	my $knot = tied %{$this} ;
 	if (! $knot){
-		Inline::Java::debug("Destroying Inline::Java::Object::Tie") ;
+		Inline::Java::debug(4, "destroying Inline::Java::Object::Tie") ;
 		
 		if (! Inline::Java::get_DONE()){
 			if (! $this->__get_private()->{weak_ref}){
@@ -366,17 +366,21 @@ sub DESTROY {
 				$PRIVATES->{$this} = undef ;
 			}
 			else{
-				Inline::Java::debug(" Object marked a weak reference, object destruction not propagated to Java") ;
+				Inline::Java::debug(4, "object marked as weak reference, object destruction not propagated to Java") ;
 			}
 		}
 		else{
-			Inline::Java::debug(" Script marked as DONE, object destruction not propagated to Java") ;
+			Inline::Java::debug(4, "script marked as DONE, object destruction not propagated to Java") ;
 		}
 	}
 	else{
 		# Here we can't untie because we still have a reference in $PRIVATES
 		# untie %{$this} ;
-		Inline::Java::debug("Destroying Inline::Java::Object") ;
+
+		my $class = $this->__get_private()->{class} ;
+		Inline::Java::debug(2, "destroying object in java ($class):") ;
+
+		Inline::Java::debug(4, "destroying Inline::Java::Object") ;
 	}
 }
 
@@ -539,7 +543,7 @@ sub new {
 sub DESTROY {
 	my $this = shift ;
 
-	Inline::Java::debug("Destroying Inline::Java::Object::Private") ;
+	Inline::Java::debug(4, "destroying Inline::Java::Object::Private") ;
 }
 
 

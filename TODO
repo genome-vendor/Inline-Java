@@ -1,7 +1,6 @@
 CODE:
-- Fix info (members part)
 - Check INFO flag vs. PRINT_INFO (shortcuts not working?)
-- Check CVS binary files
+- Fix for Java 1.4 (reflection inverting method/member order)
 
 TEST:
 - Alpha

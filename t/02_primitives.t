@@ -10,7 +10,7 @@ use Inline (
 
 
 BEGIN {
-	plan(tests => 107) ;
+	plan(tests => 108) ;
 }
 
 
@@ -143,6 +143,10 @@ my $t = new types2() ;
 	ok($t->_String(undef), undef) ;
 	ok($t->_String(0), "0") ;
 	ok($t->_String("string"), 'string') ;
+
+	my $str = "\r\n&&&\r\n\ntre gfd gf$$ b F D&a;t% R f &p;vf\r\r" ;
+	ok($t->_String($str), $str) ;
+
 	ok($t->_StringBuffer(undef), undef) ;
 	ok($t->_StringBuffer(0), "0") ;
 	ok($t->_StringBuffer("stringbuffer"), 'stringbuffer') ;

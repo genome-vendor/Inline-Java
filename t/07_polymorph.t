@@ -79,6 +79,9 @@ class t17 {
 		return "t1" ;
 	}
 
+	public void n(){
+	}
+
 	public ArrayList get_al(){
 		return new ArrayList() ;
 	}
@@ -98,6 +101,9 @@ class t27 extends t17 {
 
 	public String f(t17 o){
 		return "t2" ;
+	}
+
+	public void n(){
 	}
 }
 

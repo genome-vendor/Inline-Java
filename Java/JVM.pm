@@ -34,24 +34,24 @@ sub new {
 
 	$this->{destroyed} = 0 ;
 
-	Inline::Java::debug("Starting JVM...") ;
+	Inline::Java::debug(1, "starting JVM...") ;
 
+	$this->{owner} = 1 ;
 	if ($o->get_java_config('JNI')){
-		$this->{owner} = 1 ;
-		Inline::Java::debug("  JNI mode") ;
+		Inline::Java::debug(1, "JNI mode") ;
 
 		my $jni = new Inline::Java::JNI(
 			$ENV{CLASSPATH} || "",
-			(Inline::Java::get_DEBUG() ? 1 : 0),
+			Inline::Java::get_DEBUG(),
 		) ;
 		$jni->create_ijs() ;
 
 		$this->{JNI} = $jni ;
 	}
 	else{
-		Inline::Java::debug("  Client/Server mode") ;
+		Inline::Java::debug(1, "client/server mode") ;
 
-		my $debug = (Inline::Java::get_DEBUG() ? "true" : "false") ;
+		my $debug = Inline::Java::get_DEBUG() ;
 
 		$this->{shared} = $o->get_java_config('SHARED_JVM') ;
 		$this->{port} = $o->get_java_config('PORT') ;
@@ -63,7 +63,7 @@ sub new {
 				$this->reconnect() ;
 			} ;
 			if (! $@){
-				Inline::Java::debug("  Connected to already running JVM!") ;
+				Inline::Java::debug(1, "connected to already running JVM!") ;
 				return $this ;
 			}
 		}
@@ -74,7 +74,7 @@ sub new {
 
 		my $shared_arg = ($this->{shared} ? "true" : "false") ;
 		my $cmd = "\"$java\" InlineJavaServer $debug $this->{port} $shared_arg" ;
-		Inline::Java::debug($cmd) ;
+		Inline::Java::debug(1, $cmd) ;
 
 		if ($o->get_config('UNTAINT')){
 			($cmd) = $cmd =~ /(.*)/ ;
@@ -110,66 +110,21 @@ sub launch {
 	if (! defined($in)){
 		croak "Can't open $dn for reading" ;
 	}
-	my $out = new IO::File(">$dn") ;
-	if (! defined($out)){
-		croak "Can't open $dn for writing" ;
+	my $out = ">&STDOUT" ;
+	if ($this->{shared}){
+		$out = new IO::File(">$dn") ;
+		if (! defined($out)){
+			croak "Can't open $dn for writing" ;
+		}
 	}
-
 	my $pid = open3($in, $out, ">&STDERR", $cmd) ;
 
 	close($in) ;
-	close($out) ;
+	if ($this->{shared}){
+		close($out) ;
+	}
 
 	return $pid ;
-}
-
-
-sub fork_launch {
-	my $this = shift ;
-	my $cmd = shift ;
-
-	# Setup pipe with our child
-	my $c2p = new IO::Pipe() ;
-
-	my $gcpid = undef ;
-	my $cpid = fork() ;
-	if (! defined($cpid)){
-		croak("Can't fork to detach JVM: $!") ;
-	}
-	elsif(! $cpid){
-		# Child
-		$c2p->writer() ; autoflush $c2p 1 ;
-
-		# Now we need to get $gcpid back to our script...
-		eval {
- 			$gcpid = $this->launch($cmd) ;
-		} ;
-		if ($@){
-			print $c2p "$@\n" ;
-		}
-		else{
-			print $c2p "pid: $gcpid\n" ;
-		}
-		close($c2p) ;
-		Inline::Java::set_DONE() ;
-		CORE::exit() ;
-	}
-	else{
-		# Parent
-		$c2p->reader() ;
-		my $line = <$c2p> ;
-		close($c2p) ;
-		chomp($line) ;
-		if ($line =~ /^pid: (.*)$/){
-			$gcpid = $1 ;
-		}
-		else{
-			croak $line ;
-		}
-		waitpid($cpid, 0) ;
-	}
-
-	return $gcpid ;
 }
 
 
@@ -185,13 +140,13 @@ sub shutdown {
 
 	if (! $this->{destroyed}){
 		if ($this->am_owner()){
-			Inline::Java::debug("JVM owner exiting...") ;
+			Inline::Java::debug(1, "JVM owner exiting...") ;
 
 			if ($this->{socket}){
 				# This asks the Java server to stop and die.
 				my $sock = $this->{socket} ;
 				if ($sock->peername()){
-					Inline::Java::debug("Sending 'die' message to JVM...") ;
+					Inline::Java::debug(1, "Sending 'die' message to JVM...") ;
 					print $sock "die\n" ;
 				}
 				else{
@@ -203,9 +158,9 @@ sub shutdown {
 					# Here we go ahead and send the signals anyway to be very 
 					# sure it's dead...
 					# Always be polite first, and then insist.
-					Inline::Java::debug("Sending 15 signal to JVM...") ;
+					Inline::Java::debug(1, "Sending 15 signal to JVM...") ;
 					kill(15, $this->{pid}) ;
-					Inline::Java::debug("Sending 9 signal to JVM...") ;
+					Inline::Java::debug(1, "Sending 9 signal to JVM...") ;
 					kill(9, $this->{pid}) ;
 		
 					# Reap the child...
@@ -219,7 +174,7 @@ sub shutdown {
 		else{
 			# We are not the JVM owner, so we simply politely disconnect
 			if ($this->{socket}){
-				Inline::Java::debug("JVM non-owner exiting...") ;
+				Inline::Java::debug(1, "JVM non-owner exiting...") ;
 				close($this->{socket}) ;
 				$this->{socket} = undef ;
 			}
@@ -368,7 +323,7 @@ sub process_command {
 
 	my $resp = undef ;
 	while (1){
-		Inline::Java::debug("  packet sent is $data") ;
+		Inline::Java::debug(3, "packet sent is $data") ;
 
 		if ($this->{socket}){
 			my $sock = $this->{socket} ;
@@ -388,8 +343,9 @@ sub process_command {
 			$Inline::Java::JNI::INLINE_HOOK = $inline ;
 			$resp = $this->{JNI}->process_command($data) ;
 		}
+		chomp($resp) ;
 
-		Inline::Java::debug("  packet recv is $resp") ;
+		Inline::Java::debug(3, "packet recv is $resp") ;
 
 		# We got an answer from the server. Is it a callback?
 		if ($resp =~ /^callback/){

@@ -23,8 +23,8 @@ sub new {
 
 	$OBJECTS->{$knot} = $object ;
 
-	Inline::Java::debug("this = '$this'") ; 
-	Inline::Java::debug("knot = '$knot'") ; 
+	Inline::Java::debug(5, "this = '$this'") ; 
+	Inline::Java::debug(5, "knot = '$knot'") ; 
 
 	return $this ;
 }
@@ -66,7 +66,7 @@ sub length {
 			$obj->__get_private()->{array_length} = $ret ;
 		}
 		else{
-			Inline::Java::debug("Using cached array length $ret") ;
+			Inline::Java::debug(4, "using cached array length $ret") ;
 		}
 	} ;
 	croak $@ if $@ ;
@@ -150,14 +150,14 @@ sub DESTROY {
 
 	my $knot = tied @{$this} ;
 	if (! $knot){
-		Inline::Java::debug("Destroying Inline::Java::Array::Tie") ;
+		Inline::Java::debug(4, "destroying Inline::Java::Array::Tie") ;
 
 		$OBJECTS->{$this} = undef ;
 	}
 	else{
 		# Here we can't untie because we still have a reference in $OBJECTS
 		# untie @{$this} ;
-		Inline::Java::debug("Destroying Inline::Java::Array") ;
+		Inline::Java::debug(4, "destroying Inline::Java::Array") ;
 	}
 }
 
@@ -465,9 +465,9 @@ sub ValidateArray {
 			$max_cells *= $map->{$l}->{max} ;
 		}
 		my $nb_cells = ($map->{$last}->{count} || 0) ;
-		Inline::Java::debug("array is [" . join("][", @dims) . "]") ;
-		Inline::Java::debug("array has         $nb_cells declared cells") ;
-		Inline::Java::debug("array should have $max_cells declared cells") ;
+		Inline::Java::debug(4, "array is [" . join("][", @dims) . "]") ;
+		Inline::Java::debug(4, "array has         $nb_cells declared cells") ;
+		Inline::Java::debug(4, "array should have $max_cells declared cells") ;
 		$this->{dim} = \@dims ;
 		$this->{nb_dim} = scalar(@dims) ;
 
@@ -667,7 +667,7 @@ class InlineJavaArray {
 		int dims[] = new int[size] ;
 		for (int i = 0 ; i < size ; i++){
 			dims[i] = Integer.parseInt((String)al.get(i)) ;
-			ijs.debug("    array dimension: " + (String)al.get(i)) ;
+			ijs.debug(4, "array dimension: " + (String)al.get(i)) ;
 		}
 
 		Object array = null ;
@@ -721,10 +721,10 @@ class InlineJavaArray {
 					Object o = ijc.CastArgument(elem, arg) ;
 					Array.set(array, i, o) ;
 					if (o != null){
-						ijs.debug("      setting array element " + String.valueOf(i) + " to " + o.toString()) ;
+						ijs.debug(4, "setting array element " + String.valueOf(i) + " to " + o.toString()) ;
 					}
 					else{
-						ijs.debug("      setting array element " + String.valueOf(i) + " to " + o) ;
+						ijs.debug(4, "setting array element " + String.valueOf(i) + " to " + o) ;
 					}
 		 		}
 			}

@@ -6,7 +6,7 @@ Inline::Java lets you write Perl classes in Java.
 
 Example:
 
-    use Inline Java => <<'END',
+    use Inline Java => <<'END';
 	    class JAxH {
 			public JAxH(String x){
 				System.out.println("Just Another " + x + " Hacker") ;
@@ -72,6 +72,12 @@ WARNING: THIS IS ALPHA SOFTWARE. It is incomplete and possibly unreliable.
          It is also possible that some elements of the interface (API) will 
          change in future releases.
 
+Inline::Java version 0.33 is a minor upgrade that includes:
++ Improved and more flexible debug output
++ Auto loading of thread libraries under Solaris
++ Basic support for J2SDK 1.4
++ Other minor bug fixes
+
 Inline::Java version 0.32 is a minor upgrade that includes:
 + Restored compatibiity with Perl 5.005_03
 + Other minor bug fixes
@@ -127,9 +133,11 @@ INFORMATION:
 = For information about Inline, see 'perldoc Inline'.
 = For information on using Java, visit http://java.sun.org
 
-The Inline::Java mailing list is inline@perl.org. 
-Send email to inline-subscribe@perl.org to subscribe.
+Inline::Java's mailing list is inline@perl.org. 
+To subscribe, send an email to inline-subscribe@perl.org
 
-Please send questions and comments to "Patrick LeBoutillier" <patl@cpan.org>
+Inline::Java's home page is http://inline.perl.org/java/
+
+Please send questions and comments to Patrick LeBoutillier <patl@cpan.org>
 
 Copyright (c) 2001-2002, Patrick LeBoutillier. All Rights Reserved.  

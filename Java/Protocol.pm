@@ -27,7 +27,7 @@ sub new {
 sub ServerType {
 	my $this = shift ;
 
-	Inline::Java::debug("getting server type") ;
+	Inline::Java::debug(3, "getting server type") ;
 
 	my $data = "server_type" ;
 
@@ -39,7 +39,7 @@ sub Report {
 	my $this = shift ;
 	my $classes = shift ;
 
-	Inline::Java::debug("reporting on $classes") ;
+	Inline::Java::debug(3, "reporting on $classes") ;
 
 	my $data = join(" ", 
 		"report", 
@@ -56,7 +56,7 @@ sub ISA {
 
 	my $class = $this->{obj_priv}->{java_class} ;
 
-	Inline::Java::debug("checking if $class is a $proto") ;
+	Inline::Java::debug(3, "checking if $class is a $proto") ;
 
 	my $data = join(" ", 
 		"isa", 
@@ -71,7 +71,7 @@ sub ISA {
 sub ObjectCount {
 	my $this = shift ;
 
-	Inline::Java::debug("getting object count") ;
+	Inline::Java::debug(3, "getting object count") ;
 
 	my $data = join(" ", 
 		"obj_cnt", 
@@ -88,7 +88,7 @@ sub CreateJavaObject {
 	my $proto = shift ;
 	my $args = shift ;
 
-	Inline::Java::debug("creating object new $class" . $this->CreateSignature($args)) ; 	
+	Inline::Java::debug(3, "creating object new $class" . $this->CreateSignature($args)) ; 	
 
 	my $data = join(" ", 
 		"create_object", 
@@ -110,7 +110,7 @@ sub CallJavaMethod {
 
 	my $id = $this->{obj_priv}->{id} ;
 	my $class = $this->{obj_priv}->{java_class} ;
-	Inline::Java::debug("calling object($id).$method" . $this->CreateSignature($args)) ;
+	Inline::Java::debug(3, "calling object($id).$method" . $this->CreateSignature($args)) ;
 
 	my $data = join(" ", 
 		"call_method", 
@@ -134,7 +134,7 @@ sub SetJavaMember {
 
 	my $id = $this->{obj_priv}->{id} ;
 	my $class = $this->{obj_priv}->{java_class} ;
-	Inline::Java::debug("setting object($id)->{$member} = " . ($arg->[0] || '')) ;
+	Inline::Java::debug(3, "setting object($id)->{$member} = " . ($arg->[0] || '')) ;
 	my $data = join(" ", 
 		"set_member", 
 		$id,
@@ -156,7 +156,7 @@ sub GetJavaMember {
 
 	my $id = $this->{obj_priv}->{id} ;
 	my $class = $this->{obj_priv}->{java_class} ;
-	Inline::Java::debug("getting object($id)->{$member}") ;
+	Inline::Java::debug(3, "getting object($id)->{$member}") ;
 
 	my $data = join(" ", 
 		"get_member", 
@@ -180,7 +180,7 @@ sub DeleteJavaObject {
 		my $id = $this->{obj_priv}->{id} ;
 		my $class = $this->{obj_priv}->{java_class} ;
 
-		Inline::Java::debug("deleting object $obj $id ($class)") ;
+		Inline::Java::debug(3, "deleting object $obj $id ($class)") ;
 
 		my $data = join(" ", 
 			"delete_object", 
@@ -250,7 +250,7 @@ sub ValidateArgs {
 			push @ret, "object:$class:$id" ;
 		}
 		else{
-			push @ret, "scalar:" . join(".", unpack("C*", $arg)) ;
+			push @ret, "scalar:" . encode($arg) ;
 		}
 	}
 
@@ -279,9 +279,9 @@ sub Send {
 	my $inline = Inline::Java::get_INLINE($this->{module}) ;
 	my $resp = Inline::Java::__get_JVM()->process_command($inline, $data) ;
 
-	if ($resp =~ /^error scalar:([\d.]*)$/){
-		my $msg = pack("C*", split(/\./, $1)) ;
-		Inline::Java::debug("  packet recv error: $msg") ;
+	if ($resp =~ /^error scalar:([\d.-]*)$/){
+		my $msg = decode($1) ;
+		Inline::Java::debug(3, "packet recv error: $msg") ;
 		croak $msg ;
 	}
 	elsif ($resp =~ s/^ok //){
@@ -297,8 +297,8 @@ sub DeserializeObject {
 	my $const = shift ;
 	my $resp = shift ;
 
-	if ($resp =~ /^scalar:([\d.]*)$/){
-		return pack("C*", split(/\./, $1)) ; 
+	if ($resp =~ /^scalar:([\d.-]*)$/){
+		return decode($1) ; 
 	}
 	elsif ($resp =~ /^undef:$/){
 		return undef ;
@@ -328,7 +328,7 @@ sub DeserializeObject {
 			my $obj = undef ;
 			my $elem_class = $class ;
 
-			Inline::Java::debug("checking if stub is array...") ;
+			Inline::Java::debug(3, "checking if stub is array...") ;
 			if (Inline::Java::Class::ClassIsArray($class)){
 				my @d = Inline::Java::Class::ValidateClassSplit($class) ;
 				$elem_class = $d[2] ;
@@ -359,17 +359,17 @@ sub DeserializeObject {
 			}
 
 			if (Inline::Java::Class::ClassIsArray($class)){
-				Inline::Java::debug("creating array object...") ;
+				Inline::Java::debug(3, "creating array object...") ;
 				$obj = Inline::Java::Object->__new($class, $inline, $id) ;
 				$obj = new Inline::Java::Array($obj) ;
-				Inline::Java::debug("array object created...") ;
+				Inline::Java::debug(3, "array object created...") ;
 			}
 			else{
 				$obj = $perl_class->__new($class, $inline, $id) ;
 			}
 
 			if ($thrown){
-				Inline::Java::debug("throwing stub...") ;
+				Inline::Java::debug(3, "throwing stub...") ;
 				my ($msg, $score) = $obj->__isa('InlineJavaPerlCaller$PerlException') ;
 				if ($msg){
 					die $obj ;
@@ -379,7 +379,7 @@ sub DeserializeObject {
 				}
 			}
 			else{
-				Inline::Java::debug("returning stub...") ;
+				Inline::Java::debug(3, "returning stub...") ;
 				return $obj ;
 			}
 		}
@@ -390,10 +390,24 @@ sub DeserializeObject {
 }
 
 
+sub encode {
+	my $s = shift ;
+
+	return join(".", unpack("C*", $s)) ;
+}
+
+
+sub decode {
+	my $s = shift ;
+
+	return pack("C*", split(/\./, $s)) ;
+}
+
+
 sub DESTROY {
 	my $this = shift ;
 
-	Inline::Java::debug("Destroying Inline::Java::Protocol") ;
+	Inline::Java::debug(4, "destroying Inline::Java::Protocol") ;
 }
 
 
@@ -460,7 +474,7 @@ class InlineJavaProtocol {
 			ObjectCount(st) ;
 		}
 		else if (c.equals("die")){
-			ijs.debug("  received a request to die...") ;
+			ijs.debug(1, "received a request to die...") ;
 			System.exit(0) ;
 		}
 		else {
@@ -478,7 +492,7 @@ class InlineJavaProtocol {
 		StringTokenizer st2 = new StringTokenizer(st.nextToken(), ":") ;
 		st2.nextToken() ;
 
-		StringTokenizer st3 = new StringTokenizer(pack(st2.nextToken()), " ") ;
+		StringTokenizer st3 = new StringTokenizer(decode(st2.nextToken()), " ") ;
 
 		ArrayList class_list = new ArrayList() ;
 		while (st3.hasMoreTokens()){
@@ -490,7 +504,7 @@ class InlineJavaProtocol {
 			String name = (String)class_list.get(i) ;
 			Class c = ijc.ValidateClass(name) ;
 
-			ijs.debug("reporting for " + c) ;
+			ijs.debug(3, "reporting for " + c) ;
 													
 			pw.append("class " + c.getName() + "\n") ;
 			Constructor constructors[] = c.getConstructors() ;
@@ -523,7 +537,7 @@ class InlineJavaProtocol {
 			}
 
 			for (int j = 0 ; j < fields.length ; j++){
-				Field x = fields[j] ;
+				Field x = fields[(ijs.reverse_members() ? (fields.length - 1 - j) : j)] ;
 				String stat = (Modifier.isStatic(x.getModifiers()) ? " static " : " instance ") ;
 				Class decl = x.getDeclaringClass() ;
 				Class type = x.getType() ;
@@ -598,7 +612,7 @@ class InlineJavaProtocol {
 
 			Class ec = ijc.ValidateClass(sb.toString()) ;
 
-			ijs.debug("    array elements: " + ec.getName()) ;
+			ijs.debug(4, "array elements: " + ec.getName()) ;
 			Object o = ija.CreateArray(ec, st) ;
 			SetResponse(o) ;
 		}
@@ -647,7 +661,7 @@ class InlineJavaProtocol {
 				Throwable t = e.getTargetException() ;
 				String type = t.getClass().getName() ;
 				String msg = t.getMessage() ;
-				ijs.debug("Method " + name + " in class " + class_name + " threw exception " + type + ": " + msg) ;
+				ijs.debug(1, "method " + name + " in class " + class_name + " threw exception " + type + ": " + msg) ;
 				if (t instanceof InlineJavaPerlCaller.InlineJavaException){
 					throw ((InlineJavaPerlCaller.InlineJavaException)t).GetException() ;
 				}
@@ -833,7 +847,7 @@ class InlineJavaProtocol {
 			Member m = ma[i] ;
 
 			if (m.getName().equals(name)){
-				ijs.debug("found a " + name + (constructor ? " constructor" : " method")) ;
+				ijs.debug(3, "found a " + name + (constructor ? " constructor" : " method")) ;
 
 				if (constructor){
 					params = ((Constructor)m).getParameterTypes() ;
@@ -844,10 +858,10 @@ class InlineJavaProtocol {
 
 				// Now we check if the signatures match
 				String sign = ijs.CreateSignature(params, ",") ;
-				ijs.debug(sign + " = " + signature + "?") ;
+				ijs.debug(3, sign + " = " + signature + "?") ;
 
 				if (signature.equals(sign)){
-					ijs.debug("  has matching signature " + sign) ;
+					ijs.debug(3, "has matching signature " + sign) ;
 					ml.add(ml.size(), m) ;
 					break ;
 				}
@@ -915,21 +929,21 @@ class InlineJavaProtocol {
 		ArrayList fl = new ArrayList(fa.length) ;
 		Class param = null ;
 		for (int i = 0 ; i < fa.length ; i++){
-			Field f = fa[i] ;
+			Field f = fa[(ijs.reverse_members() ? (fa.length - 1 - i) : i)] ;
 
 			if (f.getName().equals(name)){
-				ijs.debug("found a " + name + " member") ;
+				ijs.debug(3, "found a " + name + " member") ;
 
 				param = f.getType() ;
 				String t = param.getName() ;
 				if (type.equals(t)){
-					ijs.debug("  has matching type " + t) ;
+					ijs.debug(3, "has matching type " + t) ;
 					fl.add(fl.size(), f) ;
 				}
 			}
 		}
 
-		// Now we got a list of matching methods. 
+		// Now we got a list of matching members. 
 		// We have to figure out which one we will call.
 		if (fl.size() == 0){
 			throw new InlineJavaException(
@@ -940,7 +954,7 @@ class InlineJavaProtocol {
 			// Now we need to force the arguments received to match
 			// the methods signature.
 
-			// If we have more that one, we use tha last one, which is the most
+			// If we have more that one, we use the last one, which is the most
 			// specialized
 			Field f = (Field)fl.get(fl.size() - 1) ;
 			param = f.getType() ;
@@ -977,11 +991,11 @@ class InlineJavaProtocol {
 			return "undef:" ;
 		}
 		else if ((ijc.ClassIsNumeric(o.getClass()))||(ijc.ClassIsChar(o.getClass()))||(ijc.ClassIsString(o.getClass()))){
-			return "scalar:" + unpack(o.toString()) ;
+			return "scalar:" + encode(o.toString()) ;
 		}
 		else if (ijc.ClassIsBool(o.getClass())){
 			String b = o.toString() ;
-			return "scalar:" + unpack((b.equals("true") ? "1" : "0")) ;
+			return "scalar:" + encode((b.equals("true") ? "1" : "0")) ;
 		}
 		else {
 			// Here we need to register the object in order to send
@@ -1000,8 +1014,7 @@ class InlineJavaProtocol {
 
 
 
-	/* Equivalent to Perl pack */
-	public String pack(String s){
+	public String decode(String s){
 		StringTokenizer st = new StringTokenizer(s, ".") ;
 		StringBuffer sb = new StringBuffer() ;
 		while (st.hasMoreTokens()){
@@ -1014,8 +1027,7 @@ class InlineJavaProtocol {
 	}
 
 
-	/* Equivalent to Perl unpack */
-	public String unpack(String s){
+	public String encode(String s){
 		byte b[] = s.getBytes() ;
 		StringBuffer sb = new StringBuffer() ;
 		for (int i = 0 ; i < b.length ; i++){

@@ -7,7 +7,7 @@ package Inline::Java ;
 
 use strict ;
 
-$Inline::Java::VERSION = '0.32' ;
+$Inline::Java::VERSION = '0.33' ;
 
 
 # DEBUG is set via the DEBUG config
@@ -64,15 +64,15 @@ sub done {
 	$DONE = 1 ;
 
 	if (! $signal){
-		Inline::Java::debug("killed by natural death.") ;
+		Inline::Java::debug(1, "killed by natural death.") ;
 	}
 	else{
-		Inline::Java::debug("killed by signal SIG$signal.") ;
+		Inline::Java::debug(1, "killed by signal SIG$signal.") ;
 	}
 
 	shutdown_JVM() ;
 	
-	Inline::Java::debug("exiting with $ec") ;
+	Inline::Java::debug(1, "exiting with $ec") ;
 
 	CORE::exit($ec) ;
 }
@@ -196,6 +196,7 @@ sub _validate {
 	if (defined($ENV{PERL_INLINE_JAVA_DEBUG})){
 		$Inline::Java::DEBUG = $ENV{PERL_INLINE_JAVA_DEBUG} ;
 	}
+	$Inline::Java::DEBUG = int($Inline::Java::DEBUG) ;
 
 	if (defined($ENV{PERL_INLINE_JAVA_JNI})){
 		$o->{ILSM}->{JNI} = $ENV{PERL_INLINE_JAVA_JNI} ;
@@ -211,13 +212,11 @@ sub _validate {
 
 	$o->set_java_bin() ;
 
-	# Moved the require here so that $Inline::Java::JNI::SO will
-	# be set in time for the generation of the Init.pm Java code.
 	if ($o->{ILSM}->{JNI}){
 		require Inline::Java::JNI ;
 	}
 
-	Inline::Java::debug("validate done.") ;
+	Inline::Java::debug(1, "validate done.") ;
 }
 
 
@@ -326,15 +325,15 @@ sub find_file_in_path {
 	foreach my $p (@{$paths}){
 		$p =~ s/^\s+// ;
 		$p =~ s/\s+$// ;
-		Inline::Java::debug("path element: $p") ;
+		Inline::Java::debug(4, "path element: $p") ;
 		if ($p !~ /^\s*$/){
 			my $found = 0 ;
 			foreach my $file (@{$files}){
 				my $f = File::Spec->catfile($p, $file) ;
-				Inline::Java::debug("  candidate: $f\n") ;
+				Inline::Java::debug(4, " candidate: $f\n") ;
 
 				if (-f $f){
-					Inline::Java::debug("  found file $file in $p") ;
+					Inline::Java::debug(4, " found file $file in $p") ;
 					$found++ ;
 				}
 			}
@@ -397,7 +396,7 @@ sub write_java {
 	Inline::Java::Init::DumpCallbackJavaCode(\*Inline::Java::JAVA) ;
 	close(Inline::Java::JAVA) ;
 
-	Inline::Java::debug("write_java done.") ;
+	Inline::Java::debug(1, "write_java done.") ;
 }
 
 
@@ -427,8 +426,6 @@ sub compile {
 		($cwd) = $cwd =~ /(.*)/ ;
 	}
 
-	my $debug = ($Inline::Java::DEBUG ? "true" : "false") ;
-
 	my $source = ($study_only ? '' : "$modfname.java") ;
 
 	# When we run the commands, we quote them because in WIN32 you need it if
@@ -451,7 +448,7 @@ sub compile {
 				my $func = shift @{$cmd} ;
 				my @args = @{$cmd} ;
 
-				Inline::Java::debug("$func" . "(" . join(", ", @args) . ")") ;
+				Inline::Java::debug(3, "$func" . "(" . join(", ", @args) . ")") ;
 
 				no strict 'refs' ;
 				my $ret = $func->(@args) ;
@@ -464,7 +461,7 @@ sub compile {
 					($cmd) = $cmd =~ /(.*)/ ;
 				}
 
-				Inline::Java::debug("$cmd") ;
+				Inline::Java::debug(3, "$cmd") ;
 				my $res = system($cmd) ;
 				$res and do {
 					croak $o->compile_error_msg($cmd, $cwd) ;
@@ -479,7 +476,7 @@ sub compile {
 		Inline::Java::Portable::rmpath($o, '', $build_dir) ;
 	}
 
-	Inline::Java::debug("compile done.") ;
+	Inline::Java::debug(1, "compile done.") ;
 }
 
 
@@ -544,7 +541,7 @@ sub copy_classes {
 		}
 		my $f = File::Spec->catfile($src_dir, $file) ;
 		my $t = File::Spec->catfile($dest_dir, $file) ;
-		Inline::Java::debug("copy_classes: $file, $t") ;
+		Inline::Java::debug(4, "copy_classes: $file, $t") ;
 		if (! File::Copy::copy($file, $t)){
 			return "Can't copy $f to $t: $!" ;
 		}
@@ -599,7 +596,7 @@ sub load {
 	# Add our Inline object to the list.
 	my $prev_o = $INLINES->{$modfname} ;
 	if (defined($prev_o)){
-		Inline::Java::debug("Module '$modfname' was already loaded, importing binding into new instance") ;
+		Inline::Java::debug(2, "module '$modfname' was already loaded, importing binding into new instance") ;
 		if (! defined($o->{ILSM}->{data})){
 			$o->{ILSM}->{data} = [] ;
 		}
@@ -639,7 +636,7 @@ sub set_classpath {
 
 	$cpall =~ s/\s*\[PERL_INLINE_JAVA\s*=\s*(.*?)\s*\]\s*/{
 		my $modules = $1 ;
-		Inline::Java::debug("   found special CLASSPATH entry: $modules") ;
+		Inline::Java::debug(1, "found special CLASSPATH entry: $modules") ;
 	
 		my @modules = split(m#\s*,\s*#, $modules) ;
 		my $dir = File::Spec->catdir($o->get_config('DIRECTORY'), "lib", "auto") ;
@@ -669,9 +666,18 @@ sub set_classpath {
 		$p =~ s/\s+$// ;
 	}
 
-	$ENV{CLASSPATH} = join($sep, @cp) ;
+	my @fcp = () ;
+	my %cp = map {$_ => 1} @cp ;
+	foreach my $p (@cp){
+		if ($cp{$p}){
+			push @fcp, $p ;
+			delete $cp{$p} ;
+		}
+	}
 
-	Inline::Java::debug("  classpath: " . $ENV{CLASSPATH}) ;
+	$ENV{CLASSPATH} = join($sep, @fcp) ;
+
+	Inline::Java::debug(1, "classpath: " . $ENV{CLASSPATH}) ;
 }
 
 
@@ -741,7 +747,7 @@ sub report {
 		# Since we didn't build the module, this means that 
 		# it was up to date. We can therefore use the data 
 		# from the cache
-		Inline::Java::debug("using jdat cache") ;
+		Inline::Java::debug(1, "using jdat cache") ;
 		my $p = File::Spec->catfile($install, "$modfname.$suffix") ;
 		my $size = (-s $p) || 0 ;
 		if ($size > 0){
@@ -762,7 +768,7 @@ sub report {
 
 	if (($use_cache)&&($o->{ILSM}->{built})){
 		# Update the cache.
-		Inline::Java::debug("updating jdat cache") ;
+		Inline::Java::debug(1, "updating jdat cache") ;
 		if (open(Inline::Java::CACHE, ">$install/$modfname.$suffix")){
 			print Inline::Java::CACHE $resp ;
 			close(Inline::Java::CACHE) ;
@@ -782,9 +788,7 @@ sub load_jdat {
 	my $o = shift ;
 	my @lines = @_ ;
 
-	if (Inline::Java::debug_all()){
-		Inline::Java::debug(join("\n", @lines)) ;
-	}
+	Inline::Java::debug(5, join("\n", @lines)) ;
 
 	# We need an array here since the same object can have many 
 	# study sessions.
@@ -858,9 +862,7 @@ sub load_jdat {
 		$idx++ ;
 	}
 
-	if (Inline::Java::debug_all()){
-		Inline::Java::debug_obj($d) ;
-	}
+	Inline::Java::debug_obj($d) ;
 
 	return ($d, $data_idx) ;
 }
@@ -955,9 +957,7 @@ CODE
 			$code .= $o->bind_method($idx, $class, $method) ;
 		}
 
-		if (Inline::Java::debug_all()){
-			Inline::Java::debug($code) ;
-		}
+		Inline::Java::debug(5, $code) ;
 
 		# open (Inline::Java::CODE, ">>code") and print CODE $code and close(CODE) ;
 
@@ -1187,11 +1187,11 @@ sub known_to_perl {
 
 	no strict 'refs' ;
 	if (defined(${$perl_class . "::" . "EXISTS"})){
-		Inline::Java::debug("  Perl knows about '$jclass'") ;
+		Inline::Java::debug(3, "perl knows about '$jclass'") ;
 		return 1 ;
 	}
 	else{
-		Inline::Java::debug("  Perl doesn't know about '$jclass'") ;
+		Inline::Java::debug(3, "perl doesn't know about '$jclass'") ;
 	}
 
 	return 0 ;
@@ -1199,37 +1199,35 @@ sub known_to_perl {
 
 
 sub debug {
-	if ($Inline::Java::DEBUG){
-		my $str = join("", @_) ;
+	my $level = shift ;
+
+	if (($Inline::Java::DEBUG)&&($Inline::Java::DEBUG >= $level)){
+		my $x = " " x $level ;
+		my $str = join("\n$x", @_) ;
 		while (chomp($str)) {}
-		print DEBUG_STREAM "perl $$: $str\n" ;
+		print DEBUG_STREAM sprintf("[perl][%s]$x%s\n", $level, $str) ;
 	}
 }
 
 
 sub debug_obj {
 	my $obj = shift ;
-	my $pre = shift || "perl: " ;
+	my $force = shift || 0 ;
 
-	if ($Inline::Java::DEBUG){
-		print DEBUG_STREAM $pre . Dumper($obj) ;
+	if (($Inline::Java::DEBUG >= 5)||($force)){
+		debug(5, "Dump:\n" . Dumper($obj)) ;
 		if (UNIVERSAL::isa($obj, "Inline::Java::Object")){
 			# Print the guts as well...
-			print DEBUG_STREAM $pre . Dumper($obj->__get_private()) ;
+			debug(5, "Private Dump:" . Dumper($obj->__get_private())) ;
 		}
 	}
-}
-
-
-sub debug_all {
-	return (Inline::Java::get_DEBUG() > 1) ;
 }
 
 
 sub dump_obj {
 	my $obj = shift ;
 
-	return debug_obj($obj, "Java Object Dump:\n") ;
+	return debug_obj($obj, 1) ;
 }
 
 
@@ -1254,7 +1252,7 @@ sub cast {
 sub study_classes {
 	my $classes = shift ;
 
-	Inline::Java::debug("Selecting random module to house studied classes...") ;
+	Inline::Java::debug(2, "selecting random module to house studied classes...") ;
 
 	# Select a random Inline object to be responsible for these
 	# classes
@@ -1263,7 +1261,7 @@ sub study_classes {
 	my $idx = int rand @modules ;
 	my $module = $modules[$idx] ;
 
-	Inline::Java::debug("  Selected $module") ;
+	Inline::Java::debug(2, "selected $module") ;
 
 	my $o = Inline::Java::get_INLINE($module) ;
 

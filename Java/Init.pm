@@ -67,7 +67,7 @@ import java.lang.reflect.* ;
 */
 public class InlineJavaServer {
 	static public InlineJavaServer instance = null ;
-	private boolean debug ;
+	private int debug ;
 	private int port = 0 ;
 	private boolean shared_jvm = false ;
 
@@ -75,11 +75,11 @@ public class InlineJavaServer {
 	private int objid = 1 ;
 
 	// This constructor is used in JNI mode
-	InlineJavaServer(boolean d) {
+	InlineJavaServer(int d) {
 		init() ;
 		debug = d ;
 
-		thread_objects.put(Thread.currentThread().getName(), new HashMap()) ;		
+		thread_objects.put(Thread.currentThread().getName(), new HashMap()) ;
 	}
 
 
@@ -87,16 +87,7 @@ public class InlineJavaServer {
 	InlineJavaServer(String[] argv) {
 		init() ;
 
-		try {
-			System.out.close() ;
-			System.in.close() ;
-		}
-		catch (IOException e){
-			System.err.println("IO error: " + e.getMessage()) ;
-			System.err.flush() ;
-		}
-
-		debug = new Boolean(argv[0]).booleanValue() ;
+		debug = new Integer(argv[0]).intValue() ;
 		port = Integer.parseInt(argv[1]) ;
 		shared_jvm = new Boolean(argv[2]).booleanValue() ;
 
@@ -153,30 +144,30 @@ public class InlineJavaServer {
 	}
 
 	private String ProcessCommand(String cmd, boolean addlf) {
-		debug("  packet recv is " + cmd) ;
+		debug(3, "packet recv is " + cmd) ;
 
 		String resp = null ;
 		if (cmd != null){
 			InlineJavaProtocol ijp = new InlineJavaProtocol(this, cmd) ;
 			try {
 				ijp.Do() ;
-				debug("  packet sent is " + ijp.response) ;
+				debug(3, "packet sent is " + ijp.response) ;
 				resp = ijp.response ;
 			}
 			catch (InlineJavaException e){
-				String err = "error scalar:" + ijp.unpack(e.getMessage()) ;
-				debug("  packet sent is " + err) ;
+				String err = "error scalar:" + ijp.encode(e.getMessage()) ;
+				debug(3, "packet sent is " + err) ;
 				resp = err ;
 			}
 		}
 		else{
 			if (! shared_jvm){
 				// Probably connection dropped...
-				debug("  Lost connection with client in single client mode. Exiting.") ;
+				debug(1, "lost connection with client in single client mode. Exiting.") ;
 				System.exit(1) ;
 			}
 			else{
-				debug("  Lost connection with client in shared JVM mode.") ;
+				debug(1, "lost connection with client in shared JVM mode.") ;
 				return null ;
 			}
 		}
@@ -222,45 +213,35 @@ public class InlineJavaServer {
 	}
 
 
-	public Object DeleteObject(int id) {
+	public Object DeleteObject(int id) throws InlineJavaException {
 		Object o = null ;
-		try {
-			String name = Thread.currentThread().getName() ;
-			HashMap h = (HashMap)thread_objects.get(name) ;
+		String name = Thread.currentThread().getName() ;
+		HashMap h = (HashMap)thread_objects.get(name) ;
 
-			if (h == null){
-				throw new InlineJavaException("Can't find thread " + name + "!") ;
-			}
-			else{
-				o = h.remove(new Integer(id)) ;
-				if (o == null){
-					throw new InlineJavaException("Can't find object " + id + " for thread " + name) ;
-				}
-			}
+		if (h == null){
+			throw new InlineJavaException("Can't find thread " + name + "!") ;
 		}
-		catch (InlineJavaException e){
-			debug(e.getMessage()) ;
+		else{
+			o = h.remove(new Integer(id)) ;
+			if (o == null){
+				throw new InlineJavaException("Can't find object " + id + " for thread " + name) ;
+			}
 		}
 
 		return o ;
 	}
 
 
-	public int ObjectCount() {
+	public int ObjectCount() throws InlineJavaException {
 		int i = -1 ;
-		try {
-			String name = Thread.currentThread().getName() ;
-			HashMap h = (HashMap)thread_objects.get(name) ;
+		String name = Thread.currentThread().getName() ;
+		HashMap h = (HashMap)thread_objects.get(name) ;
 
-			if (h == null){
-				throw new InlineJavaException("Can't find thread " + name + "!") ;
-			}
-			else{
-				i = h.values().size() ;
-			}
+		if (h == null){
+			throw new InlineJavaException("Can't find thread " + name + "!") ;
 		}
-		catch (InlineJavaException e){
-			debug(e.getMessage()) ;
+		else{
+			i = h.values().size() ;
 		}
 
 		return i ;
@@ -280,12 +261,12 @@ public class InlineJavaServer {
 				}
 			}
 			String cmd = cmdb.toString() ;
-			debug(" callback command: " + cmd) ;
+			debug(2, "callback command: " + cmd) ;
 
 			Thread t = Thread.currentThread() ;
 			String resp = null ;
 			while (true) {			
-				debug("  packet sent (callback) is " + cmd) ;
+				debug(3, "packet sent (callback) is " + cmd) ;
 				if (t instanceof InlineJavaThread){
 					// Client-server mode
 					InlineJavaThread ijt = (InlineJavaThread)t ;
@@ -298,7 +279,7 @@ public class InlineJavaServer {
 					// JNI mode
 					resp = jni_callback(cmd) ;
 				}
-				debug(" packet recv (callback) is " + resp) ;
+				debug(3, "packet recv (callback) is " + resp) ;
 
 				StringTokenizer st = new StringTokenizer(resp, " ") ;
 				String c = st.nextToken() ;
@@ -315,7 +296,7 @@ public class InlineJavaServer {
 				}	
 				else{
 					// Pass it on through the regular channel...
-					debug(" packet is not callback response: " + resp) ;
+					debug(3, "packet is not callback response: " + resp) ;
 					cmd = ProcessCommand(resp, false) ;
 
 					continue ;
@@ -354,11 +335,23 @@ public class InlineJavaServer {
 	}
 
 
-	synchronized public void debug(String s) {
-		if (debug){
-			System.err.println("java: " + s) ;
+	synchronized public void debug(int level, String s) {
+		if ((debug > 0)&&(debug >= level)){
+			StringBuffer sb = new StringBuffer() ;
+			for (int i = 0 ; i < level ; i++){
+				sb.append(" ") ;
+			}
+			System.err.println("[java][" + level + "]" + sb.toString() + s) ;
 			System.err.flush() ;
 		}
+	}
+
+
+	boolean reverse_members() {
+		String v = System.getProperty("java.version") ;
+		boolean no_rev = ((v.startsWith("1.2"))||(v.startsWith("1.3"))) ;
+
+		return (! no_rev) ;
 	}
 
 
@@ -370,7 +363,7 @@ public class InlineJavaServer {
 	}
 
 
-	public static InlineJavaServer jni_main(boolean debug) {
+	public static InlineJavaServer jni_main(int debug) {
 		return new InlineJavaServer(debug) ;
 	}
 	

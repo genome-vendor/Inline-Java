@@ -50,7 +50,7 @@ sub ProcessCallback {
 			$a ;
 		} @sargs ;
 
-		Inline::Java::debug(" processing callback $module" . "::" . "$function(" . 
+		Inline::Java::debug(2, "processing callback $module" . "::" . "$function(" . 
 			join(", ", @args) . ")") ;
 
 		no strict 'refs' ;
