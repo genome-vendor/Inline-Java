@@ -1,6 +1,14 @@
 Revision history for Perl extension Inline::Java
 ------------------------------------------------
 
+0.31  Mon Feb  4 15:45:06 EDT 2002
+    - Exception handling (Perl can 'catch' Java exceptions)
+    - Callbacks to Perl from Java
+    - More complete test suite
+    - Improved documentation and related examples
+    - Improved installation script and directions
+    - Other minor bug fixes
+
 0.30  Mon Sep 17 15:45:06 EDT 2001
     - JVM server is now multi-threaded
     - Added 'SHARED_JVM' option for mod_perl support

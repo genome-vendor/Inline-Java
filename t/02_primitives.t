@@ -2,9 +2,9 @@ use strict ;
 use Test ;
 
 use Inline Config => 
-           DIRECTORY => './_Inline_test';
+           DIRECTORY => './_Inline_test' ;
 
-use Inline(
+use Inline (
 	Java => 'DATA'
 ) ;
 

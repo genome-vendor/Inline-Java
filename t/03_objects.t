@@ -10,7 +10,7 @@ use Inline(
 
 
 BEGIN {
-	plan(tests => 14) ;
+	plan(tests => 16) ;
 }
 
 
@@ -28,6 +28,10 @@ my $t = new types3() ;
 	ok($t->_obj1($obj11)->get_data(), "obj11") ;
 	eval {$t->_int($obj1)} ; ok($@, qr/Can't convert (.*) to primitive int/) ;
 	eval {$t->_obj11($obj1)} ; ok($@, qr/is not a kind of/) ;
+
+	# Inner class
+	my $in = new obj13::inner_obj13($obj1) ;
+	ok($in->{data}, "inner") ;
 	
 	# Receive an unbound object and send it back
 	my $unb = $t->get_unbound() ;
@@ -47,6 +51,10 @@ my $t = new types3() ;
 	
 	# Return a scalar hidden in an object.
 	ok($t->_olong(), 12345) ;
+
+	# Pass a non-Java object.
+	my $d = bless({}, "Inline::Java::dummy") ;
+	eval {$t->_Object($d)} ; ok($@, qr/Can't convert/) ;
 }
 
 ok($t->__get_private()->{proto}->ObjectCount(), 1) ;
@@ -67,6 +75,13 @@ class obj13 {
 
 	public String get_data(){
 		return data ;
+	}
+
+	public class inner_obj13 {
+		public String data = "inner" ;
+
+		public inner_obj13(){
+		}
 	}
 }
 

@@ -2,12 +2,12 @@ package Inline::Java ;
 @Inline::Java::ISA = qw(Inline Exporter) ;
 
 # Export the cast function if wanted
-@EXPORT_OK = qw(cast study_classes) ;
+@EXPORT_OK = qw(cast study_classes caught) ;
 
 
 use strict ;
 
-$Inline::Java::VERSION = '0.30' ;
+$Inline::Java::VERSION = '0.31' ;
 
 
 # DEBUG is set via the DEBUG config
@@ -23,17 +23,18 @@ if (! defined($Inline::Java::DEBUG)){
 require Inline ;
 use Carp ;
 use Config ;
-use FindBin ;
 use File::Copy ;
 use Cwd ;
 use Data::Dumper ;
 
 use IO::Socket ;
 
+use Inline::Java::Portable ;
 use Inline::Java::Class ;
 use Inline::Java::Object ;
 use Inline::Java::Array ;
 use Inline::Java::Protocol ;
+use Inline::Java::Callback ;
 # Must be last.
 use Inline::Java::Init ;
 use Inline::Java::JVM ;
@@ -49,22 +50,6 @@ my $JVM = undef ;
 
 # This hash will store the $o objects...
 my $INLINES = {} ;
-
-
-# Here is some code to figure out if we are running on command.com
-# shell under Windows.
-my $COMMAND_COM = 
-	(
-		($^O eq 'MSWin32')&&
-		(
-			($ENV{PERL_INLINE_JAVA_COMMAND_COM})||
-			(
-				(defined($ENV{COMSPEC}))&&
-				($ENV{COMSPEC} =~ /(command|4dos)\.com/i)
-			)||
-			(`ver` =~ /win(dows )?(9[58]|m[ei])/i)
-		)
-	) || 0 ;
 
 
 # This stuff is to control the termination of the Java Interpreter
@@ -88,9 +73,7 @@ sub done {
 	
 	Inline::Java::debug("exiting with $ec") ;
 
-	# In Windows, it is possible that the process will hang here if
-	# the children are not all dead. But they should be. Really.
-	exit($ec) ;
+	CORE::exit($ec) ;
 }
 
 
@@ -101,21 +84,7 @@ END {
 }
 
 
-# Signal stuff, not really needed with JNI
-use sigtrap 'handler', \&done, 'normal-signals' ;
-
-# This whole $SIG{__DIE__} thing doesn't work because it is called
-# even if the die is trapped inside an eval...
-# $SIG{__DIE__} = sub {
-	# Setting this to -1 will prevent Inline::Java::Object::DESTROY
-	# from executing it's code for object destruction, since the state
-	# in possibly unstable.
-	# $DONE = -1 ;
-#	die @_ ;
-# } ;
-
-
-# To export the cast function.
+# To export the cast function and others.
 sub import {
     Inline::Java->export_to_level(1, @_) ;
 }
@@ -241,6 +210,12 @@ sub _validate {
 
 	$o->set_java_bin() ;
 
+	# Moved the require here so that $Inline::Java::JNI::SO will
+	# be set in time for the generation of the Init.pm Java code.
+	if ($o->{ILSM}->{JNI}){
+		require Inline::Java::JNI ;
+	}
+
 	Inline::Java::debug("validate done.") ;
 }
 
@@ -300,16 +275,12 @@ sub get_api {
 sub set_java_bin {
 	my $o = shift ;
 
-	my $sep = portable("PATH_SEP_RE") ;
-
 	my $cjb = $o->{ILSM}->{BIN} ;
 	my $ejb = $ENV{PERL_INLINE_JAVA_BIN} ;
 	if ($cjb){
-		$cjb =~ s/$sep+$// ;
 		return $o->find_java_bin([$cjb]) ;
 	}
 	elsif ($ejb) {
-		$ejb =~ s/$sep+$// ;
 		$o->{ILSM}->{BIN} = $ejb ;
 		return $o->find_java_bin([$ejb]) ;
 	}
@@ -332,7 +303,7 @@ sub find_java_bin {
 	}
 	else{
 		croak
-			"Can't locate your java binaries ('java' and 'javac'). Please set one of the following to the proper directory:\n" .
+			"Can't locate your java binaries ('$java' and '$javac'). Please set one of the following to the proper directory:\n" .
 			"  - The BIN config option;\n" .
 			"  - The PERL_INLINE_JAVA_BIN environment variable;\n" .
 			"  - The PATH environment variable.\n" ;
@@ -346,33 +317,19 @@ sub find_file_in_path {
 	my $paths = shift ;
 
 	if (! defined($paths)){
-		my $psep = portable("ENV_VAR_PATH_SEP") ;
-		$paths = [(split(/$psep/, $ENV{PATH} || ''))] ;
+		$paths = [File::Spec->path()] ;
 	}
 
 	Inline::Java::debug_obj($paths) ;
 
-	my $home = $ENV{HOME} ;
-	my $sep = portable("PATH_SEP_RE") ;
-
 	foreach my $p (@{$paths}){
+		$p =~ s/^\s+// ;
+		$p =~ s/\s+$// ;
 		Inline::Java::debug("path element: $p") ;
 		if ($p !~ /^\s*$/){
-			$p =~ s/$sep+$// ;
-
-			if ($p =~ /^~/){
-				if ($home){
-					$p =~ s/^~/$home/ ;
-				}
-				else{
-					# -f don't work with ~/...
-					next ;
-				}
-			}
-
 			my $found = 0 ;
 			foreach my $file (@{$files}){
-				my $f = "$p/$file" ;
+				my $f = File::Spec->catfile($p, $file) ;
 				Inline::Java::debug("  candidate: $f\n") ;
 
 				if (-f $f){
@@ -399,7 +356,7 @@ sub build {
 	}
 
 	my $code = $o->get_api('code') ;
-	my $study_only = ($code eq 'STUDY') ;
+	my $study_only = ($code =~ /(STUDY|SERVER)/) ;
 
 	$o->write_java($study_only, $code) ;
 	$o->compile($study_only) ;
@@ -417,18 +374,26 @@ sub write_java {
 	my $build_dir = $o->get_api('build_dir') ;
 	my $modfname = $o->get_api('modfname') ;
 
-	$o->mkpath($build_dir) ;
+	Inline::Java::Portable::mkpath($o, $build_dir) ;
 
 	if (! $study_only){
-		open(Inline::Java::JAVA, ">$build_dir/$modfname.java") or
-			croak "Can't open $build_dir/$modfname.java: $!" ;
-		Inline::Java::Init::DumpUserJavaCode(\*Inline::Java::JAVA, $modfname, $code) ;
+		my $p = File::Spec->catfile($build_dir, "$modfname.java") ;
+		open(Inline::Java::JAVA, ">$p") or
+			croak "Can't open $p: $!" ;
+		Inline::Java::Init::DumpUserJavaCode(\*Inline::Java::JAVA, $code) ;
 		close(Inline::Java::JAVA) ;
 	}
 
-	open(Inline::Java::JAVA, ">$build_dir/InlineJavaServer.java") or
-		croak "Can't open $build_dir/InlineJavaServer.java: $!" ;
-	Inline::Java::Init::DumpServerJavaCode(\*Inline::Java::JAVA, $modfname) ;
+	my $p = File::Spec->catfile($build_dir, "InlineJavaServer.java") ;
+	open(Inline::Java::JAVA, ">$p") or
+		croak "Can't open $p: $!" ;
+	Inline::Java::Init::DumpServerJavaCode(\*Inline::Java::JAVA) ;
+	close(Inline::Java::JAVA) ;
+
+	$p = File::Spec->catfile($build_dir, "InlineJavaPerlCaller.java") ;
+	open(Inline::Java::JAVA, ">$p") or
+		croak "Can't open $p: $!" ;
+	Inline::Java::Init::DumpCallbackJavaCode(\*Inline::Java::JAVA) ;
 	close(Inline::Java::JAVA) ;
 
 	Inline::Java::debug("write_java done.") ;
@@ -446,16 +411,15 @@ sub compile {
 	my $suffix = $o->get_api('suffix') ;
 	my $install_lib = $o->get_api('install_lib') ;
 
-	my $install = "$install_lib/auto/$modpname" ;
-	my $pinstall = portable("RE_FILE", $install) ;
+	my $install = File::Spec->catdir($install_lib, "auto", $modpname) ;
 
-	$o->mkpath("$install") ;
-	$o->set_classpath($pinstall) ;
+	Inline::Java::Portable::mkpath($o, $install) ;
+	$o->set_classpath($install) ;
 
-	my $javac = $o->{ILSM}->{BIN} . "/javac" . portable("EXE_EXTENSION") ;
+	my $javac = File::Spec->catfile($o->{ILSM}->{BIN}, 
+		"javac" . portable("EXE_EXTENSION")) ;
 
 	my $predir = portable("IO_REDIR") ;
-	my $pjavac = portable("RE_FILE", $javac) ;
 
 	my $cwd = Cwd::cwd() ;
 	if ($o->get_config('UNTAINT')){
@@ -472,13 +436,10 @@ sub compile {
 	# returned. Therefore a command failure is not detected.
 	# copy_classes will take care of checking whether there are actually files
 	# to be copied, and if not will exit the script.
-	# This strategy doesn't work that well if you have many classes in the same 
-	# file, but we can't penalize the other users just to give better support
-	# for Win9x...
 	foreach my $cmd (
-		"\"$pjavac\" InlineJavaServer.java $source > cmd.out $predir",
+		"\"$javac\" InlineJavaServer.java $source > cmd.out $predir",
 		["copy_classes", $o, $install],
-		["touch_file", $o, "$install/$modfname.$suffix"],
+		["touch_file", $o, File::Spec->catfile($install, "$modfname.$suffix")],
 		) {
 
 		if ($cmd){
@@ -514,7 +475,7 @@ sub compile {
 	}
 
 	if ($o->get_api('cleanup')){
-		$o->rmpath('', $build_dir) ;
+		Inline::Java::Portable::rmpath($o, '', $build_dir) ;
 	}
 
 	Inline::Java::debug("compile done.") ;
@@ -560,10 +521,9 @@ sub copy_classes {
 	my $build_dir = $o->get_api('build_dir') ;
 	my $modpname = $o->get_api('modpname') ;
 	my $install_lib = $o->get_api('install_lib') ;
-	my $pinstall = portable("RE_FILE", $install) ;
 
 	my $src_dir = $build_dir ;
-	my $dest_dir = $pinstall ;
+	my $dest_dir = $install ;
 
 	my @flist = glob("*.class") ;
 
@@ -573,7 +533,7 @@ sub copy_classes {
 		}
 		foreach my $file (@flist){
 			if (! (-s $file)){
-				croak "File $file has size zero. Previous command failed under WIN9x?" ;
+				croak "File $file has size zero. Previous command failed under command.com?" ;
 			}
 		}
 	}
@@ -582,9 +542,11 @@ sub copy_classes {
 		if ($o->get_config('UNTAINT')){
 			($file) = $file =~ /(.*)/ ;
 		}
-		Inline::Java::debug("copy_classes: $file, $dest_dir/$file") ;
-		if (! File::Copy::copy($file, "$dest_dir/$file")){
-			return "Can't copy $src_dir/$file to $dest_dir/$file: $!" ;
+		my $f = File::Spec->catfile($src_dir, $file) ;
+		my $t = File::Spec->catfile($dest_dir, $file) ;
+		Inline::Java::debug("copy_classes: $file, $t") ;
+		if (! File::Copy::copy($file, $t)){
+			return "Can't copy $f to $t: $!" ;
 		}
 	}
 
@@ -596,10 +558,8 @@ sub touch_file {
 	my $o = shift ;
 	my $file = shift ;
 
-	my $pfile = portable("RE_FILE", $file) ;
-
-	if (! open(Inline::Java::TOUCH, ">$pfile")){
-		croak "Can't create file $pfile" ;
+	if (! open(Inline::Java::TOUCH, ">$file")){
+		croak "Can't create file $file" ;
 	}
 	close(Inline::Java::TOUCH) ;
 
@@ -618,16 +578,22 @@ sub load {
 	my $install_lib = $o->get_api('install_lib') ;
 	my $modfname = $o->get_api('modfname') ;
 	my $modpname = $o->get_api('modpname') ;
-	my $install = "$install_lib/auto/$modpname" ;
-	my $pinstall = portable("RE_FILE", $install) ;
+	my $install = File::Spec->catdir($install_lib, "auto", $modpname) ;
 
 	# Make sure the default options are set.
 	$o->_validate(1, $o->get_config()) ;
 
 	# If the JVM is not running, we need to start it here.
 	if (! $JVM){
-		$o->set_classpath($pinstall) ;
+		$o->set_classpath($install) ;
 		$JVM = new Inline::Java::JVM($o) ;
+
+		my $pc = new Inline::Java::Protocol(undef, $o) ;
+		my $st = $pc->ServerType() ;
+		if ((($st eq "shared")&&(! $o->get_java_config('SHARED_JVM')))||
+			(($st eq "private")&&($o->get_java_config('SHARED_JVM')))){
+			croak "JVM type mismatch on port " . $o->get_java_config('PORT') ;
+		}
 	}
 
 	# Add our Inline object to the list.
@@ -668,34 +634,42 @@ sub set_classpath {
 	}
 
 	my $sep = portable("ENV_VAR_PATH_SEP_CP") ;
-	my @cp = split(/$sep/, join($sep, @list)) ;
-	my %cp = map { ($_ !~ /^\s*$/ ? ($_, 1) : ()) } @cp ;
+	my $cpall = join($sep, @list) ;
+	
 
-	foreach my $k (keys %cp){
-		if ($k =~ /\s*\[PERL_INLINE_JAVA=(.*?)\]\s*/){
-			my $modules = $1 ;
-			Inline::Java::debug("   found special CLASSPATH entry: $modules") ;
+	$cpall =~ s/\s*\[PERL_INLINE_JAVA\s*=\s*(.*?)\s*\]\s*/{
+		my $modules = $1 ;
+		Inline::Java::debug("   found special CLASSPATH entry: $modules") ;
+	
+		my @modules = split(m#\s*,\s*#, $modules) ;
+		my $dir = File::Spec->catdir($o->get_config('DIRECTORY'), "lib", "auto") ;
 
-			my @modules = split(/\s*,\s*/, $modules) ;
-			my $sep = portable("PATH_SEP") ;
-			my $sep_re = portable("PATH_SEP_RE") ;
-			my $dir = $o->get_config('DIRECTORY') . $sep . "lib" . $sep ."auto" ;
+		my %paths = () ;
+		foreach my $m (@modules){
+			$m = File::Spec->catdir(split(m#::#, $m)) ;
 
-			foreach my $m (@modules){
-				$m =~ s/::/$sep_re/g ;
+			# Here we must make sure that the directory exists, or
+			# else it is removed from the CLASSPATH by Java
+			my $path = File::Spec->catdir($dir, $m) ;
+			Inline::Java::Portable::mkpath($o, $path) ;
 
-				# Here we must make sure that the directory exists, or
-				# else it is removed from the CLASSPATH by Java
-				my $path = "$dir$sep$m" ;
-				$o->mkpath($path) ;
-
-				$cp{$path} = 1 ;
-			}
-
-			delete $cp{$k} ;
+			$paths{portable("SUB_FIX_CLASSPATH", $path)} = 1 ;
 		}
+
+		join($sep, keys %paths) ;
+	}/ge ;
+
+	my @cp = split(/$sep+/, $cpall) ;
+
+	# Add dot to CLASSPATH, required when building
+	push @cp, '.' ;
+
+	foreach my $p (@cp){
+		$p =~ s/^\s+// ;
+		$p =~ s/\s+$// ;
 	}
-	$ENV{CLASSPATH} = join($sep, keys %cp) ;
+
+	$ENV{CLASSPATH} = join($sep, @cp) ;
 
 	Inline::Java::debug("  classpath: " . $ENV{CLASSPATH}) ;
 }
@@ -729,8 +703,7 @@ sub report {
 	my $modpname = $o->get_api('modpname') ;
 	my $modfname = $o->get_api('modfname') ;
 	my $suffix = $o->get_api('suffix') ;
-	my $install = "$install_lib/auto/$modpname" ;
-	my $pinstall = portable("RE_FILE", $install) ;
+	my $install = File::Spec->catdir($install_lib, "auto", $modpname) ;
 
 	my $use_cache = 0 ;
 	if (! defined($classes)){
@@ -739,11 +712,13 @@ sub report {
 		$use_cache = 1 ;
 
 		# We need to take the classes that are in the directory...
-		my @cl = glob("$pinstall/*.class") ;
+		my @cl = glob(File::Spec->catfile($install, "*.class")) ;
 		foreach my $class (@cl){
-			$class =~ s/^\Q$pinstall\E\/(.*)\.class$/$1/ ;
-			if ($class !~ /^InlineJavaServer/){
-				push @{$classes}, $class ;
+			if ($class =~ s/\.class$//){
+				my ($v, $d, $f) = File::Spec->splitpath($class) ;
+				if ($f !~ /^InlineJava(Server|Perl)/){
+					push @{$classes}, $f ;
+				}
 			}
 		}
 	}
@@ -767,9 +742,10 @@ sub report {
 		# it was up to date. We can therefore use the data 
 		# from the cache
 		Inline::Java::debug("using jdat cache") ;
-		my $size = (-s "$install/$modfname.$suffix") || 0 ;
+		my $p = File::Spec->catfile($install, "$modfname.$suffix") ;
+		my $size = (-s $p) || 0 ;
 		if ($size > 0){
-			if (open(Inline::Java::CACHE, "<$install/$modfname.$suffix")){
+			if (open(Inline::Java::CACHE, "<$p")){
 				$resp = join("", <Inline::Java::CACHE>) ;
 				close(Inline::Java::CACHE) ;
 			}
@@ -872,7 +848,7 @@ sub load_jdat {
 				$d->{classes}->{$current_class}->{fields}->{$field} = {} ;
 			}
 
-			$d->{classes}->{$current_class}->{fields}->{$field} = 
+			$d->{classes}->{$current_class}->{fields}->{$field}->{$type} =  
 				{
 					TYPE => $type,
 					STATIC => ($static eq "static" ? 1 : 0),
@@ -928,13 +904,18 @@ use Carp ;
 
 CODE
 
-		while (my ($field, $sign) = each %{$d->{classes}->{$class}->{fields}}){
-			if ($sign->{STATIC}){
-				$code .= <<CODE;
+		while (my ($field, $types) = each %{$d->{classes}->{$class}->{fields}}){
+			while (my ($type, $sign) = each %{$types}){
+				if ($sign->{STATIC}){
+					$code .= <<CODE;
 tie \$$class$colon:$field, "Inline::Java::Object::StaticMember", 
-			\$DUMMY_OBJECT,
-			'$field' ;
+	\$DUMMY_OBJECT,
+	'$field' ;
 CODE
+					# We have at least one static version of this field,
+					# that's enough.
+					last ;
+				}
 			}
 		}
 
@@ -1034,6 +1015,8 @@ sub get_fields {
 	foreach my $d (@{$data_list}){
 		if (exists($d->{classes}->{$class})){
 			while (my ($field, $value) = each %{$d->{classes}->{$class}->{fields}}){
+				# Here $value is a hash that contains all the different
+				# types available for the field $field
 				$fields->{$field} = $value ;
 			}
 		}
@@ -1104,14 +1087,21 @@ sub info {
 ######################## General Functions ########################
 
 
-sub get_JVM {
+sub __get_JVM {
 	return $JVM ;
+}
+
+
+# For testing purposes only...
+sub __clear_JVM {
+	$JVM = undef ;
 }
 
 
 sub shutdown_JVM {
 	if ($JVM){
-		undef $JVM ;
+		$JVM->shutdown() ;
+		$JVM = undef ;
 	}
 }
 
@@ -1119,6 +1109,27 @@ sub shutdown_JVM {
 sub reconnect_JVM {
 	if ($JVM){
 		$JVM->reconnect() ;
+	}
+}
+
+
+sub capture_JVM {
+	if ($JVM){
+		$JVM->capture() ;
+	}
+}
+
+
+sub i_am_JVM_owner {
+	if ($JVM){
+		$JVM->am_owner() ;
+	}
+}
+
+
+sub release_JVM {
+	if ($JVM){
+		$JVM->release() ;
 	}
 }
 
@@ -1140,13 +1151,13 @@ sub get_DEBUG {
 }
 
 
-sub debug_all {
-	return (Inline::Java::get_DEBUG() > 1) ;
+sub get_DONE {
+	return $DONE ;
 }
 
 
-sub get_DONE {
-	return $DONE ;
+sub set_DONE {
+	$DONE = 1 ;
 }
 
 
@@ -1206,104 +1217,15 @@ sub debug_obj {
 }
 
 
+sub debug_all {
+	return (Inline::Java::get_DEBUG() > 1) ;
+}
+
+
 sub dump_obj {
 	my $obj = shift ;
 
 	return debug_obj($obj, "Java Object Dump:\n") ;
-}
-
-
-sub portable {
-	my $key = shift ;
-	my $val = shift ;
-
-	my $defmap = {
-		EXE_EXTENSION		=>	'',
-		ENV_VAR_PATH_SEP	=>	':',
-		ENV_VAR_PATH_SEP_CP	=>	':',
-		PATH_SEP			=>	'/',
-		PATH_SEP_RE			=>	'/',
-		RE_FILE				=>  [],
-		IO_REDIR			=>  '2>&1',
-		GOT_ALARM			=>  1,
-		COMMAND_COM			=>  0,
-		SUB_FIX_CLASSPATH	=>	undef,
-	} ;
-
-	my $map = {
-		MSWin32 => {
-			EXE_EXTENSION		=>	'.exe',
-			ENV_VAR_PATH_SEP	=>	';',
-			ENV_VAR_PATH_SEP_CP	=>	';',
-			PATH_SEP			=>	'\\',
-			PATH_SEP_RE			=>	'\\\\',
-			RE_FILE				=>  ['/', '\\'],
-			# 2>&1 doesn't work under command.com
-			IO_REDIR			=>  ($COMMAND_COM ? '' : undef),
-			GOT_ALARM			=>  0,
-			COMMAND_COM			=>	$COMMAND_COM,
-		},
-		cygwin => {
-			ENV_VAR_PATH_SEP_CP	=>	';',
-			SUB_FIX_CLASSPATH	=>	sub {
-				my $val = shift ;
-				if (defined($val)&&($val)){
-					$val = `cygpath -w \"$val\"` ;
-					chomp($val) ;
-				}
-				return $val ;
-			},
-		},
-	} ;
-
-	if (! exists($defmap->{$key})){
-		croak "Portability issue $key not defined!" ;
-	}
-
-	if ((defined($map->{$^O}))&&(defined($map->{$^O}->{$key}))){
-		if ($key =~ /^RE_/){
-			if (defined($val)){
-				my $f = $map->{$^O}->{$key}->[0] ;
-				my $t = $map->{$^O}->{$key}->[1] ;
-				$val =~ s/$f/$t/g ;
-				Inline::Java::debug("portable: $key => $val for $^O is '$val'") ;
-				return $val ;
-			}
-			else{
-				Inline::Java::debug("portable: $key for $^O is 'undef'") ;
-				return undef ;
-			}
-		}
-		elsif ($key =~ /^SUB_/){
-			my $sub = $map->{$^O}->{$key} ;
-			if (defined($sub)){
-				$val = $sub->($val) ;
-				Inline::Java::debug("portable: $key => $val for $^O is '$val'") ;
-				return $val ;
-			}
-			else{
-				return $val ;
-			}
-		}
-		else{
-			Inline::Java::debug("portable: $key for $^O is '$map->{$^O}->{$key}'") ;
-			return $map->{$^O}->{$key} ;
-		}
-	}
-	else{
-		if ($key =~ /^RE_/){
-			Inline::Java::debug("portable: $key => $val for $^O is default '$val'") ;
-			return $val ;
-		}
-		if ($key =~ /^SUB_/){
-			Inline::Java::debug("portable: $key => $val for $^O is default '$val'") ;
-			return $val ;
-		}
-		else{
-			Inline::Java::debug("portable: $key for $^O is default '$defmap->{$key}'") ;
-			return $defmap->{$key} ;
-		}
-	}
 }
 
 
@@ -1344,6 +1266,28 @@ sub study_classes {
 	return $o->_study($classes) ;
 }
 
+
+sub caught {
+	my $class = shift ;
+
+	my $e = $@ ;
+
+	$class = Inline::Java::Class::ValidateClass($class) ;
+
+	my $ret = 0 ;
+	if (($e)&&(UNIVERSAL::isa($e, "Inline::Java::Object"))){
+		my ($msg, $score) = $e->__isa($class) ;
+		if ($msg){
+			$ret = 0 ;
+		}
+		else{
+			$ret = 1 ;
+		}
+	}
+	$@ = $e ;
+
+	return $ret ;
+}
 
 
 1 ;

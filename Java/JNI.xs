@@ -9,17 +9,104 @@
 
 /* JNI structure */
 typedef struct {
-	JNIEnv 	*env ;
 	JavaVM 	*jvm ;
 	jclass	ijs_class ;
+	jclass	string_class ;
 	jobject	ijs ;
+	jmethodID jni_main_mid ;
+	jmethodID process_command_mid ;
 	jboolean debug ;
+	int destroyed ;
 } InlineJavaJNIVM ;
 
 
-void debug_ex(InlineJavaJNIVM *this){
-	(*(this->env))->ExceptionDescribe(this->env) ; 	
+void shutdown_JVM(InlineJavaJNIVM *this){
+	if (! this->destroyed){
+		(*(this->jvm))->DestroyJavaVM(this->jvm) ;
+		this->destroyed = 1 ;
+	}
 }
+
+
+JNIEnv *get_env(InlineJavaJNIVM *this){
+	JNIEnv *env ;
+
+	(*(this->jvm))->AttachCurrentThread(this->jvm, ((void **)&env), NULL) ;
+
+	return env ;	
+}
+
+
+void check_exception(JNIEnv *env, char *msg){
+	if ((*(env))->ExceptionCheck(env)){
+		(*(env))->ExceptionDescribe(env) ;
+		croak(msg) ;
+	}
+}
+
+
+jstring JNICALL jni_callback(JNIEnv *env, jobject obj, jstring cmd){
+	dSP ;
+	jstring resp ;
+	char *c = (char *)((*(env))->GetStringUTFChars(env, cmd, NULL)) ;
+	char *r = NULL ;
+	int count = 0 ;
+	SV *hook = NULL ;
+
+	ENTER ;
+	SAVETMPS ;
+
+	PUSHMARK(SP) ;
+	XPUSHs(&PL_sv_undef) ;
+	XPUSHs(sv_2mortal(newSVpv(c, 0))) ;
+	PUTBACK ;
+
+	(*(env))->ReleaseStringUTFChars(env, cmd, c) ;
+	count = perl_call_pv("Inline::Java::Callback::InterceptCallback", 
+		G_ARRAY|G_EVAL) ;
+
+	SPAGAIN ;
+
+	/*
+		Here is is important to understand that we cannot croak,
+		because our caller is Java and not Perl. Croaking here
+		scrwes up the Java stack royally and causes crashes.
+	*/
+
+	/* Check the eval */
+	if (SvTRUE(ERRSV)){
+		STRLEN n_a ;
+		fprintf(stderr, "%s", SvPV(ERRSV, n_a)) ;
+		exit(-1) ;
+	}
+	else{
+		if (count != 2){
+			fprintf(stderr, "%s", "Invalid return value from Inline::Java::Callback::InterceptCallback: %d",
+				count) ;
+			exit(-1) ;
+		}
+	}
+
+	/* 
+		The first thing to pop is a reference to the returned object,
+		which we must keep around long enough so that it is not deleted
+		before control gets back to Java. This is because this object
+		may be returned be the callback, and when it gets back to Java
+		it will already be deleted.
+	*/
+	hook = get_sv("Inline::Java::Callback::OBJECT_HOOK", FALSE) ;
+	sv_setsv(hook, POPs) ;
+
+	r = (char *)POPp ;
+	resp = (*(env))->NewStringUTF(env, r) ;
+
+	PUTBACK ;
+	FREETMPS ;
+	LEAVE ;
+
+	return resp ;
+}
+
 
 
 MODULE = Inline::Java::JNI   PACKAGE = Inline::Java::JNI
@@ -36,9 +123,11 @@ new(CLASS, classpath, debug)
 
 	PREINIT:
 	JavaVMInitArgs vm_args ;
-	JavaVMOption options[2] ;
+	JavaVMOption options[8] ;
+	JNIEnv *env ;
+	JNINativeMethod nm ;
 	jint res ;
-	char * cp ;
+	char *cp ;
 
     CODE:
 	RETVAL = (InlineJavaJNIVM *)safemalloc(sizeof(InlineJavaJNIVM)) ;
@@ -47,6 +136,7 @@ new(CLASS, classpath, debug)
 	}
 	RETVAL->ijs = NULL ;
 	RETVAL->debug = debug ;
+	RETVAL->destroyed = 0 ;
 
 	options[0].optionString = (RETVAL->debug ? "-verbose" : "-verbose:") ;
 	cp = (char *)malloc((strlen(classpath) + 128) * sizeof(char)) ;
@@ -59,15 +149,44 @@ new(CLASS, classpath, debug)
 	vm_args.ignoreUnrecognized = JNI_FALSE ;
 
 	/* Create the Java VM */
-	res = JNI_CreateJavaVM(&(RETVAL->jvm), (void **)&(RETVAL->env), &vm_args) ;
+	res = JNI_CreateJavaVM(&(RETVAL->jvm), (void **)&(env), &vm_args) ;
 	if (res < 0) {
 		croak("Can't create Java interpreter using JNI") ;
 	}
-
 	free(cp) ;
 
+
+	/* Load the classes that we will use */
+	RETVAL->ijs_class = (*(env))->FindClass(env, "InlineJavaServer") ;
+	check_exception(env, "Can't find class InlineJavaServer") ;
+	RETVAL->string_class = (*(env))->FindClass(env, "java/lang/String") ;
+	check_exception(env, "Can't find class java.lang.String") ;
+	
+	/* Get the method ids that are needed later */
+	RETVAL->jni_main_mid = (*(env))->GetStaticMethodID(env, RETVAL->ijs_class, "jni_main", "(Z)LInlineJavaServer;") ;
+	check_exception(env, "Can't find method jni_main in class InlineJavaServer") ;
+	RETVAL->process_command_mid = (*(env))->GetMethodID(env, RETVAL->ijs_class, "ProcessCommand", "(Ljava/lang/String;)Ljava/lang/String;") ;
+	check_exception(env, "Can't find method ProcessCommand in class InlineJavaServer") ;
+
+	/* Register the callback function */
+	nm.name = "jni_callback" ;
+	nm.signature = "(Ljava/lang/String;)Ljava/lang/String;" ;
+	nm.fnPtr = jni_callback ;
+	(*(env))->RegisterNatives(env, RETVAL->ijs_class, &nm, 1) ;	
+	check_exception(env, "Can't register method jni_callback in class InlineJavaServer") ;
+	
     OUTPUT:
 	RETVAL
+
+
+
+void
+shutdown(this)
+	InlineJavaJNIVM * this
+
+	CODE:
+	shutdown_JVM(this) ;
+
 
 
 void
@@ -75,7 +194,9 @@ DESTROY(this)
 	InlineJavaJNIVM * this
 
 	CODE:
-	(*(this->jvm))->DestroyJavaVM(this->jvm) ;
+	shutdown_JVM(this) ;
+	free(this) ;
+
 
 
 void
@@ -83,24 +204,13 @@ create_ijs(this)
 	InlineJavaJNIVM * this
 
 	PREINIT:
-	jmethodID mid ;
+	JNIEnv *env ;
 
 	CODE:
-	this->ijs_class = (*(this->env))->FindClass(this->env, "InlineJavaServer") ;
-	if (this->ijs_class == NULL){
-		croak("Can't find class InlineJavaServer") ;
-	}
+	env = get_env(this) ;
+	this->ijs = (*(env))->CallStaticObjectMethod(env, this->ijs_class, this->jni_main_mid, this->debug) ;
+	check_exception(env, "Can't call jni_main in class InlineJavaServer") ;
 
-	mid = (*(this->env))->GetStaticMethodID(this->env, this->ijs_class, "jni_main", "(Z)LInlineJavaServer;") ;
-	if (mid == NULL) {
-		croak("Can't find method jni_main in class InlineJavaServer") ;
-	}
-
-	this->ijs = (*(this->env))->CallStaticObjectMethod(this->env, this->ijs_class, mid, this->debug) ;
-	if ((*(this->env))->ExceptionOccurred(this->env)){
-		(*(this->env))->ExceptionDescribe(this->env) ;
-		croak("Exception occured") ;
-	}
 
 
 char *
@@ -109,104 +219,26 @@ process_command(this, data)
 	char * data
 
 	PREINIT:
-	jmethodID mid ;
+	JNIEnv *env ;
 	jstring cmd ;
 	jstring resp ;
+	SV *hook = NULL ;
 
 	CODE:
-	mid = (*(this->env))->GetMethodID(this->env, this->ijs_class, "ProcessCommand", "(Ljava/lang/String;)Ljava/lang/String;") ;
-	if (mid == NULL) {
-		croak("Can't find method ProcessCommand in class InlineJavaServer") ;
-	}
+	env = get_env(this) ;
+	cmd = (*(env))->NewStringUTF(env, data) ;
+	check_exception(env, "Can't create java.lang.String") ;
 
-	cmd = (*(this->env))->NewStringUTF(this->env, data) ;
-	if (cmd == NULL){
-		croak("Can't create java.lang.String") ;
-	}
+	resp = (*(env))->CallObjectMethod(env, this->ijs, this->process_command_mid, cmd) ;
+	check_exception(env, "Can't call ProcessCommand in InlineJavaServer") ;
 
-	resp = (*(this->env))->CallObjectMethod(this->env, this->ijs, mid, cmd) ;
-	if ((*(this->env))->ExceptionOccurred(this->env)){
-		(*(this->env))->ExceptionDescribe(this->env) ;
-		croak("Exception occured") ;
-	}
-	RETVAL = (char *)((*(this->env))->GetStringUTFChars(this->env, resp, NULL)) ;
+	hook = get_sv("Inline::Java::Callback::OBJECT_HOOK", FALSE) ;
+	sv_setsv(hook, &PL_sv_undef) ;
+
+	RETVAL = (char *)((*(env))->GetStringUTFChars(env, resp, NULL)) ;
 	
     OUTPUT:
 	RETVAL
 
 	CLEANUP:
-	(*(this->env))->ReleaseStringUTFChars(this->env, resp, RETVAL) ;
-
-
-void
-report(this, module, classes, nb_classes)
-	InlineJavaJNIVM * this
-	char * module
-	char * classes
-	int nb_classes
-
-	PREINIT:
-	jmethodID mid ;
-	jclass class ;
-	jobject args ;
-	jstring arg ;
-	jstring resp ;
-	char * cl ;
-	char * ptr ;
-	int idx ;
-
-	CODE:
-	mid = (*(this->env))->GetMethodID(this->env, this->ijs_class, "Report", "([Ljava/lang/String;I)V") ;
-	if (mid == NULL) {
-		croak("Can't find method Report in class InlineJavaServer") ;
-	}
-
-	class = (*(this->env))->FindClass(this->env, "java/lang/String") ;
-	if (class == NULL){
-		croak("Can't find class java.lang.String") ;
-	}
-
-	idx = 0 ;
-	args = (*(this->env))->NewObjectArray(this->env, nb_classes + 1, class, NULL) ;
-	if (args == NULL){
-		croak("Can't create array of java.lang.String of length %i", nb_classes + 1) ;
-	}
-
-	arg = (*(this->env))->NewStringUTF(this->env, module) ;
-	if (arg == NULL){
-		croak("Can't create java.lang.String") ;
-	}
-	(*(this->env))->SetObjectArrayElement(this->env, args, idx++, arg) ;
-	if ((*(this->env))->ExceptionOccurred(this->env)){
-		(*(this->env))->ExceptionDescribe(this->env) ;
-		croak("Exception occured") ;
-	}
-
-	cl = strdup(classes) ;
-	ptr = strtok(cl, " ") ;
-
-	idx = 1 ;
-	while (ptr != NULL){
-		arg = (*(this->env))->NewStringUTF(this->env, ptr) ;
-		if (arg == NULL){
-			croak("Can't create java.lang.String") ;
-		}
-		(*(this->env))->SetObjectArrayElement(this->env, args, idx, arg) ;
-		if ((*(this->env))->ExceptionOccurred(this->env)){
-			(*(this->env))->ExceptionDescribe(this->env) ;
-			croak("Exception occured") ;
-		}
-
-		idx++ ;
-		ptr = strtok(NULL, " ") ;
-	}
-	free(cl) ;	
-
-	(*(this->env))->CallVoidMethod(this->env, this->ijs, mid, args, 0) ;
-	if ((*(this->env))->ExceptionOccurred(this->env)){
-		(*(this->env))->ExceptionDescribe(this->env) ;
-		croak("Exception occured") ;
-	}
-
-
-
+	(*(env))->ReleaseStringUTFChars(env, resp, RETVAL) ;

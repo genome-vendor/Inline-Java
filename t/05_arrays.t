@@ -9,48 +9,62 @@ use Inline(
 ) ;
 
 BEGIN {
-	plan(tests => 42) ;
+	plan(tests => 50) ;
 }
 
 
 my $t = new types5() ;
 
 {
-	ok($t->_byte([12, 34, 56])->[0] == 123) ;
+	ok(++($t->_byte([12, 34, 56])->[0]) == 124) ;
 	ok(eq_array($t->_Byte([12, 34, 56]), [12, 34, 56])) ;
-	ok($t->_short([12, 34, 56])->[0] == 123) ;
+	ok(++($t->_short([12, 34, 56])->[0]) == 124) ;
 	ok(eq_array($t->_Short([12, 34, 56]), [12, 34, 56])) ;
-	ok($t->_int([12, 34, 56])->[0] == 123) ;
+	ok(++($t->_int([12, 34, 56])->[0]) == 124) ;
 	ok(eq_array($t->_Integer([12, 34, 56]), [12, 34, 56])) ;
-	ok($t->_long([12, 34, 56])->[0] == 123) ;
+	ok(++($t->_long([12, 34, 56])->[0]) == 124) ;
 	ok(eq_array($t->_Long([12, 34, 56]), [12, 34, 56])) ;
-	ok($t->_float([12.34, 5.6, 7])->[0] == 123.456) ;
+	ok(++($t->_float([12.34, 5.6, 7])->[0]) == 124.456) ;
 	ok(eq_array($t->_Float([12.34, 5.6, 7]), [12.34, 5.6, 7])) ;
-	ok($t->_double([12.34, 5.6, 7])->[0] == 123.456) ;
+	ok(++($t->_double([12.34, 5.6, 7])->[0]) == 124.456) ;
 	ok(eq_array($t->_Double([12.34, 5.6, 7]), [12.34, 5.6, 7])) ;
 	ok($t->_boolean([1, 0, "tree"])->[0]) ;
 	ok($t->_Boolean([1, 0])->[0]) ;
 	ok(! $t->_Boolean([1, 0])->[1]) ;
 	ok($t->_char(['a', 'b', 'c'])->[0], "A") ;
 	ok(eq_array($t->_Character(['a', 'b', 'c']), ['a', 'b', 'c'], 1)) ;
-	ok($t->_String(["bla", "ble", "bli"])->[0], "STRING") ;
+	my $a = $t->_String(["bla", "ble", "bli"]) ;
+	ok($a->[0], "STRING") ;
+	$a->[1] = "wazoo" ;
+	ok($a->[1], "wazoo") ;
 	ok($t->_StringBuffer(["bla", "ble", "bli"])->[0], "STRINGBUFFER") ;
 	
 	ok($t->_Object(undef), undef) ;
-	my $a = $t->_Object([1, "two", $t]) ;
+	$a = $t->_Object([1, "two", $t]) ;
 	ok($a->[0], "1") ;
 	ok($a->[1], "two") ;
 	ok(UNIVERSAL::isa($a->[2], "main::types5")) ;
 	ok($a->[2]->{data}->[1], "a") ;
 	$a->[2]->{data} = ["1", "2"] ;
 	ok($a->[2]->{data}->[1], 2) ;
+
+	$a->[0]++ ;
+	ok($a->[0], "2") ;
+
+	$a->[1] = "three" ;
+	ok($a->[1], "three") ;
+
+	$a->[2] = "string" ;
+	ok($a->[2], "string") ;
+
+	$a->[0] = $t ;
+	ok(UNIVERSAL::isa($a->[0], "main::types5")) ;
 	
 	# Try some multidimensional arrays.
 	$a = $t->_StringString([
 		["00", "01"],
 		["10", "11"]
 	]) ;
-	ok($a->[1]->[0], "10") ;
 	
 	# Try some incomplete multidimensional arrays.
 	$a = $t->_StringString([
@@ -98,6 +112,13 @@ my $t = new types5() ;
 	eval {pop @{$b}} ; ok($@, qr/Operation POP/) ;
 	eval {shift @{$b}} ; ok($@, qr/Operation SHIFT/) ;
 	eval {splice(@{$b}, 0, 1)} ; ok($@, qr/Operation SPLICE/) ;
+
+	# Cool stuff on arrays
+	$a = $t->_byte([12, 34, 56]) ;
+	ok(scalar(@{$a}), 3) ;
+	foreach my $e (@{$a}){
+		ok($e =~ /^(123|34|56)$/) ;
+	}
 }
 
 ok($t->__get_private()->{proto}->ObjectCount(), 1) ;

@@ -3,11 +3,15 @@ package Inline::Java::JVM ;
 
 use strict ;
 
-$Inline::Java::JVM::VERSION = '0.30' ;
+$Inline::Java::JVM::VERSION = '0.31' ;
 
 use Carp ;
 use IPC::Open3 ;
 use IO::File ;
+use IO::Pipe ;
+use POSIX qw(setsid) ;
+
+my %SIGS = () ;
 
 sub new {
 	my $class = shift ;
@@ -16,16 +20,23 @@ sub new {
 	my $this = {} ;
 	bless($this, $class) ;
 
+	foreach my $sig ('HUP', 'INT', 'PIPE', 'TERM'){
+		local $SIG{__WARN__} = sub {} ;
+		if (exists($SIG{$sig})){
+			$SIGS{$sig} = $SIG{$sig} ;
+		}
+	}
+
 	$this->{socket} = undef ;
 	$this->{JNI} = undef ;
-	$this->{owner} = 1 ;
+
+	$this->{destroyed} = 0 ;
 
 	Inline::Java::debug("Starting JVM...") ;
 
 	if ($o->get_java_config('JNI')){
+		$this->{owner} = 1 ;
 		Inline::Java::debug("  JNI mode") ;
-
-		require Inline::Java::JNI ;
 
 		my $jni = new Inline::Java::JNI(
 			$ENV{CLASSPATH} || "",
@@ -37,29 +48,31 @@ sub new {
 	}
 	else{
 		Inline::Java::debug("  Client/Server mode") ;
-		
+
 		my $debug = (Inline::Java::get_DEBUG() ? "true" : "false") ;
 
-		my $shared_jvm = ($o->get_java_config('SHARED_JVM') ? "true" : "false") ;
+		my $shared_jvm = ($o->get_java_config('SHARED_JVM') ? "true" : "false") ;	
 		my $port = $o->get_java_config('PORT') ;
 
 		$this->{port} = $port ;
+		$this->{host} = "localhost" ;
 
 		# Check if JVM is already running
-		if ($shared_jvm){
+		if ($shared_jvm eq "true"){
 			eval {
 				$this->reconnect() ;
 			} ;
 			if (! $@){
-				Inline::Java::debug("  Connected to already running JVM!") ;			
+				Inline::Java::debug("  Connected to already running JVM!") ;
 				return $this ;
 			}
 		}
+		$this->capture(1) ;
 
-		my $java = $o->get_java_config('BIN') . "/java" . Inline::Java::portable("EXE_EXTENSION") ;
-		my $pjava = Inline::Java::portable("RE_FILE", $java) ;
+		my $java = File::Spec->catfile($o->get_java_config('BIN'), 
+			"java" . Inline::Java::portable("EXE_EXTENSION")) ;
 
-		my $cmd = "\"$pjava\" InlineJavaServer $debug $port $shared_jvm" ;
+		my $cmd = "\"$java\" InlineJavaServer $debug $this->{port} $shared_jvm" ;
 		Inline::Java::debug($cmd) ;
 
 		if ($o->get_config('UNTAINT')){
@@ -68,16 +81,14 @@ sub new {
 
 		my $pid = 0 ;
 		eval {
-			my $in = new IO::File() ;
-			$pid = open3($in, ">&STDOUT", ">&STDERR", $cmd) ;
-			# We won't be sending anything to the child in this fashion...
-			close($in) ;
+			$pid = $this->launch($cmd) ;
 		} ;
 		croak "Can't exec JVM: $@" if $@ ;
 
 		$this->{pid} = $pid ;
 		$this->{socket}	= $this->setup_socket(
-			$port, 
+			$this->{host}, 
+			$this->{port}, 
 			$o->get_java_config('STARTUP_DELAY'),
 			0
 		) ;
@@ -87,48 +98,142 @@ sub new {
 }
 
 
+sub launch {
+	my $this = shift ;
+	my $cmd = shift ;
+
+	local $SIG{__WARN__} = sub {} ;
+
+	my $dn = File::Spec->devnull() ;
+	my $in = new IO::File("<$dn") ;
+	if (! defined($in)){
+		croak "Can't open $dn for reading" ;
+	}
+	my $out = new IO::File(">$dn") ;
+	if (! defined($out)){
+		croak "Can't open $dn for writing" ;
+	}
+
+	my $pid = open3($in, $out, ">&STDERR", $cmd) ;
+
+	close($in) ;
+	close($out) ;
+
+	return $pid ;
+}
+
+
+sub fork_launch {
+	my $this = shift ;
+	my $cmd = shift ;
+
+	# Setup pipe with our child
+	my $c2p = new IO::Pipe() ;
+
+	my $gcpid = undef ;
+	my $cpid = fork() ;
+	if (! defined($cpid)){
+		croak("Can't fork to detach JVM: $!") ;
+	}
+	elsif(! $cpid){
+		# Child
+		$c2p->writer() ; autoflush $c2p 1 ;
+
+		# Now we need to get $gcpid back to our script...
+		eval {
+ 			$gcpid = $this->launch($cmd) ;
+		} ;
+		if ($@){
+			print $c2p "$@\n" ;
+		}
+		else{
+			print $c2p "pid: $gcpid\n" ;
+		}
+		close($c2p) ;
+		Inline::Java::set_DONE() ;
+		CORE::exit() ;
+	}
+	else{
+		# Parent
+		$c2p->reader() ;
+		my $line = <$c2p> ;
+		close($c2p) ;
+		chomp($line) ;
+		if ($line =~ /^pid: (.*)$/){
+			$gcpid = $1 ;
+		}
+		else{
+			croak $line ;
+		}
+		waitpid($cpid, 0) ;
+	}
+
+	return $gcpid ;
+}
+
+
 sub DESTROY {
 	my $this = shift ;
 
-	if ($this->{owner}){
-		if ($this->{socket}){
-			# This asks the Java server to stop and die.
-			my $sock = $this->{socket} ;
-			if ($sock->connected()){
-				print $sock "die\n" ;
-			}
-			else{
-				carp "Lost connection with Java virtual machine" ;
-			}
-			close($sock) ;
-	
-			if ($this->{pid}){
-				# Here we go ahead and send the signals anyway to be very 
-				# sure it's dead...
-				# Always be polite first, and then insist.
-				kill(15, $this->{pid}) ;
-				kill(9, $this->{pid}) ;
-	
-				# Reap the child...
-				waitpid($this->{pid}, 0) ;
-			}
-		}
-	}
-	else{
-		# We are not the JVM owner, so we simply politely disconnect
-		if ($this->{socket}){
-			close($this->{socket}) ;
-			$this->{socket} = undef ;
-		}
-	}
+	$this->shutdown() ;	
+}
 
-	# For JNI we need to do nothing because the garbage collector will call
-	# the JNI destructor
+
+sub shutdown {
+	my $this = shift ;
+
+	if (! $this->{destroyed}){
+		if ($this->am_owner()){
+			Inline::Java::debug("JVM owner exiting...") ;
+
+			if ($this->{socket}){
+				# This asks the Java server to stop and die.
+				my $sock = $this->{socket} ;
+				if ($sock->connected()){
+					Inline::Java::debug("Sending 'die' message to JVM...") ;
+					print $sock "die\n" ;
+				}
+				else{
+					carp "Lost connection with Java virtual machine" ;
+				}
+				close($sock) ;
+		
+				if ($this->{pid}){
+					# Here we go ahead and send the signals anyway to be very 
+					# sure it's dead...
+					# Always be polite first, and then insist.
+					Inline::Java::debug("Sending 15 signal to JVM...") ;
+					kill(15, $this->{pid}) ;
+					Inline::Java::debug("Sending 9 signal to JVM...") ;
+					kill(9, $this->{pid}) ;
+		
+					# Reap the child...
+					waitpid($this->{pid}, 0) ;
+				}
+			}
+			if ($this->{JNI}){
+				$this->{JNI}->shutdown() ;
+			}
+		}
+		else{
+			# We are not the JVM owner, so we simply politely disconnect
+			if ($this->{socket}){
+				Inline::Java::debug("JVM non-owner exiting...") ;
+				close($this->{socket}) ;
+				$this->{socket} = undef ;
+			}
+
+			# This should never happen in JNI mode
+		}
+
+        $this->{destroyed} = 1 ;
+	}
 }
 
 
 sub setup_socket {
 	my $this = shift ;
+	my $host = shift ;
 	my $port = shift ;
 	my $timeout = shift ;
 	my $one_shot = shift ;
@@ -153,7 +258,7 @@ sub setup_socket {
 
 		while (1){
 			$socket = new IO::Socket::INET(
-				PeerAddr => 'localhost',
+				PeerAddr => $host,
 				PeerPort => $port,
 				Proto => 'tcp') ;
 			if (($socket)||($one_shot)){
@@ -178,7 +283,7 @@ sub setup_socket {
 	}
 
 	if (! $socket){
-		croak "Can't connect to JVM: $!" ;
+		croak "Can't connect to JVM at ($host:$port): $!" ;
 	}
 
 	$socket->autoflush(1) ;
@@ -201,37 +306,104 @@ sub reconnect {
 	}
 
 	my $socket = $this->setup_socket(
+		$this->{host}, 
 		$this->{port}, 
 		0,
 		1
 	) ;
 	$this->{socket} = $socket ;
+
+	# Now that we have reconnected, we release the JVM
+	$this->release() ;
+}
+
+
+sub capture {
+	my $this = shift ;
+
+	if ($this->{JNI}){
+		return ;
+	}
+
+	foreach my $sig ('HUP', 'INT', 'PIPE', 'TERM'){
+		if (exists($SIG{$sig})){
+			$SIG{$sig} = \&Inline::Java::done ;
+		}
+	}
+
+	$this->{owner} = 1 ;
+}
+
+
+sub am_owner {
+	my $this = shift ;
+
+	return $this->{owner} ;
+}
+
+
+sub release {
+	my $this = shift ;
+
+	if ($this->{JNI}){
+		return ;
+	}
+
+	foreach my $sig qw(HUP INT PIPE TERM){
+		local $SIG{__WARN__} = sub {} ;
+		if (exists($SIG{$sig})){
+			$SIG{$sig} = $SIGS{$sig} ;
+		}
+	}
+
 	$this->{owner} = 0 ;
 }
 
 
 sub process_command {
 	my $this = shift ;
+	my $inline = shift ;
 	my $data = shift ;
 
-	Inline::Java::debug("  packet sent is $data") ;
-
 	my $resp = undef ;
-	if ($this->{socket}){
-		my $sock = $this->{socket} ;
-		print $sock $data . "\n" or
-			croak "Can't send packet to JVM: $!" ;
+	while (1){
+		Inline::Java::debug("  packet sent is $data") ;
 
-		$resp = <$sock> ;
-		if (! $resp){
-			croak "Can't receive packet from JVM: $!" ;
+		if ($this->{socket}){
+			my $sock = $this->{socket} ;
+			print $sock $data . "\n" or
+				croak "Can't send packet to JVM: $!" ;
+
+			$resp = <$sock> ;
+			if (! $resp){
+				croak "Can't receive packet from JVM: $!" ;
+			}
+
+			# Release the reference since the object has been sent back
+			# to Java.
+			$Inline::Java::Callback::OBJECT_HOOK = undef ;
+		}
+		if ($this->{JNI}){
+			$Inline::Java::JNI::INLINE_HOOK = $inline ;
+			$resp = $this->{JNI}->process_command($data) ;
+		}
+
+		Inline::Java::debug("  packet recv is $resp") ;
+
+		# We got an answer from the server. Is it a callback?
+		if ($resp =~ /^callback/){
+			($data, $Inline::Java::Callback::OBJECT_HOOK) = Inline::Java::Callback::InterceptCallback($inline, $resp) ;
+			next ;
+		}
+		else{
+			last ;
 		}
 	}
-	if ($this->{JNI}){
-		$resp = $this->{JNI}->process_command($data) ;
-	}
-
-	Inline::Java::debug("  packet recv is $resp") ;
 
 	return $resp ;
 }
+
+
+
+1 ;
+

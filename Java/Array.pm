@@ -4,7 +4,7 @@ package Inline::Java::Array ;
 
 use strict ;
 
-$Inline::Java::Array::VERSION = '0.20' ;
+$Inline::Java::Array::VERSION = '0.31' ;
 
 use Carp ;
 
@@ -23,8 +23,8 @@ sub new {
 
 	$OBJECTS->{$knot} = $object ;
 
-	Inline::Java::debug("this = $this") ; 
-	Inline::Java::debug("knot = $knot") ; 
+	Inline::Java::debug("this = '$this'") ; 
+	Inline::Java::debug("knot = '$knot'") ; 
 
 	return $this ;
 }
@@ -37,7 +37,7 @@ sub __get_object {
 
 	my $ref = $OBJECTS->{$knot} ;
 	if (! defined($ref)){
-		croak "Unknown Java array reference $knot" ;
+		croak "Unknown Java array reference '$knot'" ;
 	}
 	
 	return $ref ;
@@ -59,7 +59,15 @@ sub length {
 
 	my $ret = undef ;
 	eval {
-		$ret = $obj->__get_private()->{proto}->CallJavaMethod('getLength', [], []) ;
+		# Check the cached value
+		$ret = $obj->__get_private()->{array_length} ;
+		if (! defined($ret)){
+			$ret = $obj->__get_private()->{proto}->CallJavaMethod('getLength', [], []) ;
+			$obj->__get_private()->{array_length} = $ret ;
+		}
+		else{
+			Inline::Java::debug("Using cached array length $ret") ;
+		}
 	} ;
 	croak $@ if $@ ;
 
@@ -104,7 +112,7 @@ sub __set_element {
 	# the array.
 	my $java_class = $obj->__get_private()->{java_class} ;
 	my $elem_class = $java_class ;
-	my $an = new Inline::Java::ArrayNorm($java_class) ;
+	my $an = Inline::Java::Array::Normalizer->new($java_class) ;
 	if ($an->{req_nb_dim} > 1){
 		$elem_class =~ s/^\[// ;
 	}
@@ -133,9 +141,7 @@ sub AUTOLOAD {
 	# method.
 	$func_name =~ s/^(.*)::// ;
 
-	Inline::Java::debug("$func_name") ;
-
-	croak "Can't call method $func_name on Java arrays" ;
+	croak "Can't call method '$func_name' on Java arrays" ;
 }
 
 
@@ -296,7 +302,7 @@ sub new {
 	my $ref = shift ;
 
 	if (! Inline::Java::Class::ClassIsArray($java_class)){
-		croak "Can't create Java array of non-array class $java_class" ;
+		croak "Can't create Java array of non-array class '$java_class'" ;
 	}
 
 	my $this = {} ;
@@ -369,7 +375,7 @@ sub InitFromFlat {
 
 			my @dims = @{$dims} ;
 			shift @dims ;
-			my $obj = new Inline::Java::Array::Normalizer($java_class) ;
+			my $obj = Inline::Java::Array::Normalizer->new($java_class) ;
 			$obj->InitFromFlat(\@dims, \@sub, $level + 1) ;
 			$elem = $obj->{array} ;
 		}
@@ -408,7 +414,7 @@ sub AnalyzeArrayClass {
 
 	my $pclass = $map{$type} ;
 	if (! $pclass){
-		croak "Can't determine array type for $java_class" ;
+		croak "Can't determine array type for '$java_class'" ;
 	}
 
 	$this->{req_element_class} = $pclass ;
@@ -430,7 +436,7 @@ sub ValidateArray {
 
 	if (! UNIVERSAL::isa($ref, "ARRAY")){
 		# We must start with an array of some kind...
-		croak "$ref is not an array reference" ;
+		croak "'$ref' is not an array reference" ;
 	}
 
 	$this->ValidateElements($ref, $array, $level) ;
@@ -636,8 +642,8 @@ __DATA__
 
 
 class InlineJavaArray {
-	InlineJavaServer ijs ;
-	InlineJavaClass ijc ;
+	private InlineJavaServer ijs ;
+	private InlineJavaClass ijc ;
 
 
 	InlineJavaArray(InlineJavaServer _ijs, InlineJavaClass _ijc){

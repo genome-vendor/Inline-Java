@@ -3,7 +3,7 @@ package Inline::Java::Class ;
 
 use strict ;
 
-$Inline::Java::Class::VERSION = '0.30' ;
+$Inline::Java::Class::VERSION = '0.31' ;
 
 $Inline::Java::Class::MAX_SCORE = 10 ;
 
@@ -146,14 +146,14 @@ sub CastArgument {
 			# They will wrapped on the Java side.
 			if (UNIVERSAL::isa($arg, "ARRAY")){
 				if (! UNIVERSAL::isa($arg, "Inline::Java::Array")){
-					my $an = new Inline::Java::Array::Normalizer($array_type || $proto, $arg) ;
+					my $an = Inline::Java::Array::Normalizer->new($array_type || $proto, $arg) ;
 					$array_score = $an->{score} ;
 					my $flat = $an->FlattenArray() ; 
 					my $inline = Inline::Java::get_INLINE($module) ;
-					my $obj = Inline::Java::Object->__new($array_type || $proto, $inline, -1, $flat->[0], $flat->[1]) ;
 
 					# We need to create the array on the Java side, and then grab 
 					# the returned object.
+					my $obj = Inline::Java::Object->__new($array_type || $proto, $inline, -1, $flat->[0], $flat->[1]) ;
 					$arg = new Inline::Java::Array($obj) ;
 				}
 				else{
@@ -493,8 +493,8 @@ package Inline::Java::Class ;
 __DATA__
 
 class InlineJavaClass {
-	InlineJavaServer ijs ;
-	InlineJavaProtocol ijp ;
+	private InlineJavaServer ijs ;
+	private InlineJavaProtocol ijp ;
 
 	InlineJavaClass(InlineJavaServer _ijs, InlineJavaProtocol _ijp){
 		ijs = _ijs ;
@@ -685,16 +685,34 @@ class InlineJavaClass {
 		Returns the number of levels that separate a from b
 	*/
 	int DoesExtend(Class a, Class b){
-		// We need to check if a extends b
-		Class parent = a ;
-		int level = 0 ;
-		while (parent != null){
+		return DoesExtend(a, b, 0) ;
+	}
+
+
+	int DoesExtend(Class a, Class b, int level){
+		ijs.debug("   checking if " + a.getName() + " extends " + b.getName()) ;
+
+		if (a == b){
+			return level ;
+		}
+
+		Class parent = a.getSuperclass() ;
+		if (parent != null){
 			ijs.debug("    parent is " + parent.getName()) ;
-			if (parent == b){
-				return level ;
+			int ret = DoesExtend(parent, b, level + 1) ;
+			if (ret != -1){
+				return ret ;
 			}
-			level++ ;
-			parent = parent.getSuperclass() ;
+		}
+
+		// Maybe b is an interface a implements it?
+		Class inter[] = a.getInterfaces() ;
+		for (int i = 0 ; i < inter.length ; i++){
+			ijs.debug("    interface is " + inter[i].getName()) ;
+			int ret = DoesExtend(inter[i], b, level + 1) ;
+			if (ret != -1){
+				return ret ;
+			}
 		}
 
 		return -1 ;

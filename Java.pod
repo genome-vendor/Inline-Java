@@ -2,16 +2,13 @@
 
 Inline::Java - Write Perl classes in Java.
 
-
 =head1 SYNOPSIS
 
-   my $alu = new alu() ;
-   print "9 + 16 = ", $alu->add(9, 16), "\n";
-   print "9 - 16 = ", $alu->subtract(9, 16), "\n";
+=for comment
 
-   use Inline Java => <<'END_OF_JAVA_CODE';
-      class alu {
-         public alu(){
+   use Inline Java => <<'END_OF_JAVA_CODE' ;
+      class Pod_alu {
+         public Pod_alu(){
          }
 
          public int add(int i, int j){
@@ -24,12 +21,18 @@ Inline::Java - Write Perl classes in Java.
       }   
    END_OF_JAVA_CODE
 
+   my $alu = new Pod_alu() ;
+   print($alu->add(9, 16) . "\n") ; # prints 25
+   print($alu->subtract(9, 16) . "\n") ; # prints -7
+
+=for comment
 
 =head1 WARNING 
 
 THIS IS ALPHA SOFTWARE. It is incomplete and possibly unreliable. 
 It is also possible that some elements of the interface (API) will 
 change in future releases.
+   Z<>
 
 
 =head1 DESCRIPTION
@@ -44,6 +47,7 @@ written in Perl.
 The process of interrogating the Java classes for public methods
 occurs the first time you run your Java code. The namespace is
 cached, and subsequent calls use the cached version.
+   Z<>
 
 
 =head1 USING THE Inline::Java MODULE
@@ -57,7 +61,7 @@ to any other C<Inline> language module.
 This section will explain the different ways to C<use> Inline::Java.
 For more details on C<Inline>, see 'perldoc Inline'. 
 
-=head2 Basic Usage
+B<Basic Usage>
 
 The most basic form for using C<Inline::Java> is:
 
@@ -133,15 +137,16 @@ behavior of C<Inline::Java>:
       time though. See README and README.JNI for more information), set 
       JNI to 1. 
       Ex: JNI => 1
-      Note: This can also be set globally by setting the PERL_INLINE_JAVA_JNI
-      environment variable to 1.
+      Note: This can also be set globally by setting the 
+      PERL_INLINE_JAVA_JNI environment variable to 1.
       Note: This configuration option only has an effect on the first
       'use Inline Java' call inside a Perl script, since all other calls 
       make use of the same JVM.
 
-  SHARED_JVM:
+   SHARED_JVM:
       This mode enables mutiple processes to share the same JVM. It was 
-      created mainly in order to be able to use C<Inline::Java> under mod_perl. 
+      created mainly in order to be able to use C<Inline::Java> under 
+      mod_perl. 
       Ex: SHARED_JVM => 1
       Note: This configuration option only has an effect on the first
       'use Inline Java' call inside a Perl script, since all other calls 
@@ -154,18 +159,38 @@ behavior of C<Inline::Java>:
    WARN_METHOD_SELECT:
       Throws a warning when C<Inline::Java> has to 'choose' between 
       different method signatures. The warning states the possible 
-      choices and the sugnature chosen.
+      choices and the signature chosen.
       Ex: WARN_METHOD_SELECT => 1
 
    STUDY:
-      Takes an array of Java classes that you wish to have C<Inline::Java>
-      learn about so that you can use thme inside Perl.
+      Takes an array of Java classes that you wish to have 
+      C<Inline::Java> learn about so that you can use them inside Perl.
       Ex: STUDY => ['java.lang.HashMap', 'my.class'] ;
 
    AUTOSTUDY:
       Makes C<Inline::Java> automatically study unknown classes it 
       encounters.
       Ex: STUDY => ['java.lang.HashMap', 'my.class'] ;
+
+
+=head1 ENVIRONMENT VARIABLES
+
+   PERL_INLINE_JAVA_BIN:
+      Same as the BIN option.
+
+   PERL_INLINE_JAVA_JNI:
+      Same as the JNI option.
+
+   PERL_INLINE_SHARED_JVM:
+      Same as the SHARED_JVM option.
+
+   PERL_INLINE_JAVA_DEBUG:
+      Same as the DEBUG option.
+
+   PERL_INLINE_JAVA_COMMAND_COM:
+      If set to a true value, tells Inline::Java that you are using 
+      the command.com shell. Inline::Java should normally be able
+      to determine this on its own.
 
 
 =head1 CLASSES AND OBJECTS
@@ -175,49 +200,49 @@ needs to support Java classes adequately.
 
 Example: 
 
-   use Inline Java => <<'END';
-      class Foo {
+=for comment
+
+   use Inline Java => <<'END' ;
+      class Pod_1 {
          String data = "data" ;
          static String sdata = "static data" ;
 
-         public Foo() {
-            System.out.println("new Foo object being created") ;
+         public Pod_1(){
          }
 
          public String get_data(){
             return data ;
          }
 
-         public static get_static_data(){
+         public static String get_static_data(){
             return sdata ;
          }
 
          public void set_data(String d){
             data = d ;
          }
+
+         private void priv(){
+         }
       }
    END
 
-   my $obj = new Foo ;
-   print $obj->get_data() . "\n" ;
+   my $obj = new Pod_1 ;
+   print($obj->get_data() . "\n") ; # prints data
    $obj->set_data("new data") ;
-   print $obj->get_data() . "\n" ;
+   print($obj->get_data() . "\n") ; # prints new data
 
-The output from this program is:
+=for comment
 
-   new Foo object being created
-   data
-   new data
-
-C<Inline::Java> created a new namespace called C<main::Foo> and 
+C<Inline::Java> created a new namespace called C<main::Pod_1> and 
 created the following functions:
 
-   sub main::Foo::new { ... }
-   sub main::Foo::Foo { ... }
-   sub main::Foo::get_data { ... }
-   sub main::Foo::get_sdata { ... }
-   sub main::Foo::set_data { ... }
-   sub main::Foo::DESTROY { ... }
+   sub main::Pod_::new { ... }
+   sub main::Pod_::Pod_1 { ... }
+   sub main::Pod_::get_data { ... }
+   sub main::Pod_::get_sdata { ... }
+   sub main::Pod_::set_data { ... }
+   sub main::Pod_::DESTROY { ... }
 
 Note that only the public methods are exported to Perl. 
 Note also that the class itself is not public. With 
@@ -228,76 +253,97 @@ name (C<Inline::Java> can't work this way).
 Inner classes are also supported, you simply need to supply a reference
 to an outer class object as the first parameter of the constructor:
 
-   use Inline Java => <<'END';
-      class Foo {
-         public Foo() {
+=for comment
+
+   use Inline Java => <<'END' ;
+      class Pod_2 {
+         public Pod_2(){
          }
 
-         public class Bar {
-            public Bar() {
+         public class Pod_2_Inner {
+            public String name = "Pod_2_Inner" ;
+
+            public Pod_2_Inner(){
             }
          }
       }
    END
 
-   my $obj = new Foo() ;
-   my $obj2 = new Bar($obj) ;
+   my $obj = new Pod_2() ;
+   my $obj2 = new Pod_2::Pod_2_Inner($obj) ;
+   print($obj2->{name} . "\n") ; # prints Pod_2_Inner
 
+=for comment
 
 =head1 METHODS
 
 In the previous example we have seen how to call a method. You can also
 call static methods in the following manner:
 
-   print Foo->get_sdata() . "\n" ;
+   print Pod_1->get_sdata() . "\n" ; # prints static data
    # or
-   my $obj = new Foo() ;
-   print $obj->get_sdata() . "\n" ;
-	
-both of these will print:
-   
-   static data   
+   my $obj = new Pod_1() ;
+   print $obj->get_sdata() . "\n" ; # prints static data  
 
 You can pass any kind of Perl scalar or any Java object to a method. It
 will be automatically converted to the correct type:
 
-   use Inline Java => <<'END';
-      class Foo2 {
-         public Foo2(int i, String j, Foo k) {
-            ...
+=for comment
+
+   use Inline Java => <<'END' ;
+      class Pod_3_arg {
+         public Pod_3_arg(){
+         }
+      }
+      class Pod_3 {
+         public int n ;
+
+         public Pod_3(int i, String j, Pod_3_arg k) {
+            n = i ;
          }
       }
    END
 
-   my $obj = new Foo() ;
-   my $obj2 = new Foo2(5, "toto", $obj) ;
+   my $obj = new Pod_3_arg() ;
+   my $obj2 = new Pod_3(5, "toto", $obj) ;
+   print($obj2->{n} . "\n") ; # prints 5
+
+=for comment
 
 will work fine. These objects can be of any type, even if these types
 are not known to C<Inline::Java>. This is also true for return types:
 
-   use Inline Java => <<'END';
+=for comment
+
+   use Inline Java => <<'END' ;
       import java.util.* ;
 
-      class Foo3 {
-         public Foo3() {
+      class Pod_4 {
+         public Pod_4(){
          }
 
          public HashMap get_hash(){
-            return new HashMap() ;
+            HashMap h = new HashMap() ;
+            h.put("key", "value") ;
+
+            return h ;
          }
 
-         public void do_stuff_to_hash(HashMap h){
-            ...
+         public String do_stuff_to_hash(HashMap h){
+           return (String)h.get("key") ;
          }
       }
    END
 
-   my $obj = new Foo3() ;
-   my $h = $obj->gethash() ;
-   $obj->do_stuff_to_hash($h) ;
+   my $obj = new Pod_4() ;
+   my $h = $obj->get_hash() ;
+   print($obj->do_stuff_to_hash($h) . "\n") ; # prints value
+
+=for comment
 
 Objects of types unknown to Perl can exist in the Perl space, you just 
 can't call any of their methods.
+   Z<>
 
 
 =head1 MEMBER VARIABLES
@@ -306,38 +352,47 @@ You can also access all public member variables (static or not) from Perl.
 As with method arguments, the types of these variables does not need to
 be known to Perl:
 
-   use Inline Java => <<'END';
+=for comment
+
+   use Inline Java => <<'END' ;
       import java.util.* ;
 
-      class Foo4 {
+      class Pod_5 {
          public int i ;
          public static HashMap hm ;
 
-         public Foo4() {
+         public Pod_5(){
          }
      }
    END
 
-   my $obj = new Foo4() ;
+   my $obj = new Pod_5() ;
    $obj->{i} = 2 ;
+   print($obj->{i} . "\n") ; # prints 2
    my $hm1 = $obj->{hm} ; # instance way
-   my $hm2 = Foo4::hm ;   # static way   
+   my $hm2 = $Pod_4::hm ; # static way   
+
+=for comment
 
 Note: Watch out for typos when accessing members in the static fashion,
 'use strict' will not catch them since they have a package name...
+   Z<>
 
 
 =head1 ARRAYS
 
-You can also send and receive arrays. This is done by using Perl lists:
+You can also send and receive arrays. This is done simply by using Perl 
+lists:
 
-   use Inline Java => <<'END';
+=for comment
+
+   use Inline Java => <<'END' ;
       import java.util.* ;
 
-      class Foo5 {
+      class Pod_6 {
          public int i[] = {5, 6, 7} ;
 
-         public Foo5() {
+         public Pod_6(){
          }
 
          public String [] f(String a[]){
@@ -350,16 +405,18 @@ You can also send and receive arrays. This is done by using Perl lists:
      }
    END
 
-   my $obj = new Foo5() ;
+   my $obj = new Pod_6() ;
    my $i_2 = $obj->{i}->[2] ; # 7
-   my $a1 = $obj->f(["a", "b", "c"]) ; # String []
+   print($i_2 . "\n") ; # prints 7
 
+   my $a1 = $obj->f(["a", "b", "c"]) ; # String []
    my $a2 = $obj->f([
       ["00", "01"],
       ["10", "11"],
    ]) ; # String [][]
-   print $a2->[1]->[0] ; # "10"
+   print($a2->[1]->[0] . "\n") ; # prints 10
 
+=for comment
 
 =head1 TYPE CASTING
 
@@ -367,22 +424,27 @@ Sometimes when a class as many signatures for the same method,
 C<Inline::Java> will have to select one of the signatures based on 
 the arguments that are passed:
 
-   use Inline Java => <<'END';
-      class Foo6 {
-         public Foo6() {
+=for comment
+
+   use Inline Java => <<'END' ;
+      class Pod_7 {
+         public Pod_7(){
          }
 
-         public void f(int i){
+         public String f(int i){
+            return "int" ;
          }
 
-         public void f(char c){
+         public String f(char c){
+            return "char" ;
          }
       }
    END
 
-   my $obj = new Foo6() ;
-   $obj->f('5') ;
+   my $obj = new Pod_7() ;
+   print($obj->f('5') . "\n") ; # prints int
 
+=for comment
 
 In this case, C<Inline::Java> will call f(int i), because '5' is an integer.
 But '5' is a valid char as well. So to force the call of f(char c), do the 
@@ -401,16 +463,16 @@ Another case where type casting is need is when one wants to pass an array
 as a java.lang.Object:
 
    use Inline Java => <<'END';
-      Object o ;
-      int a[] = {1, 2, 3} ;
+      class Pod_8 {
+         public Object o ;
+         int a[] = {1, 2, 3} ;
 
-      class Foo7 {
-         public Foo7() {
+         public Pod_8() {
          }
       }
    END
 
-   my $obj = new Foo7() ;
+   my $obj = new Pod_8() ;
    $obj->{o} = [1, 2, 3] ;	# No!
 
 The reason why this will not work is simple. When C<Inline::Java> sees an
@@ -429,11 +491,11 @@ then cast it as an Object.
  
 Here is how to construct the array type representations:
 
-  [<type> ->  1 dimensional <type> array
+  [<type>  -> 1 dimensional <type> array
   [[<type> -> 2 dimensional <type> array
   ...
 
-  where <type>is one of:
+  where <type> is one of:
     B byte     S short     I int     J long  
     F float    D double    C char    Z boolean
 
@@ -448,6 +510,120 @@ Java array reference obtained from elsewhere, you don't even need to cast:
    $obj->{o} = $obj->{a} ;
 
 
+=head1 EXCEPTIONS
+
+You can now (as of 0.31) catch exceptions as objects when they are thrown 
+from Java. To do this you use the regular Perl exception tools: eval and 
+$@. A helper function named 'caught' is provided to help determine the 
+type of the exception. Here is a example of a typical use:
+
+=for comment
+
+   use Inline Java => <<'END' ;
+      import java.util.* ;
+
+      class Pod_9 {
+         public Pod_9(boolean t) throws Exception {
+			if (t){
+               throw new Exception("ouch!") ;
+			}
+         }
+      }
+   END
+
+   use Inline::Java qw(caught) ;
+
+   eval {
+	   my $obj = new Pod_9(1) ;
+   } ;
+   if ($@){
+      if (caught("java.lang.Exception")){
+         my $msg = $@->getMessage() ;
+         print($msg . "\n") ; # prints ouch!
+      }
+      else{
+         # It wasn't a Java exception after all...
+         die $@ ;
+      }
+   }
+
+=for comment
+
+What's important to understand is that $@ actually contains a reference
+to the Throwable object that was thrown by Java. The getMessage() function
+is really a method of the java.lang.Exception class. So if Java is throwing
+an custom exception you have in your code, you will have access to that
+exception object's public method just like any other Java object in 
+C<Inlin::Java>. It is also probably a good idea to undef $@ once you have 
+treated a Java exception, or else the object still has a reference until 
+$@ is reset by the next eval.
+   Z<>
+
+
+=head1 CALLBACKS
+
+You can now (as of 0.31), call Perl functions from Java. To do this you 
+need to create an InlinePerlJavaCaller object. You can then use the 
+CallPerl method to call your Perl function. You pass the parameters using 
+an array of java.lang.Object. The method will return the result in a 
+java.lang.Object, which you must then cast to as a java.lang.String 
+(if your Perl method returns a Perl scalar), or anything else if your Perl 
+function returns an "Inline::Java" object. Here is a example of a typical 
+use:
+
+=for comment
+
+   use Inline Java => <<'END' ;
+      import java.util.* ;
+
+      class Pod_regexp extends InlineJavaPerlCaller {
+         public Pod_regexp(){
+         }
+
+         public boolean match(String target, String pattern)
+            throws InlineJavaException {
+            try {
+               String m = (String)CallPerl("main", "regexp", 
+                  new Object [] {target, pattern}) ;
+
+               if (m.equals("1")){
+                  return true ;
+               }
+            }
+            catch (PerlException pe){
+               // $@ is in pe.GetObject()
+            }
+
+            return false ;
+         }
+      }
+   END
+
+   my $re = new Pod_regexp() ;
+   my $match = $re->match("Inline::Java", "^Inline") ;
+   print($match . "\n") ; # prints 1
+
+	
+   sub regexp { 
+      my $target = shift ;
+      my $pattern = shift ;
+
+      return ($target =~ /$pattern/) ;
+   }
+
+=for comment
+
+The CallPerl method can throw 2 types of exceptions, both of which are inner
+classes of InlineJavaPerlCaller: InlineJavaException and PerlException. The 
+former, which designates an internal C<Inline::Java> error, should never be 
+dealt with and should be thrown back all the way up to the function that was
+initially called by Perl. The latter indicates that the Perl callback threw
+an exception (die() or croak()). The value of $@ (this can be a scalar or 
+any valid "Inline::Java" object) can retreived using the GetObject method
+of the PerlException object.
+   Z<>
+
+
 =head1 STUDYING
 
 As of version 0.21, C<Inline::Java> can learn about other Java classes
@@ -455,14 +631,19 @@ and use them just like the Java code you write inside your Perl script.
 In fact you are not even required to write Java code inside your Perl
 script anymore. Here's how to use the 'studying' function:
 
+=for comment
+
    use Inline (
       Java => 'STUDY',
-      STUDY => ['java.lang.HashMap'],
+      STUDY => ['java.util.HashMap'],
    ) ;
 
-   my $hm = new java::lang::HashMap() ;
+   my $hm = new java::util::HashMap() ;
    $hm->put("key", "value") ;
-   my $v = $hm->get("key") ;
+   my $val = $hm->get("key") ;
+   print($val . "\n") ; # prints value
+
+=for comment
 
 If you do not wish to put any Java code inside you Perl script, you must
 use the string 'STUDY' as your code. This will skip the build section.
@@ -470,35 +651,35 @@ use the string 'STUDY' as your code. This will skip the build section.
 You can also use the AUTOSTUDY option to tell C<Inline::Java> that you wish
 to study all classes that it comes across:
 
-   use Inline (
-      Java => 'DATA',
-      AUTOSTUDY => 1,
-   ) ;
+=for comment
 
-   my $obj = new Foo8() ;
+   use Inline Java => <<'END', AUTOSTUDY => 1 ;
+      import java.util.* ;
+
+      class Pod_10 {
+         public Pod_10(){
+         }
+
+         public HashMap get_hm(){
+            HashMap hm = new HashMap() ;
+            return hm ;
+         }
+      }
+   END
+
+   my $obj = new Pod_10() ;
    my $hm = $obj->get_hm() ;
    $hm->put("key", "value") ;
-   my $v = $hm->get("key") ;
+   my $val = $hm->get("key") ;
+   print($val . "\n") ; # prints value
 
-   __END__
-   __Java__
-  
-   import java.util.* ;
-
-   class Foo8 {
-      public Foo8() {
-      }
-
-      public HashMap get_hm(){
-         HashMap hm = new HashMap() ;
-         return hm ;
-      }
-   }
+=for comment
 
 In this case C<Inline::Java> intercepts the return value of the get_hm()
 method, sees that it's of a type that it doesn't know about 
 (java.lang.HashMap), and immediately studies the class. After that call 
 the java::lang::HashMap class is available to use through Perl.
+   Z<>
 
 
 =head1 USING MULTIPLE SECTIONS
@@ -509,36 +690,41 @@ use a special syntax in your CLASSPATH (either the environment variable or the
 configuration option) to tell what Inline::Java modules it will need to load
 at runtime:
 
-   package Foo ;
+=for comment
+
+   package Pod_Foo ;
    use Inline (
-      Java => '<<END',
-        class Foo {
-           public Foo() {
+      Java => <<'END_Pod_Foo',
+        class Pod_Foo {
+           public Pod_Foo(){
            }
         } 
-   END
-      NAME => "Foo",
-      CLASSPATH => "[PERL_INLINE_JAVA=Foo, Bar]",
+   END_Pod_Foo
+      NAME => "Pod_Foo",
+      CLASSPATH => "[PERL_INLINE_JAVA=Pod_Foo, Pod_Bar]",
    ) ;
 
-   package Bar ;
+   package Pod_Bar ;
    use Inline (
-      Java => '<<END',
-        class Bar {
-           public Bar() {
+      Java => <<'END_Pod_Bar',
+        class Pod_Bar {
+           public Pod_Bar() {
            }
         } 
-   END
-      NAME => "Bar",
+   END_Pod_Bar
+      NAME => "Pod_Bar",
    ) ; 
 
    package main ;
-   my $f = new Foo() ;
-   my $b = new Bar() ;
+   my $f = new Pod_Foo::Pod_Foo() ;
+   my $b = new Pod_Bar::Pod_Bar() ;
+
+=for comment
 
 If you set the CLASSPATH via the configuration option, remember to do so in the
 first Inline::Java section. Also remember that you can't use Java packages with
 Inline::Java. Your classes must be in the unnamed package.
+   Z<>
 
 
 =head1 JNI vs CLIENT/SERVER MODES
@@ -548,9 +734,8 @@ Interface) extension. This enables C<Inline::Java> to load the Java virtual
 machine as a shared object instead of running it as a stand-alone server. 
 This brings an improvement in performance.
 
-However, the JNI extension is not available on all platforms (see README and
-README.JNI for more information). For that reason, if you have built the 
-JNI extension, you must enable it explicitely by doing one of the following:
+If you have built the JNI extension, you must enable it explicitely by doing
+one of the following:
 
    - set the JNI configuration option to 1
    - set the PERL_INLINE_JAVA_JNI environment variable to 1
@@ -558,6 +743,9 @@ JNI extension, you must enable it explicitely by doing one of the following:
 Note: C<Inline::Java> only creates one virtual machine instance. Therefore
 you can't use JNI for some sections and client/server for others. The first
 section determines the execution mode.
+
+See README.JNI for more information about the JNI extension.
+   Z<>
 
 
 =head1 SHARED_JVM
@@ -569,51 +757,140 @@ needed to the JVM. If any of these other processes where created by forking
 the parent process, the Inline::Java->reconnect_JVM() function must be called 
 in the child to get a fresh connection to the JVM. Ex:
 
+=for comment
+
    use Inline (
-      Java => '<<END',
-         import java.util.* ;
-         class t {
-            public t(){
+      Java => <<'END',
+         class Pod_11 {
+            public static int i = 0 ;
+            public Pod_11(){
+               i++ ;
             }
          }
    END
       SHARED_JVM => 1,
    ) ;
 
-   my $t = new t() ;
-
    my $nb = 5 ;
    for (my $i = 0 ; $i < $nb ; $i++){
       if (! fork()){
          Inline::Java::reconnect_JVM() ;
-         $t = new $t() ;
+         my $f = new Pod_11() ;
+         exit ;
       }
    }
+   sleep(5) ;
+
+   my $f = new Pod_11() ;
+   print($f->{i} . "\n") ; # prints 6
+
+=for comment
 
 Once this code was run, each of the 6 processes will have created a different 
-instance of the t class. Data can be shared between the processes by using 
+instance of the 't' class. Data can be shared between the processes by using 
 static members in the Java code.
 
 If processes not forked off the parent are connecting to the shared JVM, the 
 parent's CLASSPATH must be set properly or else the parent will not see these
 classes. See USING MULTIPLE SECTIONS for more details.
+   Z<>
 
-Please note that the SHARED_JVM feature does not work in JNI mode.
+
+=head1 USING Inline::Java IN A CGI
+
+If you want to use C<Inline::Java> in a CGI script, do the following:
+
+=for comment
+
+   use CGI ;
+   use Inline (
+      Java => <<'END',
+         class Pod_counter {
+            public static int cnt = 0 ;
+            public Pod_counter(){
+               cnt++ ;
+            }
+         }
+   END
+      SHARED_JVM => 1,
+   ) ;
+
+   Inline::Java::release_JVM() ;
+
+   my $c = new Pod_counter() ;
+   my $q = new CGI() ;
+   print 
+      $q->start_html() . 
+      "This page has been accessed " . $c->{cnt} . " times." .
+      $q->end_html() ;
+
+=for comment
+
+The release_JVM() function simply tells the CGI script that it is no 
+longer responsible for shutting down the JVM. What this does is that
+the first CGI to execute will start the JVM, but by releasing it the JVM 
+will never be shutdown. Subsequent CGI, since they have the SHARED_JVM
+option enabled, will try to connect to an already existing JVM before
+trying to start a new one. Therefore if the JVM happens to crash or is
+killed, the next CGI that runs will start a new one. The JVM will be
+killed when Apache is shut down.
+   Z<>
+
+
+=head1 USING Inline::Java UNDER MOD_PERL
+
+Here is an example of how to use C<Inline::Java> under mod_perl:
+
+   use Apache::Constants ;
+   use Inline (
+      Java => <<'END',
+         class Pod_counter {
+            public static int cnt = 0 ;
+            public Pod_counter(){
+               cnt++ ;
+            }
+         }
+   END
+      SHARED_JVM => 1,
+   ) ;
+
+   Inline::Java::release_JVM() ;
+   my $c = new Pod_counter() ;
+
+   sub handler {
+      my $r = shift ;
+
+      my $q = new CGI ;
+      print 
+         $q->start_html() . 
+         "This page has been accessed " . $c->{cnt} . " times." .
+         $q->end_html() ;
+
+      return Apache::Constants::OK() ;
+   }
+
+See USING Inline::Java UNDER MOD_PERL for more details about
+the release_JVM() function.
+   Z<>
 
 
 =head1 SUPPORTED PLATFORMS
 
-This is an ALPHA release of Inline::Java. Further testing and
+This is an ALPHA release of C<Inline::Java>. Further testing and
 expanded support for other operating systems and platforms will be a
 focus for future releases. It has been tested on: 
 
-   - Solaris 2.5.1          + Perl 5.6 + Java SDK 1.2.2
-   - Solaris 2.8            + Perl 5.6 + Java SDK 1.3.0
-   - Linux Redhat 6.2 Alpha + Perl 5.6 + Java SDK 1.3.1
+   - Solaris 2.8            + Perl 5.6.1 + Java SDK 1.2.2
+   - Solaris 2.8            + Perl 5.6.1 + Java SDK 1.3.1
+   - Linux Redhat 7.1 Intel + Perl 5.6 + Java SDK 1.2.2
+   - Linux Redhat 7.1 Intel + Perl 5.6 + Java SDK 1.3.1
+   - Windows 2000           + Perl 5.6 + Java SDK 1.2.2
    - Windows 2000           + Perl 5.6 + Java SDK 1.3.0
-   - Windows 95             + Perl 5.6 + Java SDK 1.2.2 (use 'fix' option) 
+   - Windows 95             + Perl 5.6 + Java SDK 1.3.1
+   - Windows 95             + Perl 5.6 + Java SDK 1.2.2 
 
 It likely will work with many other configurations.
+   Z<>
 
 
 =head1 HOW IT WORKS
@@ -631,6 +908,7 @@ Perl script then connects to the server using a TCP socket (or not if you use
 the JNI mode). Then each object creation or method invocation on "Java 
 objects" send requests to the server, which processes them and returns 
 object ids to Perl which keeps them the reference te objects in the future.
+   Z<>
 
 
 =head1 SEE ALSO 		   
@@ -639,9 +917,11 @@ For information about using C<Inline>, see L<Inline>.
 
 For information about other Inline languages, see L<Inline-Support>.
 
-Inline::Java's mailing list is inline@perl.org
+Inline::Java's mailing list is inline@perl.org. To subscribe, send 
+an email to inline-subscribe@perl.org
 
-The subscribe, send email to inline-subscribe@perl.org
+Inline::Java's home page is http://inline-java.sourceforge.net
+   Z<>
 
 
 =head1 BUGS AND DEFICIENCIES
@@ -667,19 +947,35 @@ You can't create public classes when using Inline::Java. This is due
 to the fact that Java requires that public classes be defined in a 
 .java file of the same name (C<Inline::Java> can't work this way).
 
+=item 3
 
+You shouldn't name any of your classes starting "InlineJavaServer" or
+"InlineJavaPerl". Those are reserved for C<Inline::Java>'s own Java 
+classes. Also do not name your classes 'B', 'S', 'I', 'J', 'F', 'D', 
+'C', 'Z' or 'L'. These classes seem to be used internally by Java to 
+represent the primitive types.
+
+
+=item 4
+
+If you upgrade C<Inline::Java> from a previous version, be sure to delete
+your Inline directory so that C<Inline::Java>'s own Java classes get 
+rebuilt to match the Perl code.
 
 =back
+   Z<>
 
 =head1 AUTHOR
 
 Patrick LeBoutillier <patl@cpan.org>
 
 Brian Ingerson <INGY@cpan.org> is the author of Inline.
+   Z<>
+
 
 =head1 COPYRIGHT
 
-Copyright (c) 2001, Patrick LeBoutillier.
+Copyright (c) 2001-2002, Patrick LeBoutillier.
 
 All Rights Reserved. This module is free software. It may be used,
 redistributed and/or modified under the terms of the Perl Artistic

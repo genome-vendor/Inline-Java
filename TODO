@@ -1,7 +1,8 @@
 CODE:
-- Localize filehandles
 
 
 TEST:
-- Add test script for configuration options (other than BIN)
+
+
+DOCUMENTATION:
 

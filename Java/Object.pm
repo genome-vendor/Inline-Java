@@ -3,7 +3,7 @@ package Inline::Java::Object ;
 
 use strict ;
 
-$Inline::Java::Object::VERSION = '0.22' ;
+$Inline::Java::Object::VERSION = '0.31' ;
 
 use Inline::Java::Protocol ;
 use Carp ;
@@ -49,7 +49,7 @@ sub __new {
 		eval {
 			$this->__get_private()->{proto}->CreateJavaObject($java_class, $proto, $args) ;
 		} ;		
-		croak "In method new of class $class: $@" if $@ ;
+		croak $@ if $@ ;
 	}
 	else{
 		$this->__get_private()->{id} = $objid ;
@@ -234,16 +234,23 @@ sub __get_member {
 	my $key = shift ;
 
 	if ($this->__get_private()->{class} eq "Inline::Java::Object"){
-		croak "Can't get member $key for an object that is not bound to Perl" ;
+		croak "Can't get member '$key' for an object that is not bound to Perl" ;
 	}
 
-	Inline::Java::debug("fetching member variable $key") ;
+	Inline::Java::debug("fetching member variable '$key'") ;
 
 	my $inline = Inline::Java::get_INLINE($this->__get_private()->{module}) ;
 	my $fields = $inline->get_fields($this->__get_private()->{class}) ;
 
-	if ($fields->{$key}){
-		my $proto = $fields->{$key}->{TYPE} ;
+	my $types = $fields->{$key} ;
+	if ($types){
+		my @typesk = keys %{$types} ;
+
+		# We take the last one, which is more specific. Eventually
+		# we should use a scoring method just like for the methods
+		my $sign = $types->{$typesk[-1]} ;
+
+		my $proto = $sign->{TYPE} ;
 
 		my $ret = $this->__get_private()->{proto}->GetJavaMember($key, [$proto], [undef]) ;
 		Inline::Java::debug("returning member (" . ($ret || '') . ")") ;
@@ -252,7 +259,7 @@ sub __get_member {
 	}
 	else{
 		my $name = $this->__get_private()->{class} ;
-		croak "No public member variable $key defined for class $name" ;
+		croak "No public member variable '$key' defined for class '$name'" ;
 	}
 }
 
@@ -263,14 +270,21 @@ sub __set_member {
 	my $value = shift ;
 
 	if ($this->__get_private()->{class} eq "Inline::Java::Object"){
-		croak "Can't set member $key for an object that is not bound to Perl" ;
+		croak "Can't set member '$key' for an object that is not bound to Perl" ;
 	}
 
 	my $inline = Inline::Java::get_INLINE($this->__get_private()->{module}) ;
 	my $fields = $inline->get_fields($this->__get_private()->{class}) ;
 
-	if ($fields->{$key}){
-		my $proto = $fields->{$key}->{TYPE} ;
+	my $types = $fields->{$key} ;
+	if ($types){
+		my @typesk = keys %{$types} ;
+
+		# We take the last one, which is more specific. Eventually
+		# we should use a scoring method just like for the methods
+		my $sign = $types->{$typesk[-1]} ;
+
+		my $proto = $sign->{TYPE} ;
 		my $new_args = undef ;
 		my $score = undef ;
 
@@ -279,7 +293,7 @@ sub __set_member {
 	}
 	else{
 		my $name = $this->__get_private()->{class} ;
-		croak "No public member variable $key defined for class $name" ;
+		croak "No public member variable '$key' defined for class '$name'" ;
 	}
 }
 
@@ -298,10 +312,10 @@ sub AUTOLOAD {
 
 	my $name = (ref($this) ? $this->__get_private()->{class} : $this) ;
 	if ($name eq "Inline::Java::Object"){
-		croak "Can't call method $func_name on an object ($name) that is not bound to Perl" ;
+		croak "Can't call method '$func_name' on an object ($name) that is not bound to Perl" ;
 	}
 
-	croak "No public method $func_name defined for class $name" ;
+	croak "No public method '$func_name' defined for class '$name'" ;
 }
 
 
@@ -313,36 +327,41 @@ sub DESTROY {
 		Inline::Java::debug("Destroying Inline::Java::Object::Tie") ;
 		
 		if (! Inline::Java::get_DONE()){
-			# This one is very tricky:
-			# Here we want to be carefull since this can be called
-			# at scope end, but the scope end might be triggered
-			# by another croak, so we need to record and propagate 
-			# the current $@
-			my $prev_dollar_at = $@ ;
-			eval {
-				$this->__get_private()->{proto}->DeleteJavaObject($this) ;
-			} ;
-			if ($@){
-				# We croaked here. Was there already a pending $@?
-				my $name = $this->__get_private()->{class} ;
-				my $msg = "In method DESTROY of class $name: $@" ;
-				if ($prev_dollar_at){
-					$msg = "$prev_dollar_at\n$msg" ;
+			if (! $this->__get_private()->{weak_ref}){
+				# This one is very tricky:
+				# Here we want to be carefull since this can be called
+				# at scope end, but the scope end might be triggered
+				# by another croak, so we need to record and propagate 
+				# the current $@
+				my $prev_dollar_at = $@ ;
+				eval {
+					$this->__get_private()->{proto}->DeleteJavaObject($this) ;
+				} ;
+				if ($@){
+					# We croaked here. Was there already a pending $@?
+					my $name = $this->__get_private()->{class} ;
+					my $msg = "In method DESTROY of class $name: $@" ;
+					if ($prev_dollar_at){
+						$msg = "$prev_dollar_at\n$msg" ;
+					}
+					croak $msg ;
 				}
-				croak $msg ;
+				else{
+					# Put back the previous $@
+					$@ = $prev_dollar_at ;
+				}
+
+				# Here we have a circular reference so we need to break it
+				# so that the memory is collected.
+				my $priv = $this->__get_private() ;
+				my $proto = $priv->{proto} ;
+				$priv->{proto} = undef ;
+				$proto->{obj_priv} = undef ;
+				$PRIVATES->{$this} = undef ;
 			}
 			else{
-				# Put back the previous $@
-				$@ = $prev_dollar_at ;
+				Inline::Java::debug(" Object marked a weak reference, object destruction not propagated to Java") ;
 			}
-
-			# Here we have a circular reference so we need to break it
-			# so that the memory is collected.
-			my $priv = $this->__get_private() ;
-			my $proto = $priv->{proto} ;
-			$priv->{proto} = undef ;
-			$proto->{obj_priv} = undef ;
-			$PRIVATES->{$this} = undef ;
 		}
 		else{
 			Inline::Java::debug(" Script marked as DONE, object destruction not propagated to Java") ;

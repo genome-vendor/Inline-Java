@@ -26,9 +26,6 @@ JNI (JAVA NATIVE INTERFACE) EXTENSION:
 
 Inline::Java now provides a JNI extension that allows you to load the Java 
 virtual machine as shared object instead of running it as a separate process. 
-This extension works without problems on MSWin32 systems, but requires 
-rebuilding Perl on Solaris (and possibly in Linux as well) because of 
-threading issues.
 
 See README.JNI for more information on building the JNI extension.
 
@@ -36,7 +33,7 @@ See README.JNI for more information on building the JNI extension.
 -------------------------------------------------------------------------------
 INSTALLATION:
 
-- This module requires Inline version 0.41 or higher to be installed.
+- This module requires Inline version 0.43 or higher to be installed.
 - It also requires a version of the Java SDK 1.2 or higher to be 
   installed. You can get the latest Java SDK from Sun Microsystems
   at http://java.sun.com. Follow the provided instructions in order
@@ -45,41 +42,28 @@ INSTALLATION:
 To install Inline::Java do this:
 
 perl Makefile.PL
-make                     (see Note 2)
-make test                (see Note 3, 4, 5)
-perl shared_jvm_test.pl  (see Note 6)
+make                     (see Note 1)
+make test                (see Note 2, 3, 4)
 make install
 
 You have to 'make install' before you can run it successfully. 
 
 
-Note 1: Use nmake on Windows systems. If you are using the COMMAND.COM shell
-under Windows, Inline::Java will try to detect it. If it doesn't, 
-you should set the PERL_INLINE_JAVA_COMMAND_COM environment variable 
-to a true value. You also will need set this whenever you use the module
-later on.
+Note 1: Use nmake on Windows systems.
 
-Note 2: On Win95/98/Me, you might get and error when doing 'nmake'. If so,
-edit 'Makefile' and go the the indicated line. Remove the '@[' and ']' lines
-around the 'subdirs' rule's commands. Rerun 'nmake'.
-
-Note 3: In order for 'make test' to run properly, you should put the 
+Note 2: In order for 'make test' to run properly, you should put the 
 directory to your Java binaries in either your PATH environment variable 
 or in the PERL_INLINE_JAVA_BIN environment variable. 'make test' will remind 
 you if you don't do this.
 
-Note 4: If you have built the JNI extension and want the test suite to use 
+Note 3: If you have built the JNI extension and want the test suite to use 
 it, you will need to set the PERL_INLINE_JAVA_JNI environment variable to 1 
 BEFORE running 'make test'.
 
-Note 5: When testing Inline::Java, it's always a good idea to run 'make test'
+Note 4: When testing Inline::Java, it's always a good idea to run 'make test'
 twice. The first time you test the building and loading of a module, the 
 second time you test loading of an already built module.
 
-Note 6: If you plan to use Inline::Java under mod_perl or any other program 
-that forks, you may wish to run 'perl shared_jvm_test.pl'. This will simulate 
-a forking process that uses Inline::Java. Please keep in mind that this test 
-does not work under Windows.
 
 -------------------------------------------------------------------------------
 FEATURES:
@@ -87,6 +71,14 @@ FEATURES:
 WARNING: THIS IS ALPHA SOFTWARE. It is incomplete and possibly unreliable. 
          It is also possible that some elements of the interface (API) will 
          change in future releases.
+
+Inline::Java version 0.31 is a major upgrade that includes:
++ Exception handling (Perl can 'catch' Java exceptions)
++ Callbacks to Perl from Java
++ More complete test suite
++ Improved documentation and related examples
++ Improved installation script and directions
++ Other minor bug fixes
 
 Inline::Java version 0.30 is a major upgrade that includes:
 + Multi-threaded JVM
@@ -136,4 +128,4 @@ Send email to inline-subscribe@perl.org to subscribe.
 
 Please send questions and comments to "Patrick LeBoutillier" <patl@cpan.org>
 
-Copyright (c) 2001, Patrick LeBoutillier. All Rights Reserved.  
+Copyright (c) 2001-2002, Patrick LeBoutillier. All Rights Reserved.  

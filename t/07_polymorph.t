@@ -12,7 +12,7 @@ use Inline::Java qw(cast) ;
 
 
 BEGIN {
-	plan(tests => 17) ;
+	plan(tests => 22) ;
 }
 
 
@@ -43,6 +43,19 @@ my $t = new types7() ;
 	ok($t1->f($t2), "t1") ;
 	ok($t2->f($t1), "t2") ;
 	ok($t2->f(cast("t17", $t2)), "t2") ;
+
+	ok($t2->f($t1), "t2") ;
+
+	# Here we should always get the more specific stuff
+	ok($t2->{i}, 7) ;
+	ok($t2->{j}, 3.1416) ;
+
+	# So this should fail
+	eval {$t2->{j} = "string"} ; ok($@, qr/Can't convert/) ;
+
+	# Interfaces
+	my $al = $t1->get_al() ;
+	ok(0, $t1->count($al)) ;
 }
 
 ok($t->__get_private()->{proto}->ObjectCount(), 1) ;
@@ -56,16 +69,30 @@ __Java__
 import java.util.* ;
 
 class t17 {
+	public int i = 5 ;
+	public String j = "toto" ;
+
 	public t17(){
 	}
 
 	public String f(t27 o){
 		return "t1" ;
 	}
+
+	public ArrayList get_al(){
+		return new ArrayList() ;
+	}
+
+	public int count(Collection c){
+		return c.size() ;
+	}
 }
 
 
 class t27 extends t17 {
+	public int i = 7 ;
+	public double j = 3.1416 ;
+
 	public t27(){
 	}
 
