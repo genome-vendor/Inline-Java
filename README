@@ -22,6 +22,18 @@ When run, this complete program prints:
 
 
 -------------------------------------------------------------------------------
+JNI (JAVA NATIVE INTERFACE) EXTENSION:
+
+Inline::Java now provides a JNI extension that allows you to load the Java 
+virtual machine as shared object instead of running it as a separate process. 
+This extension works without problems on MSWin32 systems, but requires 
+rebuilding Perl on Solaris (and possibly in Linux as well) because of 
+threading issues.
+
+See README.JNI for more information on building the JNI extension.
+
+
+-------------------------------------------------------------------------------
 INSTALLATION:
 
 - This module requires Inline version 0.31 or higher to be installed.
@@ -33,8 +45,8 @@ INSTALLATION:
 To install Inline::Java do this:
 
 perl Makefile.PL
-make
-make test (see Note 2)
+make             (see Note 2)
+make test        (see Note 3, 4)
 make install
 
 You have to 'make install' before you can run it successfully. 
@@ -46,10 +58,18 @@ you should set the PERL_INLINE_JAVA_COMMAND_COM environment variable
 to a true value. You also will need set this whenever you use the module
 later on.
 
-Note 2: In order for 'make test' to run properly, you should put the 
+Note 2: On Win95/98/Me, you might get and error when doing 'nmake'. If so,
+edit 'Makefile' and go the the indicated line. Remove the '@[' and ']' lines
+around the 'subdirs' rule's commands. Rerun 'nmake'.
+
+Note 3: In order for 'make test' to run properly, you should put the 
 directory to your Java binaries in either your PATH environment variable 
 or in the PERL_INLINE_JAVA_BIN environment variable. 'make test' will remind you 
 if you don't do this.
+
+Note 4: If you have built the JNI extension and want the test suite to use 
+it, you will need to set the PERL_INLINE_JAVA_JNI environment variable to 1 
+BEFORE running 'make test'.
 
 
 -------------------------------------------------------------------------------
@@ -59,8 +79,16 @@ WARNING: THIS IS ALPHA SOFTWARE. It is incomplete and possibly unreliable.
          It is also possible that some elements of the interface (API) will 
          change in future releases.
 
-Inline::Java version 0.01 includes:
+Inline::Java version 0.20 includes:
++ All public member variables are now exported to Perl.
++ Arrays can now be passed as method parameters and assigned to 
+  member variables.
++ Type casting is now available to force the selection of specific
+  method signatures.
++ Optional JNI (Java Native Interface) extension improves performance.
++ Increased stability on Win32.
 
+Inline::Java version 0.01 includes:
 + All classes and their public methods are exported to Perl, relative
   to your current package.
 + All objects (except arrays) and primitive Java types are supported as

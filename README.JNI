@@ -1,0 +1,88 @@
+JNI (JAVA NATIVE INTERFACE) EXTENSION
+-------------------------------------
+
+
+PLATFORM AVAILABILITY
+---------------------
+
+The JNI extension is available on all platforms, but has been run 
+succesfully only on Win32 and Solaris. 
+
+The extension builds properly on all platform, but problems occurs when
+running it.
+
+WIN32
+-----
+The JNI extension runs without problems on Win32.
+
+SOLARIS
+-------
+The JNI extension requires Perl to be built following specific instructions
+in order to run properly on Solaris. Here's what you have to do:
+
+- Make sure all the patches required by your Java 2 SDK are installed on 
+  your system.
+- Rebuild Perl:
+  - Configure Perl
+	- At the end of the Perl configuration, you will be asked if you want 
+      to edit the config.sh file. Say 'yes' and look for the following lines:
+
+      libs='...'
+         Change this to:
+           libs='-lthread ...'
+
+      usemymalloc='...'
+         Change this to:
+           usemymalloc='n'
+
+  - make
+  - make test 
+    - Note: On my setup, 'make test' failed one test: pragma/warnings #179.
+      But when I followed the instructions:
+        ### Since most tests were successful, you have a good chance to
+        ### get information with better granularity by running
+        ###     ./perl harness 
+        ### in directory ./t.
+      all tests where successful.
+
+Then use this Perl version to build and run Inline::Java.
+
+LINUX
+-----
+The JNI extension has not been run successfully yet on Linux, although
+it builds fine. It is believed, although not yet proven, that JNI extension 
+might work on Linux if Perl is built following the same instructions a 
+for Solaris.
+
+
+BUILDING THE JNI EXTENSION
+--------------------------
+
+- perl Makefile.PL JNI
+- make
+
+At this point you should have built the JNI extension. If for some reason 
+Makefile.PL tells you in can't find certain files, you can set the paths 
+manually by editing 'Java/Makefile.PL' and setting the following variables 
+that you'll find near the top of the file:
+
+  my $java_include = 	# location of jni.h
+  my $java_include_os = # location of jni_md.h
+  my $java_lib = 		# location of libjvm.so or jvm.lib on MSWin32
+  my $java_so = 		# location of libjvm.so or jvm.dll on MSWin32
+
+Now comes the time to run the test suite using the JNI extension. To achieve 
+this, you will need to set the PERL_INLINE_JAVA_JNI environment variable to 1
+before running 'make test'.
+
+- make test
+
+
+RUNNING INLINE::JAVA WITH THE JNI EXTENSION
+-------------------------------------------
+
+To run Inline::Java with the JNI extension, do one of the following:
+
+   - set the JNI configuration option to 1
+   - set the PERL_INLINE_JAVA_JNI environment variable to 1
+

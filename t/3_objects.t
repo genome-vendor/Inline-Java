@@ -10,47 +10,43 @@ use Inline(
 
 
 BEGIN {
-	plan(tests => 15) ;
+	plan(tests => 13) ;
 }
 
 
-my $o1 = new obj_test() ;
-my $o2 = new obj_test() ;
-ok($o1->get_data(), "data") ;
-ok($o2->get_data(), "data") ;
-ok($o1->get_this()->get_data(), "data") ;
-ok($o1->get_that($o2)->get_data(), "data") ;
+# Create some objects
+my $t = new types() ;
 
-$o1->set_data("new data") ;
-ok($o1->get_data(), "new data") ;
-ok($o2->get_data(), "new data") ;
+my $obj1 = new obj1() ;
+eval {my $obj2 = new obj2()} ; ok($@, qr/No public constructor/) ;
+my $obj11 = new obj11() ;
 
-obj_test->set_data("new new data") ;
-ok($o1->get_data(), "new new data") ;
-ok($o2->get_data(), "new new data") ;
+ok($t->_obj1(undef), undef) ;
+ok($t->_obj1($obj1)->get_data(), "obj1") ;
+ok($t->_obj11($obj11)->get_data(), "obj11") ;
+ok($t->_obj1($obj11)->get_data(), "obj11") ;
+eval {$t->_int($obj1)} ; ok($@, qr/Can't convert (.*) to primitive int/) ;
+eval {$t->_obj11($obj1)} ; ok($@, qr/is not a kind of/) ;
 
-my $so1 = new sub_obj_test(5) ;
-my $so2 = new sub_obj_test(6) ;
-ok($so1->get_data(), "new new data") ;
-ok($so1->get_number(), 5) ;
-ok($so2->get_number(), 6) ;
+# Receive an unbound object and send it back
+my $unb = $t->get_unbound() ;
+ok($t->send_unbound($unb), "al_elem") ;
 
-$so1->set_number(7) ;
-ok($so1->get_number(), 7) ;
+# Unexisting method
+eval {$t->toto()} ; ok($@, qr/No public method/) ;
 
-my $io = new obj_test::inner_obj_test($o1) ;
-ok($io->get_data(), "new new data") ;
+# Method on unbound object
+eval {$unb->toto()} ; ok($@, qr/Can't call method/) ;
 
-my $al = $o1->new_arraylist() ;
-$o1->set_arraylist($al, "array data") ;
-ok($o1->get_arraylist($al), "array data") ;
+# Incompatible prototype, 1 signature
+eval {$t->_obj1(5)} ; ok($@, qr/Can't convert/) ;
 
+# Incompatible prototype, >1 signature
+eval {$t->__obj1(5)} ; ok($@, qr/Can't find any signature/) ;
 
-my $so3 = new sub_obj_test(100) ;
-my $ow = new obj_wrap($so3) ;
-my $do = new obj_do($ow) ;
-$do->get_obj()->set_obj($so2) ;
-ok($do->get_obj_data()->get_number(), 6) ;
+# Return a scalar hidden in an object.
+ok($t->_olong(), 12345) ;
+
 
 __END__
 
@@ -59,95 +55,84 @@ __Java__
 import java.util.* ;
 
 
-class obj_test {
-	public static String data = "data" ;
+class obj1 {
+	String data = "obj1" ;
 
-	public obj_test(){
+	public obj1() {
 	}
 
-	public obj_test get_this(){
-		return this ;
+	public String get_data(){
+		return data ;
+	}
+}
+
+class obj11 extends obj1 {
+	String data = "obj11" ;
+
+	public obj11() {
 	}
 
-	public obj_test get_that(obj_test o){
+	public String get_data(){
+		return data ;		
+	}
+}
+
+
+class obj2 {
+	String data = "obj2" ;
+
+	obj2() {
+	}
+
+	public String get_data(){
+		return data ;		
+	}
+}
+
+
+class types {
+	public types(){
+	}
+
+	public int _int(int i){
+		return i + 1 ;
+	}
+
+	public Object _Object(Object o){
 		return o ;
 	}
 
-	public static String get_data(){
-		return data ;
+	public obj1 _obj1(obj1 o){
+		return o ;
 	}
 
-	public static void set_data(String d){
-		data = d ;
-	}
-	
-	public ArrayList new_arraylist(){
-		return new ArrayList() ;
+
+	public obj1 __obj1(obj1 o, int i){
+		return o ;
 	}
 
-	public void set_arraylist(ArrayList a, String s){
-		a.add(0, s) ;
+
+	public obj1 __obj1(obj1 o){
+		return o ;
 	}
 
-	public String get_arraylist(ArrayList a){
-		return (String)a.get(0) ;
+
+	public obj11 _obj11(obj11 o){
+		return o ;
 	}
 
-	
-	class inner_obj_test {
-		public inner_obj_test(){
-		}
+	public ArrayList get_unbound(){
+		ArrayList al = new ArrayList() ;
+		al.add(0, "al_elem") ;
 
-		public String get_data(){
-			return obj_test.this.get_data() ;
-		}
-	}
-}
-
-
-class sub_obj_test extends obj_test {
-	public int number ;
-
-	public sub_obj_test(int num){
-		super() ;
-		number = num ;
+		return al ;
 	}
 
-	public int get_number(){
-		return number ;
+	public String send_unbound(ArrayList al){
+		return (String)al.get(0) ;
 	}
 
-	public void set_number(int num){
-		number = num ;
-	}
-}
-
-
-/* Has an object as a member variable */
-class obj_wrap {
-	public sub_obj_test obj ;
-
-	public obj_wrap(sub_obj_test o){
-		obj = o ;
-	}
-
-	public void set_obj(sub_obj_test o){
-		obj = o ;
-	}
-}
-
-
-class obj_do {
-	public obj_wrap obj ;
-
-	public obj_do(obj_wrap o){
-		obj = o ;
-	}
-
-	public obj_wrap get_obj(){
-		return obj ;
-	}
-	public sub_obj_test get_obj_data(){
-		return obj.obj ;
+	public Object _olong(){
+		return new Long("12345") ;
 	}
 }

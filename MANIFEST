@@ -1,6 +1,7 @@
 CHANGES
 MANIFEST
 README
+README.JNI
 TODO
 Makefile.PL
 Java.pm
@@ -9,8 +10,18 @@ Java/Init.pm
 Java/Object.pm
 Java/Protocol.pm
 Java/Class.pm
+Java/Array.pm
+Java/Makefile.PL
+Java/JVM.pm
+Java/JNI.pm
+Java/JNI.xs
+Java/typemap
 t/1_init.t
 t/2_primitives.t
 t/3_objects.t
-t/4_arrays.t
+t/4_members.t
+t/5_arrays.t
+t/6_static.t
+t/7_polymorph.t
+
 

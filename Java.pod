@@ -112,6 +112,21 @@ behavior of C<Inline::Java>:
       Adds the specified CLASSPATH to the environment CLASSPATH.
       Ex: CLASSPATH => 'my/other/java/classses'
 
+   WARN_METHOD_SELECT:
+      Throws a warning when C<Inline::Java> has to 'choose' between 
+      different method signatures. The warning states the possible 
+      choices and the sugnature chosen.
+      Ex: WARN_METHOD_SELECT => 1
+
+   JNI:
+      Toggles the execution mode. The default is to use the client/server
+      mode. To use the JNI extension (you must have built it at install 
+      time though. See README and README.JNI for more information), set 
+      JNI to 1. 
+      Note: This can also be set globally by setting the PERL_INLINE_JAVA_JNI
+      environment variable to 1.
+      Ex: JNI => 1
+
 =head1 CLASSES AND OBJECTS
 
 Because Java is object oriented, any interface between Perl and Java
@@ -216,7 +231,7 @@ will be automatically converted to the correct type:
    my $obj2 = new Foo2(5, "toto", $obj) ;
 
 will work fine. These objects can be of any type, even if these types
-are not know to C<Inline::Java>. This is also true for return types:
+are not known to C<Inline::Java>. This is also true for return types:
 
    use Inline Java => <<'END';
       import java.util.* ;
@@ -244,39 +259,194 @@ can't call any of their methods.
 
 =head1 MEMBER VARIABLES
 
-Currently public member variables are not visible from the Perl space. 
-This will be implemented in a future version. But you can certainly create 
-get/set methods to access them.
+You can also access all public member variables (static or not) from Perl.
+As with method arguments, the types of these variables does not need to
+be known to Perl:
+
+   use Inline Java => <<'END';
+      import java.util.* ;
+
+      class Foo4 {
+         public int i ;
+         public static HashMap hm ;
+
+         public Foo4() {
+         }
+     }
+   END
+
+   my $obj = new Foo4() ;
+   $obj->{i} = 2 ;
+   my $hm1 = $obj->{hm} ; # instance way
+   my $hm2 = Foo4::hm ;   # static way   
+
+Note: Watch out for typos when accessing members in the static fashion,
+'use strict' will not catch them since they have a package name...
 
 =head1 ARRAYS
 
-Currently array are not supported in C<Inline::Java>. 
-This will be implemented in a future version. But remember that you can
-always ask Java to return an array, or modify it. See Methods section.
+You can also send and receive arrays. This is done by using Perl lists:
+
+   use Inline Java => <<'END';
+      import java.util.* ;
+
+      class Foo5 {
+         public int i[] = {5, 6, 7} ;
+
+         public Foo5() {
+         }
+
+         public String [] f(String a[]){
+            return a ;
+         }
+
+         public String [][] f(String a[][]){
+            return a ;
+         }
+     }
+   END
+
+   my $obj = new Foo5() ;
+   my $i_2 = $obj->{i}->[2] ; # 7
+   my $a1 = $obj->f(["a", "b", "c"]) ; # String []
+
+   my $a2 = $obj->f([
+      ["00", "01"],
+      ["10", "11"],
+   ]) ; # String [][]
+   print $a2->[1]->[0] ; # "10"
+
+=head1 TYPE CASTING
+
+Sometimes when a class as many signatures for the same method, 
+C<Inline::Java> will have to select one of the signatures based on 
+the arguments that are passed:
+
+   use Inline Java => <<'END';
+      class Foo6 {
+         public Foo6() {
+         }
+
+         public void f(int i){
+         }
+
+         public void f(char c){
+         }
+      }
+   END
+
+   my $obj = new Foo6() ;
+   $obj->f('5') ;
+
+
+In this case, C<Inline::Java> will call f(int i), because '5' is an integer.
+But '5' is a valid char as well. So to force the call of f(char c), do the 
+following:
+
+   use Inline::Java qw(cast) ;
+   $obj->f(cast('char', '5')) ;
+   # or
+   $obj->f(Inline::Java::cast('char', '5')) ;
+
+The cast function forces the selection of the matching signature.
+
+Another case where type casting is need is when one wants to pass an array
+as a java.lang.Object:
+
+   use Inline Java => <<'END';
+      Object o ;
+      int a[] = {1, 2, 3} ;
+
+      class Foo7 {
+         public Foo7() {
+         }
+      }
+   END
+
+   my $obj = new Foo7() ;
+   $obj->{o} = [1, 2, 3] ;	# No!
+
+The reason why this will not work is simple. When C<Inline::Java> sees an
+array, it checks the Java type you are trying to match it against to validate
+the construction of your Perl list. But in this case, it can't validate
+the array because you're assigning it to an Object. You must use the 3 
+parameter version of the cast function to do this:
+
+   $obj->{o} = Inline::Java::cast(
+     "java.lang.Object", 
+     [1, 2, 3],
+     "[Ljava.lang.String;") ;
+
+This tells C<Inline::Java> to validate your Perl list as a String [], and 
+then cast it as an Object.
+ 
+Here is how to construct the array type representations:
+
+  [<type> ->  1 dimensional <type> array
+  [[<type> -> 2 dimensional <type> array
+  ...
+
+  where <type>is one of:
+    B byte     S short     I int     J long  
+    F float    D double    C char    Z boolean
+
+    L<class>; array of <class> objects
+
+This is described in more detail in most Java books that talk about
+reflection.
+
+But you only need to do this if you have a Perl list. If you already have a 
+Java array reference obtained from elsewhere, you don't even need to cast:
+
+   $obj->{o} = $obj->{a} ;
+
+
+=head1 JNI vs CLIENT/SERVER MODES
+
+Starting in version 0.20, it is possible to use the JNI (Java Native 
+Interface) extension. This enables C<Inline::Java> to load the Java virtual 
+machine as a shared object instead of running it as a stand-alone server. 
+This brings an improvement in performance.
+
+However, the JNI extension is not available on all platforms (see README and
+README.JNI for more information). For that reason, if you have built the 
+JNI extension, you must enable it explicitely by doing one of the following:
+
+   - set the JNI configuration option to 1
+   - set the PERL_INLINE_JAVA_JNI environment variable to 1
+
+Note: C<Inline::Java> only creates one virtual machine instance. Therefore
+you can't use JNI for some sections and client/server for others. The first
+section determines the execution mode.
 
 =head1 SUPPORTED PLATFORMS
 
 This is an ALPHA release of Inline::Java. Further testing and
 expanded support for other operating systems and platforms will be a
-focus for future releases. It has been tested on Solaris 2.5.1, with
-Perl 5.6 and Java SDK 1.2.1. It likely will work with many other
-configuration under Unix, and possibly under Windows.
+focus for future releases. It has been tested on: 
+
+   - Solaris 2.5.1 + Perl 5.6 + Java SDK 1.2.2
+   - Solaris 2.8   + Perl 5.6 + Java SDK 1.3.0
+   - Windows 2000  + Perl 5.6 + Java SDK 1.3.0
+   - Windows 95    + Perl 5.6 + Java SDK 1.2.2 (fix required in Makefile)
+
+It likely will work with many other configurations.
 
 =head1 HOW IT WORKS
 
 This is how C<Inline::Java> works. Once the user's code is compiled by the 
 javac binary, C<Inline::Java>'s own Java code is compiled. This code 
-implements a server that receives requests from Perl to create objects, 
-call methods, destroy objects, etc. It is also capable of analyzing Java code
-tp extract the public symbols. Once this code is compiled, it is executed to 
-extract the symbols from the Java code.
+implements a server (or not if you use the JNI mode) that receives requests 
+from Perl to create objects, call methods, destroy objects, etc. It is also 
+capable of analyzing Java code to extract the public symbols. Once this 
+code is compiled, it is executed to extract the symbols from the Java code.
 
 Once this is done, the user's code information is fetched and is bound to 
 Perl namespaces. Then C<Inline::Java>'s code is run to launch the server. The 
-Perl script then connects to the server using a TCP socket. Then each object 
-creation or method invocation on "Java objects" send requests to the server, 
-which processes them and returns object ids to Perl which keeps them the 
-reference te objects in the future.
+Perl script then connects to the server using a TCP socket (or not if you use 
+the JNI mode). Then each object creation or method invocation on "Java 
+objects" send requests to the server, which processes them and returns 
+object ids to Perl which keeps them the reference te objects in the future.
 
 =head1 SEE ALSO 		   
 

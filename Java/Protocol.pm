@@ -3,8 +3,10 @@ package Inline::Java::Protocol ;
 
 use strict ;
 
-$Inline::Java::Protocol::VERSION = '0.01' ;
+$Inline::Java::Protocol::VERSION = '0.20' ;
 
+use Inline::Java::Object ;
+use Inline::Java::Array ;
 use Carp ;
 
 
@@ -22,67 +24,141 @@ sub new {
 }
 
 
-# Called to create a Java object
-sub CreateJavaObject {
+sub SetClassPath {
 	my $this = shift ;
-	my $class = shift ;
-	my @args = @_ ;
+	my $classpath = shift ;
 
-	Inline::Java::debug("creating object new $class(" . join(", ", @args) . ")") ; 	
+	Inline::Java::debug("setting classpath") ;
 
 	my $data = join(" ", 
-		"create_object", 
-		Inline::Java::Class::ValidateClass($class),
-		$this->ValidateArgs(@args),
+		"set_classpath", 
+		$this->ValidateArgs([$classpath]),
 	) ;
-
-	Inline::Java::debug("  packet sent is $data") ;		
 
 	return $this->Send($data, 1) ;
 }
 
 
-# Called to call a static Java method
-sub CallStaticJavaMethod {
+sub Report {
 	my $this = shift ;
-	my $class = shift ;
-	my $method = shift ;
-	my @args = @_ ;
+	my $classes = shift ;
 
-	Inline::Java::debug("calling $class.$method(" . join(", ", @args) . ")") ;
+	Inline::Java::debug("reporting on $classes") ;
 
 	my $data = join(" ", 
-		"call_static_method", 
-		Inline::Java::Class::ValidateClass($class),
-		$this->ValidateMethod($method),
-		$this->ValidateArgs(@args),
+		"report", 
+		$this->ValidateArgs([$classes]),
 	) ;
 
-	Inline::Java::debug("  packet sent is $data") ;		
-
-	return $this->Send($data) ;
+	return $this->Send($data, 1) ;
 }
 
 
-# Calls a regular Java method.
-sub CallJavaMethod {
+sub ISA {
 	my $this = shift ;
-	my $method = shift ;
-	my @args = @_ ;
+	my $proto = shift ;
 
 	my $id = $this->{obj_priv}->{id} ;
 	my $class = $this->{obj_priv}->{java_class} ;
-	Inline::Java::debug("calling object($id).$method(" . join(", ", @args) . ")") ;
+
+	Inline::Java::debug("checking if $class is a $proto") ;
+
+	my $data = join(" ", 
+		"isa", 
+		$id,
+		Inline::Java::Class::ValidateClass($class),
+		Inline::Java::Class::ValidateClass($proto),
+	) ;
+
+	return $this->Send($data, 1) ;
+}
+
+
+# Called to create a Java object
+sub CreateJavaObject {
+	my $this = shift ;
+	my $class = shift ;
+	my $proto = shift ;
+	my $args = shift ;
+
+	Inline::Java::debug("creating object new $class" . $this->CreateSignature($args)) ; 	
+
+	my $data = join(" ", 
+		"create_object", 
+		Inline::Java::Class::ValidateClass($class),
+		$this->CreateSignature($proto, ","),
+		$this->ValidateArgs($args),
+	) ;
+
+	return $this->Send($data, 1) ;
+}
+
+
+# Calls a Java method.
+sub CallJavaMethod {
+	my $this = shift ;
+	my $method = shift ;
+	my $proto = shift ;
+	my $args = shift ;
+
+	my $id = $this->{obj_priv}->{id} ;
+	my $class = $this->{obj_priv}->{java_class} ;
+	Inline::Java::debug("calling object($id).$method" . $this->CreateSignature($args)) ;
 
 	my $data = join(" ", 
 		"call_method", 
 		$id,
 		Inline::Java::Class::ValidateClass($class),
 		$this->ValidateMethod($method),
-		$this->ValidateArgs(@args),
+		$this->CreateSignature($proto, ","),
+		$this->ValidateArgs($args),
 	) ;
 
-	Inline::Java::debug("  packet sent is $data") ;
+	return $this->Send($data) ;
+}
+
+
+# Sets a member variable.
+sub SetJavaMember {
+	my $this = shift ;
+	my $member = shift ;
+	my $proto = shift ;
+	my $arg = shift ;
+
+	my $id = $this->{obj_priv}->{id} ;
+	my $class = $this->{obj_priv}->{java_class} ;
+	Inline::Java::debug("setting object($id)->{$member} = " . ($arg->[0] || '')) ;
+	my $data = join(" ", 
+		"set_member", 
+		$id,
+		Inline::Java::Class::ValidateClass($class),
+		$this->ValidateMember($member),
+		Inline::Java::Class::ValidateClass($proto->[0]),
+		$this->ValidateArgs($arg),
+	) ;
+
+	return $this->Send($data) ;
+}
+
+
+# Gets a member variable.
+sub GetJavaMember {
+	my $this = shift ;
+	my $member = shift ;
+	my $proto = shift ;
+
+	my $id = $this->{obj_priv}->{id} ;
+	my $class = $this->{obj_priv}->{java_class} ;
+	Inline::Java::debug("getting object($id)->{$member}") ;
+
+	my $data = join(" ", 
+		"get_member", 
+		$id,
+		Inline::Java::Class::ValidateClass($class),
+		$this->ValidateMember($member),
+		Inline::Java::Class::ValidateClass($proto->[0]),
+		"undef:",
+	) ;
 
 	return $this->Send($data) ;
 }
@@ -91,19 +167,18 @@ sub CallJavaMethod {
 # Deletes a Java object
 sub DeleteJavaObject {
 	my $this = shift ;
+	my $obj = shift ;
 
 	if (defined($this->{obj_priv}->{id})){
 		my $id = $this->{obj_priv}->{id} ;
 		my $class = $this->{obj_priv}->{java_class} ;
 
-		Inline::Java::debug("deleting object $this $id ($class)") ;
+		Inline::Java::debug("deleting object $obj $id ($class)") ;
 
 		my $data = join(" ", 
 			"delete_object", 
 			$id,
 		) ;
-
-		Inline::Java::debug("  packet sent is $data") ;		
 
 		$this->Send($data) ;
 	}
@@ -124,22 +199,41 @@ sub ValidateMethod {
 }
 
 
+# This method makes sure that the member we are asking for
+# has the correct form for a Java member.
+sub ValidateMember {
+	my $this = shift ;
+	my $member = shift ;
+
+	if ($member !~ /^(\w+)$/){
+		croak "Invalid Java member name $member" ;
+	}	
+
+	return $member ;
+}
+
+
 # Validates the arguments to be used in a method call.
 sub ValidateArgs {
 	my $this = shift ;
-	my @args = @_ ;
+	my $args = shift ;
 
 	my @ret = () ;
-	foreach my $arg (@args){
+	foreach my $arg (@{$args}){
 		if (! defined($arg)){
 			push @ret, "undef:" ;
 		}
 		elsif (ref($arg)){
-			if (! UNIVERSAL::isa($arg, "Inline::Java::Object")){
-				croak "A Java method can only have Java objects or scalars as arguments" ;
+			if ((! UNIVERSAL::isa($arg, "Inline::Java::Object"))&&(! UNIVERSAL::isa($arg, "Inline::Java::Array"))){
+				croak "A Java method or member can only have Java objects, Java arrays or scalars as arguments" ;
 			}
-			my $class = $arg->{private}->{java_class} ;
-			my $id = $arg->{private}->{id} ;
+
+			my $obj = $arg ;
+			if (UNIVERSAL::isa($arg, "Inline::Java::Array")){
+				$obj = $arg->__get_object() ; 
+			}
+			my $class = $obj->__get_private()->{java_class} ;
+			my $id = $obj->__get_private()->{id} ;
 			push @ret, "object:$class:$id" ;
 		}
 		else{
@@ -151,6 +245,17 @@ sub ValidateArgs {
 }
 
 
+sub CreateSignature {
+	my $this = shift ;
+	my $proto = shift ;
+	my $del = shift || ", " ;
+
+	my @p = map {$_ || ''} @{$proto} ;
+
+	return "(" . join($del, @p) . ")" ;
+}
+
+
 # This actually sends the request to the Java program. It also takes
 # care of registering the returned object (if any)
 sub Send {
@@ -158,22 +263,15 @@ sub Send {
 	my $data = shift ;
 	my $const = shift ;
 
-	my $inline = $Inline::Java::INLINE->{$this->{module}} ;
-	my $sock = $inline->{Java}->{socket} ;
-	print $sock $data . "\n" or
-		croak "Can't send packet over socket: $!" ;
+	my $resp = Inline::Java::get_JVM()->process_command($data) ;
 
-	my $resp = <$sock> ;
-	Inline::Java::debug("  packet recv is $resp") ;
-
-	if (! $resp){
-		croak "Can't receive packet over socket: $!" ;
-	}
-	elsif ($resp =~ /^error scalar:([\d.]*)$/){
-		croak pack("C*", split(/\./, $1)) ;
+	if ($resp =~ /^error scalar:([\d.]*)$/){
+		my $msg = pack("C*", split(/\./, $1)) ;
+		Inline::Java::debug("  packet recv error: $msg") ;
+		croak $msg ;
 	}
 	elsif ($resp =~ /^ok scalar:([\d.]*)$/){
-		return pack("C*", split(/\./, $1)) ;
+		return pack("C*", split(/\./, $1)) ; 
 	}
 	elsif ($resp =~ /^ok undef:$/){
 		return undef ;
@@ -182,31 +280,46 @@ sub Send {
 		# Create the Perl object wrapper and return it.
 		my $id = $1 ;
 		my $class = $2 ;
+
 		if ($const){
 			$this->{obj_priv}->{java_class} = $class ;
 			$this->{obj_priv}->{id} = $id ;
+
+			return undef ;
 		}
 		else{
-			my $perl_class = $class ;
-			$perl_class =~ s/[.\$]/::/g ;
-			my $pkg = $inline->{pkg} ;
-			$perl_class = $pkg . "::" . $perl_class ;
-			Inline::Java::debug($perl_class) ;
-
 			my $obj = undef ;
-			no strict 'refs' ;
-			if (defined(${$perl_class . "::" . "EXISTS"})){
-				Inline::Java::debug("  returned class exists!") ;
+			my $inline = Inline::Java::get_INLINE($this->{module}) ;
+
+			my $perl_class = Inline::Java::known_to_perl($inline->{pkg}, $class) ;
+			if ($perl_class){
 				$obj = $perl_class->__new($class, $inline, $id) ;
 			}
 			else{
-				Inline::Java::debug("  returned class doesn't exist!") ;
 				$obj = Inline::Java::Object->__new($class, $inline, $id) ;
 			}
+
+			Inline::Java::debug("checking if stub is array...") ;
+			if (Inline::Java::Class::ClassIsArray($class)){
+				Inline::Java::debug("creating array object...") ;
+				$obj = new Inline::Java::Array($obj) ;
+				Inline::Java::debug("array object created...") ;
+			}
+
+			Inline::Java::debug("returning stub...") ;
+
 			return $obj ;
 		}
 	}
 }
+
+
+sub DESTROY {
+	my $this = shift ;
+
+	Inline::Java::debug("Destroying Inline::Java::Protocol") ;
+}
+
 
 
 1 ;
@@ -223,12 +336,14 @@ __DATA__
 class InlineJavaProtocol {
 	InlineJavaServer ijs ;
 	InlineJavaClass ijc ;
+	InlineJavaArray ija ;
 	String cmd ;
 	String response ;
 
 	InlineJavaProtocol(InlineJavaServer _ijs, String _cmd) {
 		ijs = _ijs ;
 		ijc = new InlineJavaClass(ijs, this) ;
+		ija = new InlineJavaArray(ijs, ijc) ;
 
 		cmd = _cmd ;		
 	}
@@ -241,12 +356,24 @@ class InlineJavaProtocol {
 		StringTokenizer st = new StringTokenizer(cmd, " ") ;
 		String c = st.nextToken() ;
 
-		if (c.equals("call_static_method")){
-			CallStaticJavaMethod(st) ;
-		}		
-		else if (c.equals("call_method")){
+		if (c.equals("call_method")){
 			CallJavaMethod(st) ;
 		}		
+		else if (c.equals("set_member")){
+			SetJavaMember(st) ;
+		}		
+		else if (c.equals("get_member")){
+			GetJavaMember(st) ;
+		}		
+		else if (c.equals("report")){
+			Report(st) ;
+		}
+		else if (c.equals("isa")){
+			ISA(st) ;
+		}
+		else if (c.equals("set_classpath")){
+			SetClassPath(st) ;
+		}
 		else if (c.equals("create_object")){
 			CreateJavaObject(st) ;
 		}
@@ -256,77 +383,102 @@ class InlineJavaProtocol {
 		else if (c.equals("die")){
 			ijs.debug("  received a request to die...") ;
 			System.exit(0) ;
-		}		
+		}
+		else {
+			throw new InlineJavaException("Unknown command " + c) ;
+		}
 	}
 
-
 	/*
-		Calls a static Java method
+		Returns a report on the Java classes, listing all public methods
+		and members
 	*/
-	void CallStaticJavaMethod(StringTokenizer st) throws InlineJavaException {
-		String class_name = st.nextToken() ;
-		String method = st.nextToken() ;
-		Class c = ijc.ValidateClass(class_name) ;
-		ArrayList f = ValidateMethod(false, c, method, st) ;
+	void Report(StringTokenizer st){
+		StringBuffer pw = new StringBuffer() ;
 
-		Method m = (Method)f.get(0) ;
-		String name = m.getName() ;
-		Object p[] = (Object [])f.get(1) ;
+		StringTokenizer st2 = new StringTokenizer(st.nextToken(), ":") ;
+		st2.nextToken() ;
+
+		StringTokenizer st3 = new StringTokenizer(pack(st2.nextToken()), " ") ;
+
+		ArrayList class_list = new ArrayList() ;
+		while (st3.hasMoreTokens()){
+			String c = st3.nextToken() ;
+			ijs.debug("reporting for " + c) ;
+			class_list.add(class_list.size(), c) ;
+		}
+
 		try {
-			Object ret = m.invoke(null, p) ;
-			SetResponse(ret) ;
+			for (int i = 0 ; i < class_list.size() ; i++){
+				String name = (String)class_list.get(i) ;
+				if (! name.startsWith("InlineJavaServer")){
+					Class c = Class.forName(name) ;
+															
+					pw.append("class " + c.getName() + "\n") ;
+					Constructor constructors[] = c.getConstructors() ;
+					Method methods[] = c.getMethods() ;
+					Field fields[] = c.getFields() ;
+
+					for (int j = 0 ; j < constructors.length ; j++){
+						Constructor x = constructors[j] ;
+						String sign = CreateSignature(x.getParameterTypes()) ;
+						Class decl = x.getDeclaringClass() ;
+						pw.append("constructor" + " " + sign + "\n") ;
+					}
+					for (int j = 0 ; j < methods.length ; j++){
+						Method x = methods[j] ;
+						String stat = (Modifier.isStatic(x.getModifiers()) ? " static " : " instance ") ;
+						String sign = CreateSignature(x.getParameterTypes()) ;
+						Class decl = x.getDeclaringClass() ;
+						pw.append("method" + stat + decl.getName() + " " + x.getName() + sign + "\n") ;
+					}
+					for (int j = 0 ; j < fields.length ; j++){
+						Field x = fields[j] ;
+						String stat = (Modifier.isStatic(x.getModifiers()) ? " static " : " instance ") ;
+						Class decl = x.getDeclaringClass() ;
+						Class type = x.getType() ;
+						pw.append("field" + stat + decl.getName() + " " + x.getName() + " " + type.getName() + "\n") ;
+					}
+				}
+			}
 		}
-		catch (IllegalAccessException e){
-			throw new InlineJavaException("You are not allowed to invoke static method " + name + " in class " + class_name + ": " + e.getMessage()) ;
+		catch (ClassNotFoundException e){
+			System.err.println("Can't find class: " + e.getMessage()) ;
+			System.exit(1) ;
 		}
-		catch (IllegalArgumentException e){
-			throw new InlineJavaException("Arguments for static method " + name + " in class " + class_name + " are incompatible: " + e.getMessage()) ;
-		}
-		catch (InvocationTargetException e){
-			Throwable t = e.getTargetException() ;
-			String type = t.getClass().getName() ;
-			String msg = t.getMessage() ;
-			throw new InlineJavaException(
-				"Static method " + name + " in class " + class_name + " threw exception " + type + ": " + msg) ;
-		}
+
+		SetResponse(pw.toString()) ;
 	}
 
 
-	/*
-		Calls a regular Java method
-	*/
-	void CallJavaMethod(StringTokenizer st) throws InlineJavaException {
-		int id = Integer.parseInt(st.nextToken()) ;
-		String class_name = st.nextToken() ;
-		String method = st.nextToken() ;
-		Class c = ijc.ValidateClass(class_name) ;
-		ArrayList f = ValidateMethod(false, c, method, st) ;
+	void SetClassPath(StringTokenizer st) throws InlineJavaException {
+		String classpath = st.nextToken() ;
+		StringTokenizer st2 = new StringTokenizer(classpath, ":") ;
+		st2.nextToken() ;
 
-		Method m = (Method)f.get(0) ;
-		String name = m.getName() ;
+		String prop = pack(st2.nextToken()) ;
+		System.setProperty("java.class.path", prop) ;
+
+		SetResponse(null) ;
+	}
+
+
+	void ISA(StringTokenizer st) throws InlineJavaException {
+		int id = Integer.parseInt(st.nextToken()) ;
+
+		String class_name = st.nextToken() ;
+		Class c = ijc.ValidateClass(class_name) ;
+
+		String is_it_a = st.nextToken() ;
+		Class d = ijc.ValidateClass(is_it_a) ;
+
 		Integer oid = new Integer(id) ;
 		Object o = ijs.objects.get(oid) ;
 		if (o == null){
 			throw new InlineJavaException("Object " + oid.toString() + " is not in HashMap!") ;
 		}
-		Object p[] = (Object [])f.get(1) ;
-		try {
-			Object ret = m.invoke(o, p) ;
-			SetResponse(ret) ;
-		}
-		catch (IllegalAccessException e){
-			throw new InlineJavaException("You are not allowed to invoke method " + name + " in class " + class_name + ": " + e.getMessage()) ;
-		}
-		catch (IllegalArgumentException e){
-			throw new InlineJavaException("Arguments for method " + name + " in class " + class_name + " are incompatible: " + e.getMessage()) ;
-		}
-		catch (InvocationTargetException e){
-			Throwable t = e.getTargetException() ;
-			String type = t.getClass().getName() ;
-			String msg = t.getMessage() ;
-			throw new InlineJavaException(
-				"Method " + name + " in class " + class_name + " threw exception " + type + ": " + msg) ;
-		}
+
+		SetResponse(new Integer(ijc.DoesExtend(c, d))) ;
 	}
 
 
@@ -337,15 +489,193 @@ class InlineJavaProtocol {
 		String class_name = st.nextToken() ;
 		Class c = ijc.ValidateClass(class_name) ;
 
-		ArrayList f = ValidateMethod(true, c, class_name, st) ;
+		if (! ijc.ClassIsArray(c)){
+			ArrayList f = ValidateMethod(true, c, class_name, st) ;
+			Constructor con = (Constructor)f.get(0) ;
+			Object p[] = (Object [])f.get(1) ;
+			Class clist[] = (Class [])f.get(2) ;
 
-		Constructor con = (Constructor)f.get(0) ;
-		String name = class_name ;
-		Object p[] = (Object [])f.get(1) ;
-		Class clist[] = (Class [])f.get(2) ;
+			Object o = CreateObject(c, p, clist) ;
+			SetResponse(o) ;
+		}
+		else{
+			// Here we send the type of array we want, but CreateArray
+			// exception the element type.
+			StringBuffer sb = new StringBuffer(class_name) ;
+			// Remove the ['s
+			while (sb.toString().startsWith("[")){
+				sb.replace(0, 1, "") ;	
+			}
+			// remove the L and the ;
+			if (sb.toString().startsWith("L")){
+				sb.replace(0, 1, "") ;
+				sb.replace(sb.length() - 1, sb.length(), "") ;
+			}
 
-		Object o = CreateObject(c, p, clist) ;
-		SetResponse(o) ;
+			Class ec = ijc.ValidateClass(sb.toString()) ;
+
+			ijs.debug("    array elements: " + ec.getName()) ;
+			Object o = ija.CreateArray(ec, st) ;
+			SetResponse(o) ;
+		}
+	}
+
+
+	/*
+		Calls a Java method
+	*/
+	void CallJavaMethod(StringTokenizer st) throws InlineJavaException {
+		int id = Integer.parseInt(st.nextToken()) ;
+
+		String class_name = st.nextToken() ;
+		Object o = null ;
+		if (id > 0){
+			Integer oid = new Integer(id) ;
+			o = ijs.objects.get(oid) ;
+			if (o == null){
+				throw new InlineJavaException("Object " + oid.toString() + " is not in HashMap!") ;
+			}
+
+			// Use the class of the object
+			class_name = o.getClass().getName() ;
+		}
+
+		Class c = ijc.ValidateClass(class_name) ;
+		String method = st.nextToken() ;
+
+		if ((ijc.ClassIsArray(c))&&(method.equals("getLength"))){
+			int length = Array.getLength(o) ;
+			SetResponse(new Integer(length)) ;
+		}
+		else{
+			ArrayList f = ValidateMethod(false, c, method, st) ;
+			Method m = (Method)f.get(0) ;
+			String name = m.getName() ;	
+			Object p[] = (Object [])f.get(1) ;
+
+			try {
+				Object ret = m.invoke(o, p) ;
+				SetResponse(ret) ;
+			}
+			catch (IllegalAccessException e){
+				throw new InlineJavaException("You are not allowed to invoke method " + name + " in class " + class_name + ": " + e.getMessage()) ;
+			}
+			catch (IllegalArgumentException e){
+				throw new InlineJavaException("Arguments for method " + name + " in class " + class_name + " are incompatible: " + e.getMessage()) ;
+			}
+			catch (InvocationTargetException e){
+				Throwable t = e.getTargetException() ;
+				String type = t.getClass().getName() ;
+				String msg = t.getMessage() ;
+				throw new InlineJavaException(
+					"Method " + name + " in class " + class_name + " threw exception " + type + ": " + msg) ;
+			}
+		}
+	}
+
+
+	/*
+		Sets a Java member variable
+	*/
+	void SetJavaMember(StringTokenizer st) throws InlineJavaException {
+		int id = Integer.parseInt(st.nextToken()) ;
+
+		String class_name = st.nextToken() ;
+		Object o = null ;
+		if (id > 0){
+			Integer oid = new Integer(id) ;
+			o = ijs.objects.get(oid) ;
+			if (o == null){
+				throw new InlineJavaException("Object " + oid.toString() + " is not in HashMap!") ;
+			}
+
+			// Use the class of the object
+			class_name = o.getClass().getName() ;
+		}
+
+		Class c = ijc.ValidateClass(class_name) ;
+		String member = st.nextToken() ;
+
+		if (ijc.ClassIsArray(c)){
+			int idx = Integer.parseInt(member) ;
+			Class type = ijc.ValidateClass(st.nextToken()) ;
+			String arg = st.nextToken() ;
+
+			String msg = "For array of type " + c.getName() + ", element " + member + ": " ;
+			try {
+				Object elem = ijc.CastArgument(type, arg) ;
+				Array.set(o, idx, elem) ;
+				SetResponse(null) ;
+			}
+			catch (InlineJavaCastException e){
+				throw new InlineJavaCastException(msg + e.getMessage()) ;
+			}
+			catch (InlineJavaException e){
+				throw new InlineJavaException(msg + e.getMessage()) ;
+			}
+		}
+		else{
+			ArrayList fl = ValidateMember(c, member, st) ;
+			Field f = (Field)fl.get(0) ;
+			String name = f.getName() ;
+			Object p = (Object)fl.get(1) ;
+
+			try {
+				f.set(o, p) ;
+				SetResponse(null) ;
+			}
+			catch (IllegalAccessException e){
+				throw new InlineJavaException("You are not allowed to set member " + name + " in class " + class_name + ": " + e.getMessage()) ;
+			}
+			catch (IllegalArgumentException e){
+				throw new InlineJavaException("Argument for member " + name + " in class " + class_name + " is incompatible: " + e.getMessage()) ;
+			}
+		}
+	}
+
+
+	/*
+		Gets a Java member variable
+	*/
+	void GetJavaMember(StringTokenizer st) throws InlineJavaException {
+		int id = Integer.parseInt(st.nextToken()) ;
+
+		String class_name = st.nextToken() ;
+		Object o = null ;
+		if (id > 0){
+			Integer oid = new Integer(id) ;
+			o = ijs.objects.get(oid) ;
+			if (o == null){
+				throw new InlineJavaException("Object " + oid.toString() + " is not in HashMap!") ;
+			}
+
+			// Use the class of the object
+			class_name = o.getClass().getName() ;
+		}
+
+		Class c = ijc.ValidateClass(class_name) ;
+		String member = st.nextToken() ;
+
+		if (ijc.ClassIsArray(c)){
+			int idx = Integer.parseInt(member) ;
+			SetResponse(Array.get(o, idx)) ;
+		}
+		else{
+			ArrayList fl = ValidateMember(c, member, st) ;
+
+			Field f = (Field)fl.get(0) ;
+			String name = f.getName() ;
+			try {
+				Object ret = f.get(o) ;
+				SetResponse(ret) ;
+			}
+			catch (IllegalAccessException e){
+				throw new InlineJavaException("You are not allowed to set member " + name + " in class " + class_name + ": " + e.getMessage()) ;
+			}
+			catch (IllegalArgumentException e){
+				throw new InlineJavaException("Argument for member " + name + " in class " + class_name + " is incompatible: " + e.getMessage()) ;
+			}
+		}
 	}
 
 
@@ -366,7 +696,6 @@ class InlineJavaProtocol {
 		Creates a Java Object with the specified arguments.
 	*/
 	Object CreateObject(Class p, Object args[], Class proto[]) throws InlineJavaException {
-
 		p = ijc.FindWrapper(p) ;
 
 		String name = p.getName() ;
@@ -404,7 +733,10 @@ class InlineJavaProtocol {
 	*/
 	ArrayList ValidateMethod(boolean constructor, Class c, String name, StringTokenizer st) throws InlineJavaException {
 		Member ma[] = (constructor ? (Member [])c.getConstructors() : (Member [])c.getMethods()) ;
-		ArrayList ret = new ArrayList(ma.length) ;
+		ArrayList ret = new ArrayList() ;
+
+		// Extract signature
+		String signature = st.nextToken() ;
 
 		// Extract the arguments
 		ArrayList args = new ArrayList() ;
@@ -416,6 +748,7 @@ class InlineJavaProtocol {
 		Class params[] = null ;
 		for (int i = 0 ; i < ma.length ; i++){
 			Member m = ma[i] ;
+
 			if (m.getName().equals(name)){
 				ijs.debug("found a " + name + (constructor ? " constructor" : " method")) ;
 
@@ -425,10 +758,15 @@ class InlineJavaProtocol {
 				else{
 					params = ((Method)m).getParameterTypes() ;
 				}
-			 	if (params.length == args.size()){
-					// We have the same number of arguments
+
+				// Now we check if the signatures match
+				String sign = ijs.CreateSignature(params, ",") ;
+				ijs.debug(sign + " = " + signature + "?") ;
+
+				if (signature.equals(sign)){
+					ijs.debug("  has matching signature " + sign) ;
 					ml.add(ml.size(), m) ;
-					ijs.debug("  has the correct number of params (" +  String.valueOf(args.size()) + ") and signature is " + ijs.CreateSignature(params)) ;
+					break ;
 				}
 			}
 		}
@@ -439,7 +777,7 @@ class InlineJavaProtocol {
 			throw new InlineJavaException(
 				(constructor ? "Constructor " : "Method ") + 
 				name + " for class " + c.getName() + " with signature " +
-				ijs.CreateSignature(params) + " not found") ;
+				signature + " not found") ;
 		}
 		else if (ml.size() == 1){
 			// Now we need to force the arguments received to match
@@ -454,7 +792,7 @@ class InlineJavaProtocol {
 
 			String msg = "In method " + name + " of class " + c.getName() + ": " ;
 			try {
-				ret.add(0, m) ;			
+				ret.add(0, m) ;
 				ret.add(1, ijc.CastArguments(params, args)) ;
 				ret.add(2, params) ;
 			}
@@ -465,8 +803,67 @@ class InlineJavaProtocol {
 				throw new InlineJavaException(msg + e.getMessage()) ;
 			}
 		}
-		else{
-			throw new InlineJavaException("Automatic method selection when multiple signatures are found not yet implemented") ;
+
+		return ret ;
+	}
+
+
+	/*
+		Makes sure a member exists
+	*/
+	ArrayList ValidateMember(Class c, String name, StringTokenizer st) throws InlineJavaException {
+		Field fa[] = c.getFields() ;
+		ArrayList ret = new ArrayList() ;
+
+		// Extract member type
+		String type = st.nextToken() ;
+
+		// Extract the argument
+		String arg = st.nextToken() ;
+
+		ArrayList fl = new ArrayList(fa.length) ;
+		Class param = null ;
+		for (int i = 0 ; i < fa.length ; i++){
+			Field f = fa[i] ;
+
+			if (f.getName().equals(name)){
+				ijs.debug("found a " + name + " member") ;
+
+				param = f.getType() ;
+				String t = param.getName() ;
+				if (type.equals(t)){
+					ijs.debug("  has matching type " + t) ;
+					fl.add(fl.size(), f) ;
+					break ;
+				}
+			}
+		}
+
+		// Now we got a list of matching methods. 
+		// We have to figure out which one we will call.
+		if (fl.size() == 0){
+			throw new InlineJavaException(
+				"Member " + name + " of type " + type + " for class " + c.getName() +
+					" not found") ;
+		}
+		else if (fl.size() == 1){
+			// Now we need to force the arguments received to match
+			// the methods signature.
+			Field f = (Field)fl.get(0) ;
+			param = f.getType() ;
+
+			String msg = "For member " + name + " of class " + c.getName() + ": " ;
+			try {
+				ret.add(0, f) ;
+				ret.add(1, ijc.CastArgument(param, arg)) ;
+				ret.add(2, param) ;
+			}
+			catch (InlineJavaCastException e){
+				throw new InlineJavaCastException(msg + e.getMessage()) ;
+			}
+			catch (InlineJavaException e){
+				throw new InlineJavaException(msg + e.getMessage()) ;
+			}
 		}
 
 		return ret ;

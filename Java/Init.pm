@@ -1,9 +1,13 @@
 package Inline::Java::Init ;
 
-$Inline::Java::Init::VERSION = '0.01' ;
+
+use strict ;
+
+$Inline::Java::Init::VERSION = '0.20' ;
 
 my $DATA = join('', <DATA>) ;
 my $OBJECT_DATA = join('', <Inline::Java::Object::DATA>) ;
+my $ARRAY_DATA = join('', <Inline::Java::Array::DATA>) ;
 my $CLASS_DATA = join('', <Inline::Java::Class::DATA>) ;
 my $PROTO_DATA = join('', <Inline::Java::Protocol::DATA>) ;
 
@@ -23,10 +27,12 @@ sub DumpServerJavaCode {
 
 	my $java = $DATA ;
 	my $java_obj = $OBJECT_DATA ;
+	my $java_array = $ARRAY_DATA ;
 	my $java_class = $CLASS_DATA ;
 	my $java_proto = $PROTO_DATA ;
 
 	$java =~ s/<INLINE_JAVA_OBJECT>/$java_obj/g ;
+	$java =~ s/<INLINE_JAVA_ARRAY>/$java_array/g ;
 	$java =~ s/<INLINE_JAVA_CLASS>/$java_class/g ;
 	$java =~ s/<INLINE_JAVA_PROTOCOL>/$java_proto/g ;
 
@@ -52,123 +58,72 @@ import java.lang.reflect.* ;
 */
 public class InlineJavaServer {
 	public ServerSocket ss ;
+	public Socket client ;
 	boolean debug = false ;
 
 	public HashMap objects = new HashMap() ;
 	public int objid = 1 ;
 
-	InlineJavaServer(String[] argv) {
-		String mode = argv[0] ;
-		debug = new Boolean(argv[1]).booleanValue() ;
-
-		if (mode.equals("report")){
-			Report(argv, 2) ;
-		}
-		else if (mode.equals("run")){
-			int port = Integer.parseInt(argv[2]) ;
-
-			try {
-				ss = new ServerSocket(port) ;
-				Socket client = ss.accept() ;
-					
-				BufferedReader br = new BufferedReader(
-					new InputStreamReader(client.getInputStream())) ;
-				BufferedWriter bw = new BufferedWriter(
-					new OutputStreamWriter(client.getOutputStream())) ;
-
-				while (true){
-					String cmd = br.readLine() ;
-					debug("  packet recv is " + cmd) ;
-
-					if (cmd != null){
-						InlineJavaProtocol ijp = new InlineJavaProtocol(this, cmd) ;
-						try {
-							ijp.Do() ;
-							debug("  packet sent is " + ijp.response) ;
-							bw.write(ijp.response + "\n") ;
-							bw.flush() ;					
-						}
-						catch (InlineJavaException e){
-							String err = "error scalar:" + ijp.unpack(e.getMessage()) ;
-							debug("  packet sent is " + err) ;
-							bw.write(err + "\n") ;
-							bw.flush() ;
-						}
-					}
-					else{
-						System.exit(1) ;
-					}
-				}
-			}
-			catch (IOException e){
-				System.err.println("Can't open server socket on port " + String.valueOf(port)) ;
-			}
-			System.exit(1) ;
-		}
-		else{
-			System.err.println("Invalid startup mode " + mode) ;
-			System.exit(1) ;
-		}
+	// This constructor is used in JNI mode
+	InlineJavaServer(boolean d) {
+		debug = d ;
 	}
 
 
-	/*
-		Returns a report on the Java classes, listing all public methods
-		and members
-	*/
-	void Report(String [] class_list, int idx) {
-		String module = class_list[idx] ;
-		idx++ ;
+	// This constructor is used in server mode
+	InlineJavaServer(String[] argv) {
+		debug = new Boolean(argv[0]).booleanValue() ;
 
-		// First we must open the file
+		int port = Integer.parseInt(argv[1]) ;
+
 		try {
-			File dat = new File(module + ".jdat") ;
-			PrintWriter pw = new PrintWriter(new FileWriter(dat)) ;
+			ss = new ServerSocket(port) ;
+			client = ss.accept() ;
 
-			for (int i = idx ; i < class_list.length ; i++){
-				if (! class_list[i].startsWith("InlineJavaServer")){
-					StringBuffer name = new StringBuffer(class_list[i]) ;
-					name.replace(name.length() - 6, name.length(), "") ;
-					Class c = Class.forName(name.toString()) ;
-															
-					pw.println("class " + c.getName()) ;
-					Constructor constructors[] = c.getConstructors() ;
-					Method methods[] = c.getMethods() ;
-					Field fields[] = c.getFields() ;
+			BufferedReader br = new BufferedReader(
+				new InputStreamReader(client.getInputStream())) ;
+			BufferedWriter bw = new BufferedWriter(
+				new OutputStreamWriter(client.getOutputStream())) ;
 
-					for (int j = 0 ; j < constructors.length ; j++){
-						Constructor x = constructors[j] ;
-						String sign = CreateSignature(x.getParameterTypes()) ;
-						Class decl = x.getDeclaringClass() ;
-						pw.println("constructor" + " " + sign) ;
-					}
-					for (int j = 0 ; j < methods.length ; j++){
-						Method x = methods[j] ;
-						String stat = (Modifier.isStatic(x.getModifiers()) ? " static " : " instance ") ;
-						String sign = CreateSignature(x.getParameterTypes()) ;
-						Class decl = x.getDeclaringClass() ;
-						pw.println("method" + stat + decl.getName() + " " + x.getName() + sign) ;
-					}
-					for (int j = 0 ; j < fields.length ; j++){
-						Field x = fields[j] ;
-						String stat = (Modifier.isStatic(x.getModifiers()) ? " static " : " instance ") ;
-						Class decl = x.getDeclaringClass() ;
-						Class type = x.getType() ;
-						pw.println("field" + stat + decl.getName() + " " + x.getName() + " " + type.getName()) ;
-					}					
-				}
+			while (true){
+				String cmd = br.readLine() ;
+
+				String resp = ProcessCommand(cmd) ;
+				bw.write(resp) ;
+				bw.flush() ;
 			}
-
-			pw.close() ; 
 		}
 		catch (IOException e){
-			System.err.println("Problems writing to " + module + ".jdat file: " + e.getMessage()) ;
-			System.exit(1) ;			
+			System.err.println("Can't open server socket on port " + String.valueOf(port)) ;
 		}
-		catch (ClassNotFoundException e){
-			System.err.println("Can't find class: " + e.getMessage()) ;
+		System.exit(1) ;
+	}
+
+
+	public String ProcessCommand(String cmd){
+		debug("  packet recv is " + cmd) ;
+
+		String resp = null ;
+		if (cmd != null){
+			InlineJavaProtocol ijp = new InlineJavaProtocol(this, cmd) ;
+			try {
+				ijp.Do() ;
+				debug("  packet sent is " + ijp.response) ;
+				resp = ijp.response + "\n" ;
+			}
+			catch (InlineJavaException e){
+				String err = "error scalar:" + ijp.unpack(e.getMessage()) ;
+				debug("  packet sent is " + err) ;
+				resp = err + "\n" ;
+			}
+		}
+		else{
+			// Probably connection dropped...
+			debug("  Lost connection with client") ;
 			System.exit(1) ;
 		}
+
+		return resp ;
 	}
 
 
@@ -176,15 +131,28 @@ public class InlineJavaServer {
 		Creates a string representing a method signature
 	*/
 	String CreateSignature(Class param[]){
+		return CreateSignature(param, ", ") ;
+	}
+
+
+	String CreateSignature(Class param[], String del){
 		StringBuffer ret = new StringBuffer() ;
 		for (int i = 0 ; i < param.length ; i++){
 			if (i > 0){
-				ret.append(", ") ;
+				ret.append(del) ;
 			}
 			ret.append(param[i].getName()) ;
 		}
 
 		return "(" + ret.toString() + ")" ;
+	}
+
+
+	public void debug(String s) {
+		if (debug){
+			System.err.println("java: " + s) ;
+			System.err.flush() ;
+		}
 	}
 
 
@@ -196,13 +164,14 @@ public class InlineJavaServer {
 	}
 
 
-	public void debug(String s) {
-		if (debug){
-			System.err.println("java: " + s) ;
-		}
+	public static InlineJavaServer jni_main(boolean debug) {
+		return new InlineJavaServer(debug) ;
 	}
+	
 
 	<INLINE_JAVA_OBJECT>
+
+	<INLINE_JAVA_ARRAY>
 
 	<INLINE_JAVA_CLASS>
 

@@ -1,5 +1,11 @@
 Revision history for Perl extension Inline::Java.
 
 0.01  Thu Feb 15 14:01:25 EST 2001  
-	- Created Inline::Java.
+    - Created Inline::Java.
+
+0.20  Sat Apr 14 23:00:00 EDT 2001
+    - Added support for arrays.
+    - Added support for public member variables.
+    - Added support for public static member variables.
+    - Added type casting.
 
