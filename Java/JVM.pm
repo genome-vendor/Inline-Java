@@ -3,11 +3,11 @@ package Inline::Java::JVM ;
 
 use strict ;
 use Carp ;
-use IPC::Open3 ;
 use IO::File ;
+use IPC::Open3 ;
 use IO::Socket ;
 
-$Inline::Java::JVM::VERSION = '0.48_91' ;
+$Inline::Java::JVM::VERSION = '0.48_92' ;
 
 my %SIGS = () ;
 
@@ -62,6 +62,7 @@ sub new {
 		my $debug = Inline::Java::get_DEBUG() ;
 
 		$this->{shared} = $o->get_java_config('SHARED_JVM') ;
+		$this->{start_jvm} = $o->get_java_config('START_JVM') ;
 		$this->{port} = $o->get_java_config('PORT') ;
 		$this->{host} = "localhost" ;
 
@@ -101,6 +102,10 @@ sub new {
 				Inline::Java::debug(1, "connected to already running JVM!") ;
 				return $this ;
 			}
+
+			if (! $this->{start_jvm}){
+				croak("Can't find running JVM and START_JVM = 0") ;
+			}
 		}
 
 		my $java = File::Spec->catfile($o->get_java_config('J2SDK'), 'bin',
@@ -117,7 +122,7 @@ sub new {
 
 		my $pid = 0 ;
 		eval {
-			$pid = $this->launch($cmd) ;
+			$pid = $this->launch($o, $cmd) ;
 		} ;
 		croak "Can't exec JVM: $@" if $@ ;
 
@@ -130,7 +135,7 @@ sub new {
 		}
 
 		$this->{pid} = $pid ;
-		$this->{socket}	= $this->setup_socket(
+		$this->{socket}	= setup_socket(
 			$this->{host}, 
 			$this->{port}, 
 			# Give the user an extra hour's time set breakpoints and the like...
@@ -145,6 +150,7 @@ sub new {
 
 sub launch {
 	my $this = shift ;
+	my $o = shift ;
 	my $cmd = shift ;
 
 	local $SIG{__WARN__} = sub {} ;
@@ -154,6 +160,7 @@ sub launch {
 	if (! defined($in)){
 		croak "Can't open $dn for reading" ;
 	}
+
 	my $out = ">&STDOUT" ;
 	if ($this->{shared}){
 		$out = new IO::File(">$dn") ;
@@ -161,7 +168,10 @@ sub launch {
 			croak "Can't open $dn for writing" ;
 		}
 	}
-	my $pid = open3($in, $out, ">&STDERR", $cmd) ;
+
+	my $err = ">&STDERR" ;
+
+	my $pid = open3($in, $out, $err, $cmd) ;
 
 	if (! $this->{debugger}){
 		close($in) ;
@@ -240,8 +250,9 @@ sub shutdown {
 }
 
 
+# This cannot be a member function because it can be used
+# elsewhere to connect to the JVM.
 sub setup_socket {
-	my $this = shift ;
 	my $host = shift ;
 	my $port = shift ;
 	my $timeout = shift ;
@@ -315,7 +326,7 @@ sub reconnect {
 		$this->{socket} = undef ;
 	}
 
-	my $socket = $this->setup_socket(
+	my $socket = setup_socket(
 		$this->{host}, 
 		$this->{port}, 
 		0,

@@ -16,6 +16,7 @@ Java/Portable.pm
 Java/Array.pm
 Java/Makefile.PL
 Java/JVM.pm
+Java/Server.pm
 Java/JNI.pm
 Java/JNI.xs
 Java/typemap

@@ -26,6 +26,7 @@ use Inline Config =>
 use Inline (
 	Java => 't/shared.java',
 	SHARED_JVM => 1,
+	START_JVM => 0,
 	PORT => 17891,
 	NAME => 't10',
 ) ;

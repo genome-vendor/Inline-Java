@@ -5,6 +5,7 @@ Revision history for Perl extension Inline::Java
     - Renamed PerlNatives stuff
     - Split and updated documentation
     - Applied JNI memory leak patch by Jeff Janes
+    - Added external command line tool to start/stop a SHARED_JVM server
 
 0.47  Sat Feb 14 10:00:00 EST 2004
     - Fixed bugs in portability code and added HPUX, AIX and Solaris specifics

@@ -1,6 +1,5 @@
 CODE:
 - Finish PerlInterpreter test suite
-- Does STDIN still need to be closed in the JVM?
 
 DOCUMENTATION:
 - Redocument Callbacks

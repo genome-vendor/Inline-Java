@@ -218,6 +218,19 @@ Note: This configuration option only has an effect on the first
 'use Inline Java' call inside a Perl script, since all other calls 
 make use of the same JVM.
 
+=item START_JVM
+
+When used with SHARED_JVM, tells C<Inline::Java> that JVM should
+already be running and that it should not attempt to start a new
+one. This option is useful in combination with command line interface
+described in the BUGS AND DEFICIENCIES section. Default is 1.
+
+   Ex: START_JVM => 0
+
+Note: This configuration option only has an effect on the first
+'use Inline Java' call inside a Perl script, since all other calls 
+make use of the same JVM.
+
 =item PRIVATE
 
 In SHARED_JVM mode, makes every connection to the JVM use a different
@@ -863,6 +876,9 @@ option enabled, will try to connect to the already existing JVM before
 trying to start a new one. Therefore if the JVM happens to crash or is
 killed, the next CGI that runs will start a new one. The JVM will be
 killed when Apache is shut down.
+
+See the BUGS AND DEFICIENCIES section if you have problems starting 
+the SHARED_JVM server in a CGI.
    Z<>
 
 
@@ -899,6 +915,9 @@ Here is an example of how to use C<Inline::Java> under mod_perl:
    }
 
 See USING Inline::Java IN A CGI for more details.
+
+See the BUGS AND DEFICIENCIES section if you have problems starting 
+the SHARED_JVM server under MOD_PERL.
    Z<>
 
 
@@ -926,6 +945,26 @@ represent the primitive types.
 If you upgrade C<Inline::Java> from a previous version, be sure to delete
 your _Inline directory so that C<Inline::Java>'s own Java classes get 
 rebuilt to match the Perl code.
+
+=item 3
+
+Under certain environments, i.e. CGI or mod_perl, the JVM cannot start
+properly because of the way these environments set up STDIN and STDOUT.
+In these cases, you maybe wish to control the JVM (in shared mode) manually
+using the following commands:
+
+    % perl -MInline::Java::Server=status
+    % perl -MInline::Java::Server=start 
+    % perl -MInline::Java::Server=stop 
+    % perl -MInline::Java::Server=restat 
+   
+You can't specify C<Inline::Java> options by setting the proper
+environment variables. You can also set the _Inline directory by setting
+the PERL_INLINE_JAVA_DIRECTORY environment variable. 
+
+In addition, you may also wish to set the START_JVM option to 0 in your scripts 
+to prevent them from trying to start their own JVM if they can't find one,
+thereby causing problems.
 
 =back
 

@@ -3,7 +3,7 @@ package Inline::Java::Class ;
 use strict ;
 use Carp ;
 
-$Inline::Java::Class::VERSION = '0.48_91' ;
+$Inline::Java::Class::VERSION = '0.48_92' ;
 
 $Inline::Java::Class::MAX_SCORE = 10 ;
 
