@@ -3,7 +3,7 @@ package Inline::Java::Class ;
 use strict ;
 use Carp ;
 
-$Inline::Java::Class::VERSION = '0.49_90' ;
+$Inline::Java::Class::VERSION = '0.49_91' ;
 
 $Inline::Java::Class::MAX_SCORE = 10 ;
 
@@ -28,24 +28,24 @@ my $RANGE = {
 		MAX => 2147483647,
 		MIN => -2147483648,
 	},
-	'java.lang.Long' => {
-		REGEXP => $INT_RE,
-		MAX => 9223372036854775807,
-		MIN => -9223372036854775808,
-	},
 	'java.lang.Float' => {
 		REGEXP => $FLOAT_RE,
 		MAX => 3.4028235e38,
 		MIN => -3.4028235e38,
-		POS_MIN	=> 1.4e-45,
-		NEG_MAX => -1.4e-45,
+		# POS_MIN	=> 1.4e-45,
+		# NEG_MAX => -1.4e-45,
+	},
+	'java.lang.Long' => {
+		REGEXP => $INT_RE,
+		# MAX => 9223372036854775807,
+		# MIN => -9223372036854775808,
 	},
 	'java.lang.Double' => {
 		REGEXP => $FLOAT_RE,
-		MAX => 1.7976931348623157e308,
-		MIN => -1.7976931348623157e308,
-		POS_MIN => 4.9e-324,
-		NEG_MAX => -4.9e-324,
+		# MAX => 1.79e308,
+		# MIN => -1.79e308,
+		# POS_MIN => 4.9e-324,
+		# NEG_MAX => -4.9e-324,
 	},
 } ;
 $RANGE->{byte} = $RANGE->{'java.lang.Byte'} ;
@@ -184,9 +184,13 @@ sub CastArgument {
 			my $re = $RANGE->{$proto}->{REGEXP} ;
 			my $min = $RANGE->{$proto}->{MIN} ;
 			my $max = $RANGE->{$proto}->{MAX} ;
-			Inline::Java::debug(4, "min = $min, max = $max, val = $arg") ;
+			Inline::Java::debug(4, 
+				"min = " . ($min || '') . ", " . 
+				"max = " . ($max || '') . ", " .
+				"val = $arg") ;
 			if ($arg =~ /$re/){
-				if (($arg >= $min)&&($arg <= $max)){
+				if (((! defined($min))||($arg >= $min))&&
+					((! defined($max))||($arg <= $max))){
 					# number is a pretty precise match, but it's still
 					# guessing amongst the numeric types
 					return ($arg, 5.5) ;

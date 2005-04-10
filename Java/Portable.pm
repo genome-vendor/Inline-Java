@@ -9,7 +9,7 @@ use Config ;
 use File::Find ;
 use File::Spec ;
 
-$Inline::Java::Portable::VERSION = '0.49_90' ;
+$Inline::Java::Portable::VERSION = '0.49_91' ;
 
 # Here is some code to figure out if we are running on command.com
 # shell under Windows.
@@ -60,7 +60,7 @@ sub make_classpath {
 	foreach my $p (@cp){
 		if (($p)&&(-e $p)){
 			if ($cp{$p}){
-				my $fp = (-d $p ? File::Spec->rel2abs($p) : $p) ;
+				my $fp = File::Spec->rel2abs($p) ;
 				push @fcp, Inline::Java::Portable::portable("SUB_FIX_JAVA_PATH", $fp) ;
 				delete $cp{$p} ;
 			}

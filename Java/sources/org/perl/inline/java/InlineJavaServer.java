@@ -26,8 +26,8 @@ public class InlineJavaServer {
 
 
 	// This constructor is used in JNI mode
-	private InlineJavaServer(int d){
-		init(d) ;
+	private InlineJavaServer(int debug){
+		init(debug) ;
 
 		jni = true ; 
 		AddThread(creator) ;
@@ -35,13 +35,14 @@ public class InlineJavaServer {
 
 
 	// This constructor is used in server mode
-	private InlineJavaServer(String[] argv){
-		init(new Integer(argv[0]).intValue()) ;
+	// Normally one would then call RunMainLoop()
+	public InlineJavaServer(int debug, int _port, boolean _shared_jvm, boolean _priv){
+		init(debug) ;
 
 		jni = false ;
-		port = Integer.parseInt(argv[1]) ;
-		shared_jvm = new Boolean(argv[2]).booleanValue() ;
-		priv = new Boolean(argv[3]).booleanValue() ;
+		port = _port ;
+		shared_jvm = _shared_jvm ;
+		priv = _priv ;
 
 		try {
 			server_socket = new ServerSocket(port) ;	
@@ -50,7 +51,10 @@ public class InlineJavaServer {
 			InlineJavaUtils.Fatal("Can't open server socket on port " + String.valueOf(port) +
 				": " + e.getMessage()) ;
 		}
+	}
 
+
+    public void RunMainLoop(){
 		while (! finished){
 			try {
 				String name = "IJST-#" + thread_count++ ;
@@ -73,8 +77,6 @@ public class InlineJavaServer {
 				}
 			}
 		}
-
-		System.exit(0) ;
 	}
 
 
@@ -247,7 +249,7 @@ public class InlineJavaServer {
 	}
 
 
-	synchronized void Shutdown(){
+	public synchronized void StopMainLoop(){
 		if (! jni){
 			try {
 				finished = true ;
@@ -258,6 +260,11 @@ public class InlineJavaServer {
 				System.err.flush() ;
 			}
 		}
+	}
+
+
+	synchronized void Shutdown(){
+		StopMainLoop() ;
 		System.exit(0) ;
 	}
 
@@ -283,7 +290,14 @@ public class InlineJavaServer {
 		Startup
 	*/
 	public static void main(String[] argv){
-		new InlineJavaServer(argv) ;
+		int debug = Integer.parseInt(argv[0]) ;
+		int port = Integer.parseInt(argv[1]) ;
+		boolean shared_jvm = new Boolean(argv[2]).booleanValue() ;
+		boolean priv = new Boolean(argv[3]).booleanValue() ;
+
+		InlineJavaServer ijs = new InlineJavaServer(debug, port, shared_jvm, priv) ;
+		ijs.RunMainLoop() ;
+		System.exit(0) ;
 	}
 
 

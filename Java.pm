@@ -8,7 +8,7 @@ package Inline::Java ;
 use strict ;
 require 5.006 ;
 
-$Inline::Java::VERSION = '0.49_90' ;
+$Inline::Java::VERSION = '0.49_91' ;
 
 
 # DEBUG is set via the DEBUG config
@@ -313,6 +313,18 @@ sub build {
 	# it could be relative...
 	my $server_jar = Inline::Java::Portable::get_server_jar() ;
 
+	# We need to add all the previous install dirs to the classpath because
+	# they can access each other.
+	my @prev_install_dirs = () ;
+	foreach my $in (@INLINES){
+		push @prev_install_dirs, File::Spec->catdir($in->get_api('install_lib'), 
+			'auto', $in->get_api('modpname')) ;
+	}
+
+	my $cp = $ENV{CLASSPATH} || '' ;
+	$ENV{CLASSPATH} = Inline::Java::Portable::make_classpath($server_jar, @prev_install_dirs, $o->get_java_config('CLASSPATH')) ;
+	Inline::Java::debug(2, "classpath: $ENV{CLASSPATH}") ;
+
 	# Create the build dir and go there
 	my $build_dir = $o->get_api('build_dir') ;
 	$o->mkpath($build_dir) ;
@@ -348,17 +360,6 @@ sub build {
 		"javac" . Inline::Java::Portable::portable("EXE_EXTENSION")) ;
 		my $redir = Inline::Java::Portable::portable("IO_REDIR") ;
 
-		# We need to add all the previous install dirs to the classpath because
-		# they can access each other.
-		my @prev_install_dirs = () ;
-		foreach my $in (@INLINES){
-			push @prev_install_dirs, File::Spec->catdir($in->get_api('install_lib'), 
-				'auto', $in->get_api('modpname')) ;
-		}
-
-		my $cp = $ENV{CLASSPATH} || '' ;
-		$ENV{CLASSPATH} = Inline::Java::Portable::make_classpath($server_jar, @prev_install_dirs, $o->get_java_config('CLASSPATH')) ;
-		Inline::Java::debug(2, "classpath: $ENV{CLASSPATH}") ;
 		my $args = "-deprecation " . $o->get_java_config('EXTRA_JAVAC_ARGS') ;
 		my $pinstall_dir = Inline::Java::Portable::portable("SUB_FIX_JAVA_PATH", $install_dir) ;
 		my $cmd = Inline::Java::Portable::portable("SUB_FIX_CMD_QUOTES", 
@@ -375,8 +376,6 @@ sub build {
 		if ($msg){
 			warn("\n$msg\n") ;
 		}
-		$ENV{CLASSPATH} = $cp ;
-		Inline::Java::debug(2, "classpath: $ENV{CLASSPATH}") ;
 
 		# When we run the commands, we quote them because in WIN32 you need it if
 		# the programs are in directories which contain spaces. Unfortunately, in
@@ -396,6 +395,9 @@ sub build {
 			}
 		}
 	}
+
+	$ENV{CLASSPATH} = $cp ;
+	Inline::Java::debug(2, "classpath: $ENV{CLASSPATH}") ;
 
 	# Touch the .jdat file.
 	my $jdat = File::Spec->catfile($install_dir, $o->get_api('modfname') . '.' . $o->get_api('suffix')) ;
@@ -633,6 +635,8 @@ sub load_jdat {
 	my $data_idx = scalar(@{$o->{ILSM}->{data}}) ;
 	push @{$o->{ILSM}->{data}}, $d ;
 	
+	# The original regexp didn't match anymore under the debugger...
+	# Very strange indeed...
 	# my $re = '[\w.\$\[;]+' ;
 	my $re = '.+' ;
 
@@ -647,7 +651,7 @@ sub load_jdat {
 	}
 	foreach my $line (@{$lines}){
 		chomp($line) ;
-		if ($line =~ /^class ($re) ($re|null)$/){
+		if ($line =~ /^class ($re) ($re)$/){
 			# We found a class definition
 			my $java_class = $1 ;
 			my $parent_java_class = $2 ;

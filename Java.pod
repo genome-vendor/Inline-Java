@@ -173,8 +173,9 @@ make use of the same JVM.
 =item CLASSPATH
 
 Adds the specified CLASSPATH. This CLASSPATH will only be available
-threw the use classloader. To set the CLASSPATH globally, use the 
-CLASSPATH environment variable.
+threw the user classloader. To set the CLASSPATH globally (which is
+most probably what you want to do anyways), use the CLASSPATH 
+environment variable.
 
    Ex: CLASSPATH => '/my/other/java/classses'
 

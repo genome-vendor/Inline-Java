@@ -6,7 +6,9 @@ Revision history for Perl extension Inline::Java
     - Fixed bug with regexp that was badly interpreted under the debugger
     - Extended InlineJavaClassLoader from current thread ClassLoader to enable it to work
       properly under Tomcat
-    - Fixed bug with longs over 32 bits in length
+    - Include patch by Ihab Awad that allows running the JVM server inside Tomcat
+    - Fixed bug with longs over 32 bits in length and loosened boundary checking in numeric values
+      since it was not portable
     - Other minor bug fixes
 
 0.49  
