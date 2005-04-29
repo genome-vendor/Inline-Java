@@ -54,6 +54,7 @@ class InlineJavaServerThread extends Thread {
 					bw.flush() ;
 				}
 				else {
+					client.close() ;
 					break ;
 				}
 			}

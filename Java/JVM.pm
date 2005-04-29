@@ -8,7 +8,7 @@ use IPC::Open3 ;
 use IO::Socket ;
 use Inline::Java::Portable ;
 
-$Inline::Java::JVM::VERSION = '0.49_91' ;
+$Inline::Java::JVM::VERSION = '0.49_92' ;
 
 my %SIGS = () ;
 

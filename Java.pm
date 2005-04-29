@@ -8,7 +8,7 @@ package Inline::Java ;
 use strict ;
 require 5.006 ;
 
-$Inline::Java::VERSION = '0.49_91' ;
+$Inline::Java::VERSION = '0.49_92' ;
 
 
 # DEBUG is set via the DEBUG config
@@ -69,6 +69,7 @@ sub done {
 	shutdown_JVM() ;
 	Inline::Java::debug(1, "exiting with $ec") ;
 	CORE::exit($ec) ;
+	exit($ec) ;
 }
 
 
