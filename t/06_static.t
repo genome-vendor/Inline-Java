@@ -5,7 +5,7 @@ use Inline Config =>
            DIRECTORY => './_Inline_test';
 
 use Inline(
-	Java => 'DATA'
+	Java => 'DATA',
 ) ;
 
 

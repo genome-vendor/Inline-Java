@@ -5,7 +5,7 @@ use Inline::Java::Object ;
 use Inline::Java::Array ;
 use Carp ;
 
-$Inline::Java::Protocol::VERSION = '0.49_92' ;
+$Inline::Java::Protocol::VERSION = '0.50' ;
 
 my %CLASSPATH_ENTRIES = () ;
 

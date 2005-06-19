@@ -2,7 +2,6 @@ CODE:
 - Finish PerlInterpreter test suite
 
 DOCUMENTATION:
-- Redocument Callbacks
 - Document InlineJavaPerlObject and InlineJavaPerlInterpreter
 
 TEST:
