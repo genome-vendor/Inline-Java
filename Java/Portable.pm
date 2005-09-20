@@ -9,7 +9,7 @@ use Config ;
 use File::Find ;
 use File::Spec ;
 
-$Inline::Java::Portable::VERSION = '0.50' ;
+$Inline::Java::Portable::VERSION = '0.50_90' ;
 
 # Here is some code to figure out if we are running on command.com
 # shell under Windows.
@@ -161,6 +161,8 @@ sub portable {
 		POST_WHOLE_ARCHIVE	=>  '-Wl,--no-whole-archive',
 		PERL_PARSE_DUP_ENV	=>  '-DPERL_PARSE_DUP_ENV',
 		BUILD_JNI_BY_DFLT	=>  1,
+		J2SDK_BIN			=>  'bin',
+		OTHERLDFLAGS		=>  '',
 	} ;
 
 	my $map = {
@@ -225,6 +227,15 @@ sub portable {
 		darwin => {
 			# Suggested by Ken Williams, mailing list 2004/07/07
 			SO_EXT				=>	$Config{so},
+			# Andrew Bruno
+			JVM_LIB				=>	"libjvm.dylib",
+			JVM_SO				=>	"libjvm.dylib",
+			PRE_WHOLE_ARCHIVE	=>  '-Wl',
+			POST_WHOLE_ARCHIVE	=>  '-Wl',
+		    GOT_SYMLINK			=>	1,
+            J2SDK_BIN        	=>  'Commands',
+			# Tim Bunce:
+			OTHERLDFLAGS		=>  '',
 		},
 	} ;
 

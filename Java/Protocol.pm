@@ -4,8 +4,10 @@ use strict ;
 use Inline::Java::Object ;
 use Inline::Java::Array ;
 use Carp ;
+use MIME::Base64 ;
+use Encode qw(encode_utf8 decode_utf8) ;
 
-$Inline::Java::Protocol::VERSION = '0.50' ;
+$Inline::Java::Protocol::VERSION = '0.50_90' ;
 
 my %CLASSPATH_ENTRIES = () ;
 
@@ -42,7 +44,7 @@ sub AddClassPath {
 
 	my $data = "add_classpath " . join(" ", map {encode($_)} @paths) ;
 
-	return $this->Send($data, 1) ;
+	return $this->Send($data) ;
 }
 
 
@@ -53,7 +55,7 @@ sub ServerType {
 
 	my $data = "server_type" ;
 
-	return $this->Send($data, 1) ;
+	return $this->Send($data) ;
 }
 
 
@@ -69,7 +71,7 @@ sub Report {
 		$this->ValidateArgs([$classes]),
 	) ;
 
-	return $this->Send($data, 1) ;
+	return $this->Send($data) ;
 }
 
 
@@ -96,7 +98,7 @@ sub __ISA {
 		Inline::Java::Class::ValidateClass($proto),
 	) ;
 
-	return $this->Send($data, 1) ;
+	return $this->Send($data) ;
 }
 
 
@@ -109,7 +111,7 @@ sub ObjectCount {
 		"obj_cnt", 
 	) ;
 
-	return $this->Send($data, 1) ;
+	return $this->Send($data) ;
 }
 
 
@@ -221,6 +223,92 @@ sub GetJavaMember {
 }
 
 
+sub ReadFromJavaHandle {
+	my $this = shift ;
+	my $len = shift ;
+
+	my $id = $this->{obj_priv}->{id} ;
+	my $class = $this->{obj_priv}->{java_class} ;
+	Inline::Java::debug(3, "reading from handle object($id)") ;
+
+	my $data = join(" ", 
+		"read", 
+		$id,
+		$len,
+	) ;
+
+	return $this->Send($data) ;
+}
+
+
+sub MakeJavaHandleBuffered {
+	my $this = shift ;
+
+	my $id = $this->{obj_priv}->{id} ;
+	Inline::Java::debug(3, "making handle object($id) buffered") ;
+
+	my $data = join(" ", 
+		"make_buffered", 
+		$id,
+	) ;
+
+	return $this->Send($data) ;
+}
+
+
+sub ReadLineFromJavaHandle {
+	my $this = shift ;
+
+	my $id = undef ;
+	if (! defined($this->{obj_priv}->{buffered})){
+		my $nid = $this->MakeJavaHandleBuffered() ;
+		$this->{obj_priv}->{buffered} = Inline::Java::Object->__new('<buffer>', $this->{inline}, $nid) ;
+	}
+	$id = $this->{obj_priv}->{buffered}->__get_private()->{id} ;
+	Inline::Java::debug(3, "reading line from handle object($id)") ;
+
+	my $data = join(" ", 
+		"readline", 
+		$id,
+	) ;
+
+	return $this->Send($data) ;
+}
+
+
+sub WriteToJavaHandle {
+	my $this = shift ;
+	my $str = shift ;
+
+	my $id = $this->{obj_priv}->{id} ;
+	Inline::Java::debug(3, "writing to handle object($id)") ;
+
+	my $data = join(" ", 
+		"write", 
+		$id,
+		$this->ValidateArgs([$str]),
+	) ;
+
+	return $this->Send($data) ;
+}
+
+
+sub CloseJavaHandle {
+	my $this = shift ;
+
+	my $id = $this->{obj_priv}->{id} ;
+	my $class = $this->{obj_priv}->{java_class} ;
+	Inline::Java::debug(3, "closing handle object($id)") ;
+
+	my $data = join(" ", 
+		"close", 
+		$id,
+	) ;
+
+	return $this->Send($data) ;
+}
+
+
 # Deletes a Java object
 sub DeleteJavaObject {
 	my $this = shift ;
@@ -321,9 +409,9 @@ sub CreateSignature {
 	my $proto = shift ;
 	my $del = shift || ", " ;
 
-	my @p = map {(defined($_) ? $_ : '')} @{$proto} ;
-
-	return "(" . join($del, @p) . ")" ;
+	no warnings ;
+	my $sig = join($del, @{$proto}) ;
+	return "($sig)" ;
 }
 
 
@@ -335,7 +423,7 @@ sub Send {
 	my $const = shift ;
 
 	my $resp = Inline::Java::__get_JVM()->process_command($this->{inline}, $data) ;
-	if ($resp =~ /^error scalar:([\d.-]*)$/){
+	if ($resp =~ /^error scalar:([\w+\/=+]*)$/){
 		my $msg = decode($1) ;
 		Inline::Java::debug(3, "packet recv error: $msg") ;
 		croak $msg ;
@@ -353,17 +441,18 @@ sub DeserializeObject {
 	my $const = shift ;
 	my $resp = shift ;
 
-	if ($resp =~ /^scalar:([\d.-]*)$/){
+	if ($resp =~ /^scalar:([\w+\/=+]*)$/){
 		return decode($1) ; 
 	}
 	elsif ($resp =~ /^undef:$/){
 		return undef ;
 	}
-	elsif ($resp =~ /^java_object:([01]):(\d+):(.*)$/){
+	elsif ($resp =~ /^java_(object|array|handle):([01]):(\d+):(.*)$/){
 		# Create the Perl object wrapper and return it.
-		my $thrown = $1 ;
-		my $id = $2 ;
-		my $class = $3 ;
+		my $type = $1 ;
+		my $thrown = $2 ;
+		my $id = $3 ;
+		my $class = $4 ;
 
 		if ($thrown){
 			# If we receive a thrown object, we jump out of 'constructor
@@ -384,11 +473,10 @@ sub DeserializeObject {
 			my $elem_class = $class ;
 
 			Inline::Java::debug(3, "checking if stub is array...") ;
-			if (Inline::Java::Class::ClassIsArray($class)){
+			if ($type eq 'array'){
 				my @d = Inline::Java::Class::ValidateClassSplit($class) ;
 				$elem_class = $d[2] ;
 			}
-
 
 			my $perl_class = "Inline::Java::Object" ;
 			if ($elem_class){
@@ -414,12 +502,19 @@ sub DeserializeObject {
 				# the block below will handle it.
 			}
 
-			if (Inline::Java::Class::ClassIsArray($class)){
+			if ($type eq 'array'){
 				Inline::Java::debug(3, "creating array object...") ;
 				$obj = Inline::Java::Object->__new($class, $this->{inline}, $id) ;
 				$obj = new Inline::Java::Array($obj) ;
 				Inline::Java::debug(3, "array object created...") ;
 			}
+			# To be finished at a later time...
+			# elsif ($type eq 'handle'){
+			# 	Inline::Java::debug(3, "creating handle object...") ;
+			# 	$obj = Inline::Java::Object->__new($class, $this->{inline}, $id) ;
+			# 	$obj = new Inline::Java::Handle($obj) ;
+			# 	Inline::Java::debug(3, "handle object created...") ;
+			# }
 			else{
 				$obj = $perl_class->__new($class, $this->{inline}, $id) ;
 			}
@@ -455,16 +550,14 @@ sub DeserializeObject {
 sub encode {
 	my $s = shift ;
 
-	# If Perl version < 5.6, use C*
-	return join(".", unpack("U*", $s)) ;
+	return encode_base64(encode_utf8($s), '') ;
 }
 
 
 sub decode {
 	my $s = shift ;
 
-	# If Perl version < 5.6, use C*
-	return pack("U*", split(/\./, $s)) ;
+	return decode_utf8(decode_base64($s)) ;
 }
 
 

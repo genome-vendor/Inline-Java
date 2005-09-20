@@ -10,7 +10,7 @@ use Inline (
 
 
 BEGIN {
-	plan(tests => 103) ;
+	plan(tests => 104, todo => [69]) ;
 }
 
 
@@ -87,7 +87,7 @@ my $t = new types2() ;
 
 	#
 	# Boundary testing for long, double are not predictable enough
-	# to be reliable.`
+	# to be reliable.
 	#	
 	my $val = 123456 ;
 	ok($t->_long(undef) == 1) ;
@@ -108,6 +108,8 @@ my $t = new types2() ;
 	ok($t->_Double(0) == 0) ;
 	ok($t->_Double($val) == $val) ;
 	ok($t->_Double("-$val") == -$val) ;
+	ok($t->_Double(0.056200000000000028) == 0.056200000000000028) ;
+	
 	
 	# Number is forced to Double
 	ok($t->_Number(undef) == 0) ;

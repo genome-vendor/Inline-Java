@@ -5,7 +5,7 @@ use strict ;
 use Inline::Java::Protocol ;
 use Carp ;
 
-$Inline::Java::Object::VERSION = '0.50' ;
+$Inline::Java::Object::VERSION = '0.50_90' ;
 
 # Here we store as keys the knots and as values our blessed private objects
 my $PRIVATES = {} ;
@@ -44,10 +44,16 @@ sub __new {
 	$PRIVATES->{$knot} = $priv ;
 
 	if ($objid <= -1){
+		my $obj = undef ;
 		eval {
-			$this->__get_private()->{proto}->CreateJavaObject($java_class, $proto, $args) ;
+			$obj = $this->__get_private()->{proto}->CreateJavaObject($java_class, $proto, $args) ;
 		} ;		
 		croak $@ if $@ ;
+
+		if (! defined($this->__get_private()->{id})){
+			# Use created a java::lang::String or something...
+			return $obj ;
+		}
 	}
 	else{
 		$this->__get_private()->{id} = $objid ;
@@ -84,10 +90,10 @@ sub __validate_prototype {
 	my $inline = shift ;
 
 	my @matched = () ;
- 
-	my $nb_proto = scalar(values %{$protos}) ;
+
+	my @proto_values = values %{$protos} ; 
 	my @errors = () ;
-	foreach my $s (values %{$protos}){
+	foreach my $s (@proto_values){
 		my $proto = $s->{SIGNATURE} ;
 		my $stat = $s->{STATIC} ;
 		my $idx = $s->{IDX} ;
@@ -101,7 +107,7 @@ sub __validate_prototype {
 			($new_args, $score) = Inline::Java::Class::CastArguments($args, $proto, $inline) ;
 		} ;
 		if ($@){
-			if ($nb_proto == 1){
+			if (scalar(@proto_values) == 1){
 				# Here we have only 1 prototype, so we return the error.
 				croak $@ ;
 			}
@@ -141,7 +147,7 @@ sub __validate_prototype {
 		my $msg = "In method $method of class $name: Can't find any signature that matches " .
 			"the arguments passed $sa.\nAvailable signatures are:\n"  ;
 		my $i = 0 ;
-		foreach my $s (values %{$protos}){
+		foreach my $s (@proto_values){
 			my $proto = $s->{SIGNATURE} ;	
 			my $static = ($s->{STATIC} ? "static " : "") ;
 

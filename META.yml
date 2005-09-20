@@ -1,11 +1,13 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         Inline-Java
-version:      0.50
+version:      0.50_90
 version_from: Java.pm
 installdirs:  site
 requires:
+    Encode:                        0
     Inline:                        0.44
+    MIME::Base64:                  0
     Test:                          1.13
 
 distribution_type: module

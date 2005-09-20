@@ -6,7 +6,7 @@ use Inline Config =>
 
 use Inline(
 	Java => 'DATA',
-	STUDY => ['java.util.HashMap'],
+	STUDY => ['java.util.HashMap', 'java.lang.String'],
 	AUTOSTUDY => 1,
 ) ;
 
@@ -14,7 +14,7 @@ use Inline::Java qw(cast coerce) ;
 
 
 BEGIN {
-	plan(tests => 23) ;
+	plan(tests => 24) ;
 }
 
 
@@ -65,6 +65,9 @@ my $t = new types7() ;
 	foreach my $e (@{$a}){
 		ok(cast('java.util.Map$Entry', $e)->getKey(), 'key') ;
 	}
+
+	my $str = new java::lang::String('test') ;
+	ok($str, 'test') ;
 }
 
 ok($t->__get_private()->{proto}->ObjectCount(), 1) ;

@@ -14,6 +14,7 @@ Java/Callback.pm
 Java/Callback.pod
 Java/Portable.pm
 Java/Array.pm
+Java/Handle.pm
 Java/Makefile.PL
 Java/JVM.pm
 Java/Server.pm
@@ -39,6 +40,7 @@ Java/sources/org/perl/inline/java/InlineJavaCallbackQueue.java
 Java/sources/org/perl/inline/java/InlineJavaPerlNatives.java
 Java/sources/org/perl/inline/java/InlineJavaPerlInterpreter.java
 Java/sources/org/perl/inline/java/InlineJavaPerlObject.java
+Java/sources/org/perl/inline/java/InlineJavaHandle.java
 Java/PerlNatives/Makefile.PL
 Java/PerlNatives/PerlNatives.pm
 Java/PerlNatives/PerlNatives.xs
@@ -69,7 +71,8 @@ t/10_5_shared_fork.t
 t/10_6_shared_sim.t
 t/11_exceptions.t
 t/12_1_callbacks.t
-t/13_end.t
+t/13_handles.t
+t/99_end.t
 t/types.java
 t/types.class
 t/no_const.java

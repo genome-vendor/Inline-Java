@@ -46,10 +46,11 @@ my $perl_jdk_dir = $jdk_dir ;
 $perl_jdk_dir =~ s/'/\'/g ;
 
 # Check directory
+my $jdk_bin = Inline::Java::Portable::portable("J2SDK_BIN") ;
 my $ext = Inline::Java::Portable::portable('EXE_EXTENSION') ;
 foreach my $f ('javac', 'jar', 'java'){
-	if (! -x File::Spec->catfile($jdk_dir, 'bin', $f . $ext)){
-		my $bf = File::Spec->catfile('bin', $f . $ext) ;
+	if (! -x File::Spec->catfile($jdk_dir, $jdk_bin, $f . $ext)){
+		my $bf = File::Spec->catfile($jdk_bin, $f . $ext) ;
 		print "Can't locate file '$bf' anywhere under '$jdk_dir'\n" ;
 	}
 }
@@ -86,8 +87,8 @@ SAVE_J2SDK
 
 
 # We will now add the building of our Java files to the Makefile.
-my $javac = File::Spec->catfile($jdk_dir, 'bin', 'javac' . $ext) ;
-my $jar = File::Spec->catfile($jdk_dir, 'bin', 'jar' . $ext) ;                      
+my $javac = File::Spec->catfile($jdk_dir, $jdk_bin, 'javac' . $ext) ;
+my $jar = File::Spec->catfile($jdk_dir, $jdk_bin, 'jar' . $ext) ;                      
 my $src_dir = File::Spec->catdir('Java', 'sources', 'org', 'perl', 'inline', 'java') ;
 my $src = File::Spec->catfile($src_dir, '*.java') ;
 my $obj_dir = File::Spec->catdir('Java', 'classes') ;
@@ -157,6 +158,8 @@ WriteMakefile(
 	PREREQ_PM => {
 		Inline	=> 0.44,
 		Test => 1.13,
+		Encode => 0,
+		'MIME::Base64' => 0,
 	},
 	PM => {
 		'Java.pm' => File::Spec->catfile('$(INST_LIBDIR)', 'Java.pm'),

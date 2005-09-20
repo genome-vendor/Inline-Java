@@ -3,7 +3,7 @@ package Inline::Java::Class ;
 use strict ;
 use Carp ;
 
-$Inline::Java::Class::VERSION = '0.50' ;
+$Inline::Java::Class::VERSION = '0.50_90' ;
 
 $Inline::Java::Class::MAX_SCORE = 10 ;
 
@@ -60,6 +60,38 @@ $RANGE->{double} = $RANGE->{'java.lang.Double'} ;
 $RANGE->{'java.lang.Number'} = $RANGE->{'java.lang.Double'} ;
 
 
+my %numeric_classes = map {($_ => 1)} qw(
+	java.lang.Byte
+	java.lang.Short
+	java.lang.Integer
+	java.lang.Long
+	java.lang.Float
+	java.lang.Double
+	java.lang.Number
+	byte
+	short
+	int
+	long
+	float
+	double
+) ;
+
+my %string_classes = map {($_ => 1)} qw(
+	java.lang.String
+	java.lang.StringBuffer
+) ;
+
+my %char_classes = map {($_ => 1)} qw(
+	java.lang.Character
+	char
+) ;
+
+my %bool_classes = map {($_ => 1)} qw(
+	java.lang.Boolean
+	boolean
+) ;
+
+
 # This method makes sure that the class we are asking for
 # has the correct form for a Java class.
 sub ValidateClass {
@@ -71,13 +103,16 @@ sub ValidateClass {
 }
 
 
+my $class_name_regexp = '([\w$]+)(((\.([\w$]+))+)?)' ;
+my $class_regexp1 = qr/^($class_name_regexp)()()()$/o ;
+my $class_regexp2 = qr/^(\[+)([BCDFIJSZ])()()$/o ;
+my $class_regexp3 = qr/^(\[+)([L])($class_name_regexp)(;)$/o ;
 sub ValidateClassSplit {
 	my $class = shift ;
 
-	my $cre = '([\w$]+)(((\.([\w$]+))+)?)' ;
-	if (($class =~ /^($cre)()()()$/)||
-		($class =~ /^(\[+)([BCDFIJSZ])()()$/)||
-		($class =~ /^(\[+)([L])($cre)(;)$/)){
+	if (($class =~ $class_regexp1)||
+		($class =~ $class_regexp2)||
+		($class =~ $class_regexp3)){
 		return (wantarray ? ($1, $2, $3, $4) : $class) ;
 	}
 
@@ -93,13 +128,14 @@ sub CastArguments {
 	Inline::Java::debug_obj($args) ;
 	Inline::Java::debug_obj($proto) ;
 
-	if (scalar(@{$args}) != scalar(@{$proto})){
+	my $nb_args = scalar(@{$args}) ;
+	if ($nb_args != scalar(@{$proto})){
 		croak "Wrong number of arguments" ;
 	}
 
 	my $ret = [] ;
 	my $score = 0 ;
-	for (my $i = 0 ; $i < scalar(@{$args}) ; $i++){
+	for (my $i = 0 ; $i < $nb_args ; $i++){
 		my $arg = $args->[$i] ;
 		my $pro = $proto->[$i] ;
 		my @r = CastArgument($arg, $pro, $inline) ;
@@ -124,7 +160,7 @@ sub CastArgument {
 
 	my $array_score = 0 ;
 
-	my $sub = sub {
+	my @ret = eval {
 		my $array_type = undef ;
 		if ((defined($arg))&&(UNIVERSAL::isa($arg, "Inline::Java::Class::Coerce"))){
 			my $v = $arg->__get_value() ;
@@ -302,8 +338,7 @@ sub CastArgument {
 			return ($arg, 1) ;
 		}
 	} ;
-
-	my @ret = $sub->() ;
+	die("$@\n") if $@ ;
 
 	if ((defined($arg_ori))&&(UNIVERSAL::isa($arg_ori, "Inline::Java::Class::Coerce"))){
 		# It seems we had casted the variable to a specific type
@@ -338,83 +373,28 @@ sub IsMaxArgumentsScore {
 sub ClassIsNumeric {
 	my $class = shift ;
 
-	my @list = qw(
-		java.lang.Byte
-		java.lang.Short
-		java.lang.Integer
-		java.lang.Long
-		java.lang.Float
-		java.lang.Double
-		java.lang.Number
-		byte
-		short
-		int
-		long
-		float
-		double
-	) ;
-
-	foreach my $l (@list){
-		if ($class eq $l){
-			return 1 ;
-		}
-	}
-
-	return 0 ;
+	return $numeric_classes{$class} ;
 }
 
 
 sub ClassIsString {
 	my $class = shift ;
 
-	my @list = qw(
-		java.lang.String
-		java.lang.StringBuffer
-	) ;
-
-	foreach my $l (@list){
-		if ($class eq $l){
-			return 1 ;
-		}
-	}
-
-	return 0 ;
+	return $string_classes{$class} ;
 }
 
 
 sub ClassIsChar {
 	my $class = shift ;
 
-	my @list = qw(
-		java.lang.Character
-		char
-	) ;
-
-	foreach my $l (@list){
-		if ($class eq $l){
-			return 1 ;
-		}
-	}
-
-	return 0 ;
+	return $char_classes{$class} ;
 }
 
 
 sub ClassIsBool {
 	my $class = shift ;
 
-	my @list = qw(
-		java.lang.Boolean
-		boolean
-	) ;
-
-	foreach my $l (@list){
-		if ($class eq $l){
-			return 1 ;
-		}
-	}
-
-	return 0 ;
+	return $bool_classes{$class} ;
 }
 
 

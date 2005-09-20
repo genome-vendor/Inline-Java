@@ -140,7 +140,7 @@ class InlineJavaClass {
 			}
 			else if (type.equals("scalar")){
 				String arg = ijp.Decode((String)tokens.get(1)) ;
-				InlineJavaUtils.debug(4, "args is scalar -> forcing to " + ap.getName()) ;
+				InlineJavaUtils.debug(4, "args is scalar (" + arg + ") -> forcing to " + ap.getName()) ;
 				try	{
 					ret = ijp.CreateObject(ap, new Object [] {arg}, new Class [] {String.class}) ;
 					InlineJavaUtils.debug(4, " result is " + ret.toString()) ;
@@ -160,8 +160,8 @@ class InlineJavaClass {
 				InlineJavaUtils.debug(4, " result is " + ret.toString()) ;
 			}
 			else if (type.equals("scalar")){
-				String arg = ijp.Decode(((String)tokens.get(1)).toLowerCase()) ;
-				InlineJavaUtils.debug(4, "args is scalar -> forcing to bool") ;
+				String arg = ijp.Decode((String)tokens.get(1)) ;
+				InlineJavaUtils.debug(4, "args is scalar (" + arg + ") -> forcing to bool") ;
 				if ((arg.equals(""))||(arg.equals("0"))){
 					arg = "false" ;
 				}
@@ -349,9 +349,8 @@ class InlineJavaClass {
 	/*
 		Determines if class is of numerical type.
 	*/
-	static boolean ClassIsNumeric (Class p){
-		String name = p.getName() ;
-
+	static private HashMap numeric_classes = new HashMap() ;
+	static {
 		Class [] list = {
 			java.lang.Byte.class,
 			java.lang.Short.class,
@@ -367,81 +366,66 @@ class InlineJavaClass {
 			float.class,
 			double.class,
 		} ;
-
 		for (int i = 0 ; i < list.length ; i++){
-			if (p == list[i]){
-				InlineJavaUtils.debug(4, "class " + name + " is primitive numeric") ;
-				return true ;
-			}
+			numeric_classes.put(list[i], new Boolean(true)) ;
 		}
-
-		return false ;
+	}
+	static boolean ClassIsNumeric (Class p){
+		return (numeric_classes.get(p) != null) ;
 	}
 
 
 	/*
 		Class is String or StringBuffer
 	*/
-	static boolean ClassIsString (Class p){
-		String name = p.getName() ;
-
+	static private HashMap string_classes = new HashMap() ;
+	static {
 		Class [] list = {
 			java.lang.String.class,
 			java.lang.StringBuffer.class,
 		} ;
-
 		for (int i = 0 ; i < list.length ; i++){
-			if (p == list[i]){
-				InlineJavaUtils.debug(4, "class " + name + " is primitive string") ;
-				return true ;
-			}
+			string_classes.put(list[i], new Boolean(true)) ;
 		}
-
-		return false ;
+	}
+	static boolean ClassIsString (Class p){
+		return (string_classes.get(p) != null) ;
 	}
 
 
 	/*
 		Class is Char
 	*/
-	static boolean ClassIsChar (Class p){
-		String name = p.getName() ;
-
+	static private HashMap char_classes = new HashMap() ;
+	static {
 		Class [] list = {
 			java.lang.Character.class,
 			char.class,
 		} ;
-
 		for (int i = 0 ; i < list.length ; i++){
-			if (p == list[i]){
-				InlineJavaUtils.debug(4, "class " + name + " is primitive char") ;
-				return true ;
-			}
+			char_classes.put(list[i], new Boolean(true)) ;
 		}
-
-		return false ;
+	}
+	static boolean ClassIsChar (Class p){
+		return (char_classes.get(p) != null) ;
 	}
 
 
 	/*
 		Class is Bool
 	*/
-	static boolean ClassIsBool (Class p){
-		String name = p.getName() ;
-
+	static private HashMap bool_classes = new HashMap() ;
+	static {
 		Class [] list = {
 			java.lang.Boolean.class,
 			boolean.class,
 		} ;
-
 		for (int i = 0 ; i < list.length ; i++){
-			if (p == list[i]){
-				InlineJavaUtils.debug(4, "class " + name + " is primitive bool") ;
-				return true ;
-			}
+			bool_classes.put(list[i], new Boolean(true)) ;
 		}
-
-		return false ;
+	}
+	static boolean ClassIsBool (Class p){
+		return (bool_classes.get(p) != null) ;
 	}
 
 	
@@ -477,6 +461,35 @@ class InlineJavaClass {
 	static boolean ClassIsPublic (Class p){
 		int pub = p.getModifiers() & Modifier.PUBLIC ;
 		if (pub != 0){
+			return true ;
+		}
+
+		return false ;
+	}
+
+
+	static boolean ClassIsHandle (Class p){
+		if ((ClassIsReadHandle(p))||(ClassIsWriteHandle(p))){
+			return true ;
+		}
+
+		return false ;
+	}
+
+
+	static boolean ClassIsReadHandle (Class p){
+		if ((java.io.Reader.class.isAssignableFrom(p))||
+			(java.io.InputStream.class.isAssignableFrom(p))){
+			return true ;
+		}
+
+		return false ;
+	}
+
+
+	static boolean ClassIsWriteHandle (Class p){
+		if ((java.io.Writer.class.isAssignableFrom(p))||
+			(java.io.OutputStream.class.isAssignableFrom(p))){
 			return true ;
 		}
 

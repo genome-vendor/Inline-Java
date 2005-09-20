@@ -1,5 +1,13 @@
 Revision history for Perl extension Inline::Java
 ------------------------------------------------
+0.51  Mon Sep 19 20:17:49 EDT 2005
+    - Several major speed optimizations
+    - Introduction of support for I/O mapping between Perl and Java
+    - Applied patches by Andrew Bruno and Tim Bunce for MAC OSX
+    - JNI fix for system property passing
+        (thanks to Brian Gugliemetti and Jason Stelzer)
+    - Other minor bug fixes
+
 0.50  Mon Jan 31 20:14:43 EST 2005
     - Added HOST configuration option to access JVM server remotely
     - Fixed bug with paths in Cygwin

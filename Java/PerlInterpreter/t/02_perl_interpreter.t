@@ -4,7 +4,7 @@ use Test ;
 use File::Spec ;
 
 BEGIN {
-    plan(tests => 7) ;
+    plan(tests => 12) ;
 }
 
 
@@ -42,13 +42,17 @@ sub run_java {
 
 	my $java = File::Spec->catfile(
 		Inline::Java::get_default_j2sdk(),
-		'bin', 'java' . Inline::Java::Portable::portable("EXE_EXTENSION")) ;
+		Inline::Java::Portable::portable("J2SDK_BIN"), 
+		'java' . Inline::Java::Portable::portable("EXE_EXTENSION")) ;
 
 	my $debug = $ENV{PERL_INLINE_JAVA_DEBUG} || 0 ;
 	my $cmd = Inline::Java::Portable::portable("SUB_FIX_CMD_QUOTES", "\"$java\" " . 
 		"org.perl.inline.java.InlineJavaPerlInterpreterTests $debug") ;
 	Inline::Java::debug(1, "Command is $cmd\n") ;
-	print `$cmd` ;
+	open(CMD, "$cmd|") or die("Can't execute $cmd: $!") ;
+	while (<CMD>){
+		print $_ ;
+	}
 }
 
 
@@ -57,12 +61,16 @@ __END__
 __Java__
 package org.perl.inline.java ;
 
-class InlineJavaPerlInterpreterTests extends InlineJavaPerlInterpreter {
+class InlineJavaPerlInterpreterTests implements Runnable {
 	private static int cnt = 2 ;
+	private static InlineJavaPerlInterpreter pi = null ;
+	private static int nb_callbacks_to_run = 5 ;
+	private static int nb_callbacks_run = 0 ;
+
 	private InlineJavaPerlInterpreterTests() throws InlineJavaException, InlineJavaPerlException {
 	}
 
-	private static void ok(Object o1, Object o2){
+	private synchronized static void ok(Object o1, Object o2){
 		if (o1.equals(o2)){
 			String comment = " # " + o1 + " == " + o2 ;
 			System.out.println("ok " + cnt + comment) ;
@@ -74,6 +82,24 @@ class InlineJavaPerlInterpreterTests extends InlineJavaPerlInterpreter {
 		cnt++ ;
 	}
 
+
+	public void run(){
+		try {
+			String name = (String)pi.CallPerlSub("whats_your_name", null, String.class) ;
+			ok(name, "perl") ;
+			nb_callbacks_run++ ;
+
+			if (nb_callbacks_run == nb_callbacks_to_run){
+				pi.StopCallbackLoop() ;
+			}
+		}
+		catch (Exception e){
+			e.printStackTrace() ;
+			System.exit(1) ;
+		}
+	}
+
+
 	public static void main(String args[]){
 		try {
 			int debug = 0 ;
@@ -82,8 +108,8 @@ class InlineJavaPerlInterpreterTests extends InlineJavaPerlInterpreter {
 				InlineJavaUtils.debug = debug ;
 			}
 
-			init("test") ;
-			InlineJavaPerlInterpreter pi = InlineJavaPerlInterpreter.create() ; 
+			InlineJavaPerlInterpreter.init("test") ;
+			pi = InlineJavaPerlInterpreter.create() ; 
 
 			pi.require("t/Tests.pl") ;
 			ok("1", "1") ;
@@ -93,6 +119,13 @@ class InlineJavaPerlInterpreterTests extends InlineJavaPerlInterpreter {
 			ok(sum, new Integer(90)) ;
 			String name = (String)pi.CallPerlSub("whats_your_name", null, String.class) ;
 			ok(name, "perl") ;
+	
+			for (int i = 1 ; i <= nb_callbacks_to_run ; i++){
+				Thread t = new Thread(new InlineJavaPerlInterpreterTests()) ;
+				t.start() ;
+			}
+
+			pi.StartCallbackLoop();
 
 			pi.destroy() ;
 			ok("1", "1") ;

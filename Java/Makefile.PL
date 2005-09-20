@@ -71,7 +71,7 @@ if (($build_jni || AskYN("Do you wish to build the JNI extension?",
 	find(
 		{
 			wanted => \&search,
-			($symlink ? (follow => 1, follow_skip => 2) : ()),
+			($symlink ? (follow_fast => 1, follow_skip => 2) : ()),
 		},
 		$jdk_dir) ;
 
@@ -162,6 +162,9 @@ TXT
 				PMLIBDIRS => [File::Spec->catdir('sources', 'org', 'perl', 'inline', 'java')],
 				INC => join(' ', @main::I),
 				LIBS => [join(' ', @main::L) . " -ljvm"],
+				dynamic_lib => { 
+					OTHERLDFLAGS => Inline::Java::Portable::portable('OTHERLDFLAGS') 
+				},
 				# CCFLAGS => '-D_REENTRANT',
 			) ;
 		}

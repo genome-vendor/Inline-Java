@@ -32,7 +32,7 @@ class InlineJavaCallbackQueue {
 
 
 	synchronized InlineJavaCallback WaitForCallback(){
-		while (IsEmpty()){
+		while ((! stop_loop)&&(IsEmpty())){
 			try {
 				wait() ;
 			}

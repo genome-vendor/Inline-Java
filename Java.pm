@@ -8,7 +8,7 @@ package Inline::Java ;
 use strict ;
 require 5.006 ;
 
-$Inline::Java::VERSION = '0.50' ;
+$Inline::Java::VERSION = '0.50_90' ;
 
 
 # DEBUG is set via the DEBUG config
@@ -31,6 +31,7 @@ use Inline::Java::Portable ;
 use Inline::Java::Class ;
 use Inline::Java::Object ;
 use Inline::Java::Array ;
+use Inline::Java::Handle ;
 use Inline::Java::Protocol ;
 use Inline::Java::Callback ;
 # Must be last.
@@ -341,8 +342,8 @@ sub build {
 	$pcode =~ s/\"(.*?)\"//g ;
 	$pcode =~ s/\/\*(.*?)\*\///gs ;
 	$pcode =~ s/\/\/(.*)$//gm ;
-	if ($pcode =~ /public\s+class\s+(\w+)/){
-		$source = "$1.java" ;
+	if ($pcode =~ /public\s+(abstract\s+)?class\s+(\w+)/){
+		$source = "$2.java" ;
 	}
 
 	my $install_dir = File::Spec->catdir($o->get_api('install_lib'), 
@@ -357,8 +358,9 @@ sub build {
 		close(Inline::Java::JAVA) ;
 
 		# ... and compile it.
-		my $javac = File::Spec->catfile($o->get_java_config('J2SDK'), 'bin', 
-		"javac" . Inline::Java::Portable::portable("EXE_EXTENSION")) ;
+		my $javac = File::Spec->catfile($o->get_java_config('J2SDK'), 
+			Inline::Java::Portable::portable("J2SDK_BIN"), 
+			"javac" . Inline::Java::Portable::portable("EXE_EXTENSION")) ;
 		my $redir = Inline::Java::Portable::portable("IO_REDIR") ;
 
 		my $args = "-deprecation " . $o->get_java_config('EXTRA_JAVAC_ARGS') ;

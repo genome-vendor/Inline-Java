@@ -8,7 +8,7 @@ use IPC::Open3 ;
 use IO::Socket ;
 use Inline::Java::Portable ;
 
-$Inline::Java::JVM::VERSION = '0.50' ;
+$Inline::Java::JVM::VERSION = '0.50_90' ;
 
 my %SIGS = () ;
 
@@ -109,7 +109,8 @@ sub new {
 			}
 		}
 
-		my $java = File::Spec->catfile($o->get_java_config('J2SDK'), 'bin',
+		my $java = File::Spec->catfile($o->get_java_config('J2SDK'), 
+			Inline::Java::Portable::portable("J2SDK_BIN"),
 			($this->{debugger} ? "jdb" : "java") . 
 			Inline::Java::Portable::portable("EXE_EXTENSION")) ;
 
@@ -421,7 +422,7 @@ sub process_command {
 		Inline::Java::debug(3, "packet recv is $resp") ;
 
 		# We got an answer from the server. Is it a callback?
-		if ($resp =~ /^callback/){
+		if ($resp =~ /^callback/o){
 			($data, $Inline::Java::Callback::OBJECT_HOOK) = Inline::Java::Callback::InterceptCallback($inline, $resp) ;
 			next ;
 		}

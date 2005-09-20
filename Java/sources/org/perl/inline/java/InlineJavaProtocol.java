@@ -1,6 +1,7 @@
 package org.perl.inline.java ;
 
 import java.util.* ;
+import java.io.* ;
 import java.lang.reflect.* ;
 
 
@@ -66,6 +67,21 @@ class InlineJavaProtocol {
 		}
 		else if (c.equals("cast")){
 			Cast(st) ;
+		}
+		else if (c.equals("read")){
+			Read(st) ;
+		}
+		else if (c.equals("make_buffered")){
+			MakeBuffered(st) ;
+		}
+		else if (c.equals("readline")){
+			ReadLine(st) ;
+		}
+		else if (c.equals("write")){
+			Write(st) ;
+		}
+		else if (c.equals("close")){
+			Close(st) ;
 		}
 		else if (c.equals("die")){
 			InlineJavaUtils.debug(1, "received a request to die...") ;
@@ -299,6 +315,98 @@ class InlineJavaProtocol {
 		Class c = ijc.ValidateClass(class_name) ;
 
 		SetResponse(o, c) ;
+	}
+
+
+	/*
+	*/
+	void Read(StringTokenizer st) throws InlineJavaException {
+		int id = Integer.parseInt(st.nextToken()) ;
+		int len = Integer.parseInt(st.nextToken()) ;
+
+		Object o = ijs.GetObject(id) ;
+		Object ret = null ;
+		try {
+			ret = InlineJavaHandle.read(o, len) ;
+		}
+		catch (java.io.IOException e){
+			ret = new InlineJavaThrown(e) ;
+		}
+
+		SetResponse(ret) ;
+	}
+
+
+	void MakeBuffered(StringTokenizer st) throws InlineJavaException {
+		int id = Integer.parseInt(st.nextToken()) ;
+
+		Object o = ijs.GetObject(id) ;
+		Object ret = null ;
+		try {
+			ret = InlineJavaHandle.makeBuffered(o) ;
+			if (ret != o){
+				int buf_id = ijs.PutObject(ret) ;
+				ret = new Integer(buf_id) ;
+			}
+			else {
+				ret = new Integer(id) ;
+			}
+		}
+		catch (java.io.IOException e){
+			ret = new InlineJavaThrown(e) ;
+		}
+
+		SetResponse(ret) ;
+	}
+
+
+	void ReadLine(StringTokenizer st) throws InlineJavaException {
+		int id = Integer.parseInt(st.nextToken()) ;
+
+		Object o = ijs.GetObject(id) ;
+		Object ret = null ;
+		try {
+			ret = InlineJavaHandle.readLine(o) ;
+		}
+		catch (java.io.IOException e){
+			ret = new InlineJavaThrown(e) ;
+		}
+
+		SetResponse(ret) ;
+	}
+
+
+	void Write(StringTokenizer st) throws InlineJavaException {
+		int id = Integer.parseInt(st.nextToken()) ;
+		Object arg = ijc.CastArgument(Object.class, st.nextToken()) ;
+
+		Object o = ijs.GetObject(id) ;
+		Object ret = null ;
+		try {
+			int len = InlineJavaHandle.write(o, arg.toString()) ;
+			ret = new Integer(len) ;
+		}
+		catch (java.io.IOException e){
+			ret = new InlineJavaThrown(e) ;
+		}
+
+		SetResponse(ret) ;
+	}
+
+
+	void Close(StringTokenizer st) throws InlineJavaException {
+		int id = Integer.parseInt(st.nextToken()) ;
+
+		Object o = ijs.GetObject(id) ;
+		Object ret = null ;
+		try {
+			InlineJavaHandle.close(o) ;
+		}
+		catch (java.io.IOException e){
+			ret = new InlineJavaThrown(e) ;
+		}
+
+		SetResponse(ret) ;
 	}
 
 
@@ -661,14 +769,21 @@ class InlineJavaProtocol {
 				// Here we need to register the object in order to send
 				// it back to the Perl script.
 				boolean thrown = false ;
+				String type = "object" ;
 				if (o instanceof InlineJavaThrown){ 
 					thrown = true ;
 					o = ((InlineJavaThrown)o).GetThrowable() ;
 					c = o.getClass() ;
 				}
+				else if (ijc.ClassIsArray(c)){
+					type = "array" ;
+				}
+				else if (ijc.ClassIsHandle(c)){
+					type = "handle" ;
+				}
 				int id = ijs.PutObject(o) ;
 
-				return "java_object:" + (thrown ? "1" : "0") + ":" + String.valueOf(id) +
+				return "java_" + type + ":" + (thrown ? "1" : "0") + ":" + String.valueOf(id) +
 					":" + c.getName() ;
 			}
 			else {
@@ -680,30 +795,12 @@ class InlineJavaProtocol {
 
 
 	String Decode(String s){
-		StringTokenizer st = new StringTokenizer(s, ".") ;
-		StringBuffer sb = new StringBuffer() ;
-		while (st.hasMoreTokens()){
-			String ss = st.nextToken() ; 
-			char c = (char)Integer.parseInt(ss) ;
-			sb.append(new String(new char [] {c})) ;
-		}
-	
-		return sb.toString() ;
+		return new String(InlineJavaUtils.DecodeBase64(s.toCharArray())) ;
 	}
 
 
 	String Encode(String s){
-		char c[] = new char[s.length()] ;
-		s.getChars(0, c.length, c, 0) ;
-		StringBuffer sb = new StringBuffer() ;
-		for (int i = 0 ; i < c.length ; i++){
-			if (i > 0){
-				sb.append(".") ;
-			}
-			sb.append((int)c[i]) ;
-		}
-
-		return sb.toString() ;
+		return new String(InlineJavaUtils.EncodeBase64(s.getBytes())) ;
 	}
 
 

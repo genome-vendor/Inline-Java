@@ -66,9 +66,12 @@ second time you test loading of an already built module.
 -------------------------------------------------------------------------------
 FEATURES FOR THIS VERSION:
 
-Inline::Java version 0.50 is a minor upgrade that includes:
-    - Added HOST configuration option to access JVM server remotely
-    - Fixed bug with paths in Cygwin
+Inline::Java version 0.51 is a major upgrade that includes:
+    - Several major speed optimizations
+	- Introduction of support for I/O mapping between Perl and Java
+    - Applied patches by Andrew Bruno and Tim Bunce for MAC OSX
+	- JNI fix for system property passing 
+        (thanks to Brian Gugliemetti and Jason Stelzer)
     - Other minor bug fixes
 
 See CHANGES for a full change list.
