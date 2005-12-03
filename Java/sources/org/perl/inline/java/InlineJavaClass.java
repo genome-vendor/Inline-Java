@@ -149,7 +149,18 @@ class InlineJavaClass {
 					throw new InlineJavaCastException("Can't convert " + arg + " to " + ap.getName()) ;
 				}
 			}
-			else{
+			else if (type.equals("double")){
+				String arg = ijp.Decode((String)tokens.get(1)) ;
+				// We have native double bytes in arg.
+				long l = 0 ;
+				char c[] = arg.toCharArray() ;
+				for (int i = 0 ; i < 8 ; i++){
+					l += (((long)c[i]) << (8 * i)) ;
+				}
+				double d = Double.longBitsToDouble(l) ;
+				ret = new Double(d) ;
+			}
+			else {
 				throw new InlineJavaCastException("Can't convert reference to " + p.getName()) ;
 			}
 		}
@@ -372,6 +383,21 @@ class InlineJavaClass {
 	}
 	static boolean ClassIsNumeric (Class p){
 		return (numeric_classes.get(p) != null) ;
+	}
+
+
+	static private HashMap double_classes = new HashMap() ;
+	static {
+		Class [] list = {
+			java.lang.Double.class,
+			double.class,
+		} ;
+		for (int i = 0 ; i < list.length ; i++){
+			double_classes.put(list[i], new Boolean(true)) ;
+		}
+	}
+	static boolean ClassIsDouble (Class p){
+		return (double_classes.get(p) != null) ;
 	}
 
 

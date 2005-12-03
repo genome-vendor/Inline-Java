@@ -305,6 +305,18 @@ package instead of under the current (caller) package.
 
    Ex: PACKAGE => 'main'
 
+=item NATIVE_DOUBLES
+
+Normally, C<Inline::Java> stringifies floating point numbers when passing 
+them between Perl and Java. In certain cases, this can lead to loss of
+precision. When NATIVE_DOUBLES is set, C<Inline::Java> will send the actual
+double bytes in order to preserve precision. 
+Note: This applies only to doubles, not floats.
+Note: This option may not be portable and may not work properly on some
+platforms.
+
+   Ex: NATIVE_DOUBLES => 1
+
 =back 
 
 

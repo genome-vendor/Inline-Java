@@ -1,11 +1,9 @@
 CODE:
 - Finish PerlInterpreter test suite
-- Send doubles and floats bytes instead of string representation to preserve precision. If that
-  doesn't work, use sprintf with a user configurable precision.
-
+- Finish PerlHandle stuff and document
 
 DOCUMENTATION:
-- Document InlineJavaPerlObject
+- Document InlineJavaPerlObject when finished
 
 TEST:
 - Alpha

@@ -19,10 +19,10 @@ class InlineJavaServerThread extends Thread {
 		ijs = _ijs ;
 		ijucl = _ijucl ;
 
-		br = new BufferedReader(
-			new InputStreamReader(client.getInputStream())) ;
-		bw = new BufferedWriter(
-			new OutputStreamWriter(client.getOutputStream())) ;
+		InputStreamReader ir = new InputStreamReader(client.getInputStream()) ;
+		OutputStreamWriter or = new OutputStreamWriter(client.getOutputStream()) ;
+		br = new BufferedReader(ir) ;
+		bw = new BufferedWriter(or) ;
 	}
 
 
@@ -35,7 +35,7 @@ class InlineJavaServerThread extends Thread {
 		return bw ;
 	}
 
-
+	
 	InlineJavaUserClassLoader GetUserClassLoader(){
 		return ijucl ;
 	}

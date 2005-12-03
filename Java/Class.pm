@@ -3,7 +3,7 @@ package Inline::Java::Class ;
 use strict ;
 use Carp ;
 
-$Inline::Java::Class::VERSION = '0.50_90' ;
+$Inline::Java::Class::VERSION = '0.50_91' ;
 
 $Inline::Java::Class::MAX_SCORE = 10 ;
 
@@ -73,6 +73,12 @@ my %numeric_classes = map {($_ => 1)} qw(
 	int
 	long
 	float
+	double
+) ;
+
+
+my %double_classes = map {($_ => 1)} qw(
+	java.lang.Double
 	double
 ) ;
 
@@ -176,7 +182,7 @@ sub CastArgument {
 			# They will wrapped on the Java side.
 			if (UNIVERSAL::isa($arg, "ARRAY")){
 				if (! UNIVERSAL::isa($arg, "Inline::Java::Array")){
-					my $an = Inline::Java::Array::Normalizer->new($array_type || $proto, $arg) ;
+					my $an = Inline::Java::Array::Normalizer->new($inline, $array_type || $proto, $arg) ;
 					$array_score = $an->{score} ;
 					my $flat = $an->FlattenArray() ; 
 
@@ -229,11 +235,18 @@ sub CastArgument {
 					((! defined($max))||($arg <= $max))){
 					# number is a pretty precise match, but it's still
 					# guessing amongst the numeric types
-					return ($arg, 5.5) ;
+					my $points = 5.5 ;
+					if (($inline->get_java_config('NATIVE_DOUBLES'))&&(ClassIsDouble($proto))){
+						# We want to send the actual double bytes to Java
+						my $bytes = pack("d", $arg) ;
+						$arg = bless(\$bytes, 'Inline::Java::double') ;
+						return ($arg, $points) ;
+					}
+					else {
+						return ($arg, $points) ;
+					}
 				}
 				croak "$arg out of range for type $proto" ;
-			}
-			elsif ($arg =~ /$FLOAT_RE/){
 			}
 			croak "Can't convert $arg to $proto" ;
 		}
@@ -374,6 +387,13 @@ sub ClassIsNumeric {
 	my $class = shift ;
 
 	return $numeric_classes{$class} ;
+}
+
+
+sub ClassIsDouble {
+	my $class = shift ;
+
+	return $double_classes{$class} ;
 }
 
 

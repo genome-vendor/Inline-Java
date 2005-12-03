@@ -6,9 +6,9 @@ package Inline::Java ;
 
 
 use strict ;
-require 5.006 ;
+require 5.008 ;
 
-$Inline::Java::VERSION = '0.50_90' ;
+$Inline::Java::VERSION = '0.50_91' ;
 
 
 # DEBUG is set via the DEBUG config
@@ -144,6 +144,7 @@ sub validate {
 	$o->set_option('START_JVM',				1,				'b', 1, \%opts) ;
 	$o->set_option('JNI',					0,				'b', 1, \%opts) ;
 	$o->set_option('EMBEDDED_JNI',			0,				'b', 1, \%opts) ;
+	$o->set_option('NATIVE_DOUBLES',		0,				'b', 1, \%opts) ;
 
 	$o->set_option('WARN_METHOD_SELECT',	0,				'b', 1, \%opts) ;
 	$o->set_option('STUDY',					undef,			'a', 0, \%opts) ;

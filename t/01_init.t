@@ -18,6 +18,7 @@ my $ij = $types1::INLINE ;
 $ij = $types1::INLINE ; # Stupid warning...
 my $jdk = $ij->get_java_config("J2SDK") ;
 my $ver = types1->version() ;
+
 print STDERR "\nPerl version is $]\n" ;
 print STDERR "Inline version is $Inline::VERSION\n" ;
 print STDERR "Inline::Java version is $Inline::Java::VERSION\n" ;

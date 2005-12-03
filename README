@@ -68,9 +68,9 @@ FEATURES FOR THIS VERSION:
 
 Inline::Java version 0.51 is a major upgrade that includes:
     - Several major speed optimizations
-	- Introduction of support for I/O mapping between Perl and Java
+    - Introduction of support for I/O mapping between Perl and Java
     - Applied patches by Andrew Bruno and Tim Bunce for MAC OSX
-	- JNI fix for system property passing 
+    - JNI fix for system property passing 
         (thanks to Brian Gugliemetti and Jason Stelzer)
     - Other minor bug fixes
 

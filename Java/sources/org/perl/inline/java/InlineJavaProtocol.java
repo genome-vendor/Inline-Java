@@ -16,6 +16,8 @@ class InlineJavaProtocol {
 	private String cmd ;
 	private String response = null ;
 
+	private String encoding = "UTF-8" ;
+
 	static private HashMap member_cache = new HashMap() ;
 	static private String report_version = "V2" ;
 
@@ -758,7 +760,18 @@ class InlineJavaProtocol {
 			return "undef:" ;
 		}
 		else if ((ijc.ClassIsNumeric(c))||(ijc.ClassIsChar(c))||(ijc.ClassIsString(c))){
-			return "scalar:" + Encode(o.toString()) ;
+			if ((ijs.GetNativeDoubles())&&(ijc.ClassIsDouble(c))){
+				Double d = (Double)o ;
+				long l = Double.doubleToLongBits(d.doubleValue()) ;
+				char ca[] = new char[8] ;
+				for (int i = 0 ; i < 8 ; i++){
+					ca[i] = (char)((l >> (8 * i)) & 0xFF) ;
+				}
+				return "double:" + Encode(new String(ca)) ;
+			}
+			else {
+				return "scalar:" + Encode(o.toString()) ;
+			}
 		}
 		else if (ijc.ClassIsBool(c)){
 			String b = o.toString() ;
@@ -794,13 +807,43 @@ class InlineJavaProtocol {
 	}
 
 
-	String Decode(String s){
-		return new String(InlineJavaUtils.DecodeBase64(s.toCharArray())) ;
+	byte[] DecodeToByteArray(String s){
+		return InlineJavaUtils.DecodeBase64(s.toCharArray()) ;
 	}
 
 
-	String Encode(String s){
-		return new String(InlineJavaUtils.EncodeBase64(s.getBytes())) ;
+	String Decode(String s) throws InlineJavaException {
+		try {
+			if (encoding != null){
+				return new String(DecodeToByteArray(s), encoding) ;
+			}
+			else {
+				return new String(DecodeToByteArray(s)) ;
+			}
+		}
+		catch (UnsupportedEncodingException e){
+			throw new InlineJavaException("Unsupported encoding: " + e.getMessage()) ;
+		}
+	}
+
+
+	String EncodeFromByteArray(byte bytes[]){
+		return new String(InlineJavaUtils.EncodeBase64(bytes)) ;
+	}
+
+
+	String Encode(String s) throws InlineJavaException {
+		try {
+			if (encoding != null){
+				return EncodeFromByteArray(s.getBytes(encoding)) ;
+			}
+			else {
+				return EncodeFromByteArray(s.getBytes()) ;
+			}
+		}
+		catch (UnsupportedEncodingException e){
+			throw new InlineJavaException("Unsupported encoding: " + e.getMessage()) ;
+		}
 	}
 
 

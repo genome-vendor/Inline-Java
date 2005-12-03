@@ -72,6 +72,8 @@ t/10_6_shared_sim.t
 t/11_exceptions.t
 t/12_1_callbacks.t
 t/13_handles.t
+t/14_encoding.t
+t/15_native_doubles.t
 t/99_end.t
 t/types.java
 t/types.class

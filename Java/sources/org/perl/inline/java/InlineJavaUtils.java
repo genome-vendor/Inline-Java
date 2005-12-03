@@ -58,7 +58,7 @@ class InlineJavaUtils {
 
 	/* 
 		Base64 stuff. This section conatins code by Christian d'Heureuse that is
-		licended under the GPL. Used by permission:
+		licended under the LGPL. Used by permission:
 
 		From: Christian d'Heureuse <chdh@inventec.ch>
 		To: Patrick LeBoutillier <patrick.leboutillier@gmail.com>

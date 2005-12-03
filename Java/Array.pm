@@ -4,7 +4,7 @@ package Inline::Java::Array ;
 use strict ;
 use Carp ;
 
-$Inline::Java::Array::VERSION = '0.50_90' ;
+$Inline::Java::Array::VERSION = '0.50_91' ;
 
 # Here we store as keys the knots and as values our blessed objects
 my $OBJECTS = {} ;
@@ -109,7 +109,7 @@ sub __set_element {
 	# the array.
 	my $java_class = $obj->__get_private()->{java_class} ;
 	my $elem_class = $java_class ;
-	my $an = Inline::Java::Array::Normalizer->new($java_class) ;
+	my $an = Inline::Java::Array::Normalizer->new($obj->__get_private()->{inline}, $java_class) ;
 	if ($an->{req_nb_dim} > 1){
 		$elem_class =~ s/^\[// ;
 	}
@@ -293,6 +293,7 @@ use Carp ;
 
 sub new {
 	my $class = shift ;
+	my $inline = shift ;
 	my $java_class = shift ;
 	my $ref = shift ;
 
@@ -307,6 +308,7 @@ sub new {
 	$this->{ref} = $ref ;
 	$this->{array} = [] ;
 	$this->{score} = 0 ;
+	$this->{inline} = $inline ;
 	
 	bless ($this, $class) ;
 
@@ -339,6 +341,7 @@ sub InitFromArray {
 
 sub InitFromFlat {
 	my $this = shift ;
+	my $inline = shift ;
 	my $dims = shift ;
 	my $list = shift ;
 	my $level = shift ;
@@ -370,8 +373,8 @@ sub InitFromFlat {
 
 			my @dims = @{$dims} ;
 			shift @dims ;
-			my $obj = Inline::Java::Array::Normalizer->new($java_class) ;
-			$obj->InitFromFlat(\@dims, \@sub, $level + 1) ;
+			my $obj = Inline::Java::Array::Normalizer->new($inline, $java_class) ;
+			$obj->InitFromFlat($inline, \@dims, \@sub, $level + 1) ;
 			$elem = $obj->{array} ;
 		}
 		my $nb = scalar(@{$this->{array}}) ;
@@ -537,7 +540,7 @@ sub CastArrayArgument {
 
 	my $element_class = $this->{req_element_class} ;
 
-	my ($new_arg, $score) = Inline::Java::Class::CastArgument($arg, $element_class) ;
+	my ($new_arg, $score) = Inline::Java::Class::CastArgument($arg, $element_class, $this->{inline}) ;
 
 	return ($new_arg, $score) ;
 }
