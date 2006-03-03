@@ -135,7 +135,7 @@ InlineJavaJNIVM *
 new(CLASS, classpath, args, embedded, debug, native_doubles)
 	char * CLASS
 	char * classpath
-	AV * args
+	SV * args
 	int	embedded
 	int	debug
 	int	native_doubles
@@ -153,6 +153,7 @@ new(CLASS, classpath, args, embedded, debug, native_doubles)
 	STRLEN n_a ;
 
     CODE:
+	args = SvRV(args) ;
 	RETVAL = (InlineJavaJNIVM *)safemalloc(sizeof(InlineJavaJNIVM)) ;
 	if (RETVAL == NULL){
 		croak("Can't create InlineJavaJNIVM") ;
@@ -164,7 +165,7 @@ new(CLASS, classpath, args, embedded, debug, native_doubles)
 	RETVAL->destroyed = 0 ;
 
 	/* Figure out the length of the  args array */
-	args_len = av_len(args) + 1 ;
+	args_len = av_len((AV *)args) + 1 ;
 	vm_args.version = JNI_VERSION_1_2 ;
 	
 	options = (JavaVMOption *)malloc((2 + args_len) * sizeof(JavaVMOption)) ;
@@ -179,7 +180,7 @@ new(CLASS, classpath, args, embedded, debug, native_doubles)
 	options[vm_args.nOptions++].optionString = cp ;
 
 	for (i = 0 ; i < args_len ; i++){
-		val = av_fetch(args, i, 0) ;
+		val = av_fetch((AV *)args, i, 0) ;
 		if (val != NULL){
 			options[vm_args.nOptions++].optionString = SvPV(*val, n_a) ;
 		}

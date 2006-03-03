@@ -56,6 +56,7 @@ Java/PerlInterpreter/t/02_perl_interpreter.t
 Java/PerlInterpreter/t/Tests.pl
 t/01_init.t
 t/02_primitives.t
+t/02_primitives_1_4.t
 t/03_objects.t
 t/04_members.t
 t/05_arrays.t

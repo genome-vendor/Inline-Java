@@ -1,14 +1,17 @@
 Revision history for Perl extension Inline::Java
 ------------------------------------------------
 0.51
-    - Inline::Java now requires Perl 5.8.0 or greater.
     - Several major speed optimizations.
     - Introduction of support for I/O mapping between Perl and Java (Inline::Java::Handle)
     - Applied patches by Andrew Bruno and Tim Bunce for MAC OSX
     - JNI fix for system property passing
         (thanks to Brian Gugliemetti and Jason Stelzer)
     - Added NATIVE_DOUBLES configuration option to avoid loss of precision
-      whne passing double values between Perl and Java
+      when passing double values between Perl and Java
+    - New interface for processing callbacks from java to perl.
+    - Added support for java.lang.CharSequence as a primitive type. Any
+      Perl scalar passed as a java.lang.CharSequence will instantiate
+      a java.lang.String on the Java side
     - Other minor bug fixes
 
 0.50  Mon Jan 31 20:14:43 EST 2005

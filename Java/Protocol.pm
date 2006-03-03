@@ -5,10 +5,12 @@ use Inline::Java::Object ;
 use Inline::Java::Array ;
 use Carp ;
 use MIME::Base64 ;
-use Encode () ;
+BEGIN {
+	eval "require Encode" ;
+}
 
 
-$Inline::Java::Protocol::VERSION = '0.50_91' ;
+$Inline::Java::Protocol::VERSION = '0.50_92' ;
 
 my %CLASSPATH_ENTRIES = () ;
 
@@ -560,7 +562,14 @@ sub encode {
 	my $s = shift ;
 
 	# Get UTF-8 byte representation of the data.
-	my $bytes = Encode::encode_utf8($s) ;
+	my $bytes = undef ;
+	if ($INC{'Encode.pm'}){
+		$bytes = Encode::encode_utf8($s) ;
+	}
+	else {
+		$bytes = $s ;
+		$bytes =~ s/([\x80-\xFF])/chr(0xC0|ord($1)>>6).chr(0x80|ord($1)&0x3F)/eg ;
+	}
 
 	# Base-64 encode it.
 	my $base64 = encode_base64($bytes, '') ;
@@ -576,7 +585,15 @@ sub decode {
 	my $bytes = decode_base64($s) ;
 
 	# Take the UTF-8 encoding and convert it back to logical characters.
-	my $string = Encode::decode_utf8($bytes) ;
+	my $string = undef ;
+	if ($INC{'Encode.pm'}){
+		$string = Encode::decode_utf8($bytes) ;
+	}
+	else {
+		$string = $bytes ;
+		$string =~ s/([\xC2\xC3])([\x80-\xBF])/chr(ord($1)<<6&0xC0|ord($2)&0x3F)/eg ;
+	}
+
 	if (utf8->can('downgrade')){
 		utf8::downgrade($string, 1) ;
 	}

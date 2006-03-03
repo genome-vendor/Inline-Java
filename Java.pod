@@ -613,6 +613,45 @@ $@ is reset by the next eval.
    Z<>
 
 
+=head1 FILEHANDLES
+
+Java filehandles (java.io.Reader, java.io.Writer, java.io.InputStream or
+java.io.OutputStream objects) can be wrapped the C<Inline::Java::Handle>
+class to allow reading or writing from Perl. Here's an example:
+
+=for comment
+
+   use Inline Java => <<'END' ;
+      import java.io.* ;
+
+      class Pod_91 {
+         public static Reader getReader(String file) throws FileNotFoundException {
+           return new FileReader(file) ;
+         }
+      }
+   END
+
+    my $o = Pod_91->getReader('data.txt') ;
+    my $h = new Inline::Java::Handle($o) ;
+    while (<$h>){
+      chomp($_) ;
+      print($_ . "\n") ; # prints data
+    }
+
+
+=for comment
+
+What's important to understand is that $@ actually contains a reference
+to the Throwable object that was thrown by Java. The getMessage() function
+is really a method of the java.lang.Exception class. So if Java is throwing
+a custom exception you have in your code, you will have access to that
+exception object's public methods just like any other Java object in
+C<Inline::Java>. It is also probably a good idea to undef $@ once you have
+treated a Java exception, or else the object still has a reference until
+$@ is reset by the next eval.
+   Z<>
+
+
 =head1 CALLBACKS
 
 See L<Inline::Java::Callbacks> for more information on making callbacks.
@@ -955,7 +994,7 @@ the SHARED_JVM server in a CGI.
 
 Here is an example of how to use C<Inline::Java> under mod_perl:
 
-   use Apache::Constants ;
+   use Apache2::Const qw(:common) ;
    use Inline (
       Java => <<'END',
          class Pod_counter {
@@ -980,7 +1019,7 @@ Here is an example of how to use C<Inline::Java> under mod_perl:
          "This page has been accessed " . $c->{cnt} . " times." .
          $q->end_html() ;
 
-      return Apache::Constants::OK() ;
+      return OK ;
    }
 
 See USING Inline::Java IN A CGI for more details.

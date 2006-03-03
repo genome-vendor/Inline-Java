@@ -3,6 +3,7 @@ CODE:
 - Finish PerlHandle stuff and document
 
 DOCUMENTATION:
+- Document new Callback Interface
 - Document InlineJavaPerlObject when finished
 
 TEST:

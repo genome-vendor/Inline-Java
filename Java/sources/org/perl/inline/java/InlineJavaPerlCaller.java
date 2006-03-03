@@ -143,7 +143,7 @@ public class InlineJavaPerlCaller {
 			ijc.Process() ;
 			return ijc.GetResponse() ;
 		}
-		else{
+		else {
 			// Enqueue the callback into the creator thread's queue and notify it
 			// that there is some work for him.
 			ijc.ClearResponse() ;
@@ -158,24 +158,68 @@ public class InlineJavaPerlCaller {
 	}
 
 
+	public void OpenCallbackStream() throws InlineJavaException {
+		Thread t = Thread.currentThread() ;
+		if (! ijs.IsThreadPerlContact(t)){
+			throw new InlineJavaException("InlineJavaPerlCaller.OpenCallbackStream() can only be called by threads that communicate directly with Perl") ;
+		}
+
+		InlineJavaCallbackQueue q = GetQueue(t) ;
+		q.OpenCallbackStream() ;
+	}
+
+
+	/* 
+		Blocks until either a callback arrives, timeout seconds has passed or the call is 
+		interrupted by Interrupt?
+	*/
+	public int WaitForCallback(double timeout) throws InlineJavaException {
+		Thread t = Thread.currentThread() ;
+		if (! ijs.IsThreadPerlContact(t)){
+			throw new InlineJavaException("InlineJavaPerlCaller.WaitForCallback() can only be called by threads that communicate directly with Perl") ;
+		}
+
+		InlineJavaCallbackQueue q = GetQueue(t) ;
+		if (timeout == 0.0){
+			// no wait
+			return q.GetSize() ;
+		}
+		else if (timeout == -1.0){
+			timeout = 0.0 ;
+		}
+
+		return q.WaitForCallback(timeout) ;
+	}
+
+
+	public boolean ProcessNextCallback() throws InlineJavaException, InlineJavaPerlException {
+		Thread t = Thread.currentThread() ;
+		if (! ijs.IsThreadPerlContact(t)){
+			throw new InlineJavaException("InlineJavaPerlCaller.ProcessNextCallback() can only be called by threads that communicate directly with Perl") ;
+		}
+
+		InlineJavaCallbackQueue q = GetQueue(t) ;
+		return q.ProcessNextCallback() ;
+	}
+
+
+	public void CloseCallbackStream() throws InlineJavaException {
+		InlineJavaCallbackQueue q = GetQueue(creator) ;
+		q.CloseCallbackStream() ;
+	}
+
+
 	public void StartCallbackLoop() throws InlineJavaException, InlineJavaPerlException {
 		Thread t = Thread.currentThread() ;
 		if (! ijs.IsThreadPerlContact(t)){
 			throw new InlineJavaException("InlineJavaPerlCaller.StartCallbackLoop() can only be called by threads that communicate directly with Perl") ;
 		}
-
+	
 		InlineJavaCallbackQueue q = GetQueue(t) ;
-		q.StartLoop() ;
-		while (! q.IsLoopStopped()){
-			InlineJavaUtils.debug(3, "waiting for callback request in " + t.getName() + "...") ;
-			InlineJavaCallback ijc = q.WaitForCallback() ;
-			InlineJavaUtils.debug(3, "waiting for callback request finished " + t.getName() + "...") ;
-			InlineJavaUtils.debug(3, "processing callback request in " + t.getName() + "...") ;
-			// The callback object can be null if the wait() is interrupted by StopCallbackLoop
-			if (ijc != null){	
-				ijc.Process() ;
-				ijc.NotifyOfResponse(t) ;
-			}
+		InlineJavaUtils.debug(3, "starting callback loop for " + creator.getName() + " in " + t.getName()) ;
+		q.OpenCallbackStream() ;
+		while (q.IsStreamOpen()){
+			q.ProcessNextCallback() ;
 		}
 	}
 
@@ -183,8 +227,8 @@ public class InlineJavaPerlCaller {
 	public void StopCallbackLoop() throws InlineJavaException {
 		Thread t = Thread.currentThread() ;
 		InlineJavaCallbackQueue q = GetQueue(creator) ;
-		InlineJavaUtils.debug(3, "interrupting callback loop for " + creator.getName() + " in " + t.getName()) ;
-		q.StopLoop() ;
+		InlineJavaUtils.debug(3, "stopping callback loop for " + creator.getName() + " in " + t.getName()) ;
+		q.CloseCallbackStream() ;
 	}
 
 

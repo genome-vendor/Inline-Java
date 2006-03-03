@@ -3,7 +3,7 @@ package Inline::Java::Class ;
 use strict ;
 use Carp ;
 
-$Inline::Java::Class::VERSION = '0.50_91' ;
+$Inline::Java::Class::VERSION = '0.50_92' ;
 
 $Inline::Java::Class::MAX_SCORE = 10 ;
 
@@ -85,6 +85,7 @@ my %double_classes = map {($_ => 1)} qw(
 my %string_classes = map {($_ => 1)} qw(
 	java.lang.String
 	java.lang.StringBuffer
+	java.lang.CharSequence
 ) ;
 
 my %char_classes = map {($_ => 1)} qw(

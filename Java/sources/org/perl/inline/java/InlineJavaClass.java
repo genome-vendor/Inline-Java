@@ -81,10 +81,20 @@ class InlineJavaClass {
 		}
 	}
 
+
+	static private Class ValidateClassQuiet(String name){
+		try {
+			return ValidateClass(name) ;
+		}
+		catch (InlineJavaException ije){
+			return null ;
+		}
+	}
+
 	/*
 		This is the monster method that determines how to cast arguments
 	*/
-	Object [] CastArguments (Class [] params, ArrayList args) throws InlineJavaException {
+	Object [] CastArguments(Class [] params, ArrayList args) throws InlineJavaException {
 		Object ret[] = new Object [params.length] ;
 	
 		for (int i = 0 ; i < params.length ; i++){	
@@ -103,7 +113,7 @@ class InlineJavaClass {
 	/*
 		This is the monster method that determines how to cast arguments
 	*/
-	Object CastArgument (Class p, String argument) throws InlineJavaException {
+	Object CastArgument(Class p, String argument) throws InlineJavaException {
 		Object ret = null ;
 	
 		ArrayList tokens = new ArrayList() ;
@@ -124,6 +134,10 @@ class InlineJavaClass {
 			if (ap == java.lang.Number.class){
 				InlineJavaUtils.debug(4, "specializing java.lang.Number to java.lang.Double") ;
 				ap = java.lang.Double.class ;
+			}
+			else if (ap.getName().equals("java.lang.CharSequence")){
+				InlineJavaUtils.debug(4, "specializing java.lang.CharSequence to java.lang.String") ;
+				ap = java.lang.String.class ;
 			}
 
 			if (type.equals("undef")){
@@ -406,9 +420,11 @@ class InlineJavaClass {
 	*/
 	static private HashMap string_classes = new HashMap() ;
 	static {
+		Class csq = ValidateClassQuiet("java.lang.CharSequence") ;
 		Class [] list = {
 			java.lang.String.class,
 			java.lang.StringBuffer.class,
+			csq
 		} ;
 		for (int i = 0 ; i < list.length ; i++){
 			string_classes.put(list[i], new Boolean(true)) ;

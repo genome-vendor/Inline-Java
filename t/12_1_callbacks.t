@@ -14,7 +14,7 @@ use Inline::Java qw(caught) ;
 
 
 BEGIN {
-	my $cnt = 25 ;
+	my $cnt = 37 ;
 	plan(tests => $cnt) ;
 }
 
@@ -67,7 +67,7 @@ my $t = new t15() ;
 
 		ok($t->perlt()->add(5, 6), 11) ;
 
-		eval {$t->perldummy()} ; ok($@, qr/Can't propagate non-/) ;
+		eval {$t->perldummy()} ; ok($@, qr/Can't propagate non-/) ; #'
 
 		$t->mtc_callbacks(20) ;
 		$t->StartCallbackLoop() ;
@@ -83,6 +83,24 @@ my $t = new t15() ;
 		$t->mtc_callbacks2(20) ;
 		$t->StartCallbackLoop() ;
 		ok($mtc_cnt, 20) ;
+
+		$mtc_cnt = 0 ;
+		$mtc_mode = 2 ;
+		$t->mtc_callbacks2(20) ;
+		$t->OpenCallbackStream() ;
+		while (($mtc_cnt < 20)&&($t->WaitForCallback(-1) > 0)){
+			$t->ProcessNextCallback() ;
+		}
+		ok($mtc_cnt, 20) ;
+
+		$mtc_cnt = 0 ;
+		$mtc_mode = 2 ;
+		$t->mtc_callbacks2(10) ;
+		while ($t->WaitForCallback(3.1416) > 0){
+			ok($t->WaitForCallback(0) >= 1) ;
+			$t->ProcessNextCallback() ;
+		}
+		ok($mtc_cnt, 10) ;
 
 		# Unfortunately we can't test this because the Thread.run method doesn't allow us
 		# to throw any exceptions...
@@ -188,10 +206,10 @@ sub mt_callback {
 	my $pc = shift ;
 	$mtc_cnt++ ;
 	if ($mtc_cnt >= 20){
-		if (! $mtc_mode){
+		if ($mtc_mode == 0){
 			$pc->StopCallbackLoop() ;
 		}
-		else{
+		elsif ($mtc_mode == 1){
 			my $o = new org::perl::inline::java::InlineJavaPerlCaller() ;
 			$o->StopCallbackLoop() ;
 		}

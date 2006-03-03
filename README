@@ -72,6 +72,12 @@ Inline::Java version 0.51 is a major upgrade that includes:
     - Applied patches by Andrew Bruno and Tim Bunce for MAC OSX
     - JNI fix for system property passing 
         (thanks to Brian Gugliemetti and Jason Stelzer)
+    - Added NATIVE_DOUBLES configuration option to avoid loss of precision
+      when passing double values between Perl and Java
+    - New interface for processing callbacks from java to perl.
+    - Added support for java.lang.CharSequence as a primitive type. Any
+      Perl scalar passed as a java.lang.CharSequence will instantiate
+      a java.lang.String on the Java side
     - Other minor bug fixes
 
 See CHANGES for a full change list.

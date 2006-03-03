@@ -130,11 +130,11 @@ my $t = new types2() ;
 	ok($t->_char(undef), "\0") ;
 	ok($t->_char(0), "0") ;
 	ok($t->_char("1"), '1') ;
-	eval {$t->_char("10")} ; ok($@, qr/Can't convert/) ;
+	eval {$t->_char("10")} ; ok($@, qr/Can't convert/) ; #'
 	ok($t->_Character(undef), "\0") ;
 	ok($t->_Character(0), "0") ;
 	ok($t->_Character("1"), '1') ;
-	eval {$t->_Character("10")} ; ok($@, qr/Can't convert/) ;
+	eval {$t->_Character("10")} ; ok($@, qr/Can't convert/) ; #'
 	
 	ok($t->_String(undef), undef) ;
 	ok($t->_String(0), "0") ;
@@ -146,7 +146,7 @@ my $t = new types2() ;
 	ok($t->_StringBuffer(undef), undef) ;
 	ok($t->_StringBuffer(0), "0") ;
 	ok($t->_StringBuffer("stringbuffer"), 'stringbuffer') ;
-	
+
 	# Test if scalars can pass as java.lang.Object.
 	# They should be converted to strings.
 	ok($t->_Object(undef), undef) ;
