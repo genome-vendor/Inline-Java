@@ -157,6 +157,18 @@ Note: This configuration option only has an effect on the first
 'use Inline Java' call inside a Perl script, since all other calls
 make use of the same JVM.
 
+=item BIND
+
+Specifies the IP address on which the JVM server will be listening. By 
+default the JVM server listens for connections on 'localhost' only.
+
+   Ex: BIND => '192.168.1.1'
+   Ex: BIND => '0.0.0.0'
+
+Note: This configuration option only has an effect on the first
+'use Inline Java' call inside a Perl script, since all other calls
+make use of the same JVM.
+
 =item STARTUP_DELAY
 
 Specifies the maximum number of seconds that the Perl script
@@ -607,9 +619,12 @@ to the Throwable object that was thrown by Java. The getMessage() function
 is really a method of the java.lang.Exception class. So if Java is throwing
 a custom exception you have in your code, you will have access to that
 exception object's public methods just like any other Java object in
-C<Inline::Java>. It is also probably a good idea to undef $@ once you have
-treated a Java exception, or else the object still has a reference until
-$@ is reset by the next eval.
+C<Inline::Java>. 
+Note: C<Inline::Java> uses eval under the hood, so it recommended that you
+store any exception in a temporary variable before processing it, especially
+f you will be calling other C<Inline::Java> functions. It is also probably 
+a good idea to undef $@ once you have treated a Java exception, or else 
+the object still has a reference until $@ is reset by the next eval.
    Z<>
 
 
@@ -1023,6 +1038,11 @@ Here is an example of how to use C<Inline::Java> under mod_perl:
    }
 
 See USING Inline::Java IN A CGI for more details.
+
+If you are using L<ModPerl::Registry>, make sure to use the C<PACKAGE>
+configuration option to specifiy the package in which C<Inline::Java>
+should bind the Java code, since L<ModPerl::Registry> will place your
+code in a package with a unpredictable name.
 
 See the BUGS AND DEFICIENCIES section if you have problems starting 
 the SHARED_JVM server under MOD_PERL.

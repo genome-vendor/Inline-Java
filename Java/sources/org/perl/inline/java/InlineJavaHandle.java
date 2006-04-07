@@ -6,7 +6,7 @@ import java.io.* ;
 
 
 public class InlineJavaHandle {
-	private static String charset = "ISO-8859-1" ;
+	private static final String charset = "ISO-8859-1" ;
 
 
 	static String read(Object o, int len) throws InlineJavaException, IOException {

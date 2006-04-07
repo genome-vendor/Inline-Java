@@ -337,10 +337,10 @@ example:
 
    my $b = new Pod_Button() ;  
    $b->OpenCallbackStream() ;
-   while ((my $rc = $t->WaitForCallback(5)) > -1){
+   while ((my $rc = $b->WaitForCallback(5)) > -1){
       if ($rc > 0){
          # A callback is pending, we must process it.
-         $t->ProcessNextCallback() ;
+         $b->ProcessNextCallback() ;
       }
       else {
          # A timeout has occured after, in this case, 5 secs.

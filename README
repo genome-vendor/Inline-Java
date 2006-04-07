@@ -67,10 +67,10 @@ second time you test loading of an already built module.
 FEATURES FOR THIS VERSION:
 
 Inline::Java version 0.51 is a major upgrade that includes:
-    - Several major speed optimizations
-    - Introduction of support for I/O mapping between Perl and Java
+    - Several major speed optimizations.
+    - Introduction of support for I/O mapping between Perl and Java (Inline::Java::Handle)
     - Applied patches by Andrew Bruno and Tim Bunce for MAC OSX
-    - JNI fix for system property passing 
+    - JNI fix for system property passing
         (thanks to Brian Gugliemetti and Jason Stelzer)
     - Added NATIVE_DOUBLES configuration option to avoid loss of precision
       when passing double values between Perl and Java
@@ -78,6 +78,10 @@ Inline::Java version 0.51 is a major upgrade that includes:
     - Added support for java.lang.CharSequence as a primitive type. Any
       Perl scalar passed as a java.lang.CharSequence will instantiate
       a java.lang.String on the Java side
+    - Added BUILD_JNI, BUILD_PERL_NATIVES, BUILD_PERL_INTERPRETER and JVM_LIB_TYPE build
+      configuration options to help with automated builds
+    - Added BIND configuration option. See docs for details.
+      Note: The Java JVM server noe listens on localhost by default (instead of 0.0.0.0).
     - Other minor bug fixes
 
 See CHANGES for a full change list.

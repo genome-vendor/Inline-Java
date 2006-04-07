@@ -8,7 +8,7 @@ package Inline::Java ;
 use strict ;
 require 5.006 ;
 
-$Inline::Java::VERSION = '0.50_92' ;
+$Inline::Java::VERSION = '0.50_93' ;
 
 
 # DEBUG is set via the DEBUG config
@@ -137,6 +137,7 @@ sub validate {
 	$o->set_option('J2SDK',					$jdk,			's', 1, \%opts) ;
 	$o->set_option('CLASSPATH',				'',				's', 1, \%opts) ;
 
+	$o->set_option('BIND',					'localhost',	's', 1, \%opts) ;
 	$o->set_option('HOST',					'localhost',	's', 1, \%opts) ;
 	$o->set_option('PORT',					-1,				'i', 1, \%opts) ;
 	$o->set_option('STARTUP_DELAY',			15,				'i', 1, \%opts) ;

@@ -45,7 +45,7 @@ public class InlineJavaPerlInterpreter extends InlineJavaPerlCaller {
 			// Here we create a temporary InlineJavaServer instance in order to be able to instanciate
 			// ourselves. When we create InlineJavaPerlInterpreter, the instance will be overriden.
 			InlineJavaUtils.debug(2, "creating temporary JNI InlineJavaServer") ;
-			InlineJavaServer.jni_main(InlineJavaUtils.debug, false) ;
+			InlineJavaServer.jni_main(InlineJavaUtils.get_debug(), false) ;
 			InlineJavaUtils.debug(2, "temporary JNI InlineJavaServer created") ;
 			InlineJavaUtils.debug(2, "creating InlineJavaPerlInterpreter") ;
 			instance = new InlineJavaPerlInterpreter() ;
@@ -98,7 +98,7 @@ public class InlineJavaPerlInterpreter extends InlineJavaPerlCaller {
 	synchronized static private native void destruct() ;
 
 
-	synchronized public void destroy() {
+	synchronized static public void destroy() {
 		if (instance != null){
 			destruct() ;
 			instance = null ;

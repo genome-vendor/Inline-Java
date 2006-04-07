@@ -4,7 +4,7 @@ class t10 {
 	public t10(){
 	}
 
-	public void incr(){
+	static synchronized public void incr(){
 		i++ ;
 	}
 }

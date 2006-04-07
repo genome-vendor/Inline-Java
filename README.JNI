@@ -99,6 +99,13 @@ that you use Perl >= 5.8.0 or do one of the following:
      % for i in `ls t/*.t` ; do perl -Mblib $i; done
 
 
+CYGWIN
+------
+I have never been able to get the JNI extension running under Cygwin (it
+won't compile). My guess is that I should be using a Linux J2SDK and not 
+a Windows one. I anybody has anything on this please let me know.
+
+
 BUILDING PERL
 -------------
 Here's how to rebuild Perl (version < 5.8.0) to get the JNI extension to 

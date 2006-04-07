@@ -16,10 +16,10 @@ class InlineJavaProtocol {
 	private String cmd ;
 	private String response = null ;
 
-	private String encoding = "UTF-8" ;
+	private final String encoding = "UTF-8" ;
 
-	static private HashMap member_cache = new HashMap() ;
-	static private String report_version = "V2" ;
+	static private Map member_cache = Collections.synchronizedMap(new HashMap()) ;
+	static private final String report_version = "V2" ;
 
 	InlineJavaProtocol(InlineJavaServer _ijs, String _cmd) {
 		ijs = _ijs ;

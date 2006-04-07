@@ -7,7 +7,7 @@ use Inline Config =>
 
 
 BEGIN {
-	plan(tests => 7) ;
+	plan(tests => 6) ;
 }
 
 
@@ -27,7 +27,7 @@ use Inline(
 		}
 	|,
 	NAME => 't09::p1',
-	EXTRA_JAVA_ARGS => '-Dprop1="c:\program files" -Dprop2=\'"\' -Dprop3=42',
+	EXTRA_JAVA_ARGS => '-Dprop1="c:\program files" -Dprop3=42',
 ) ;
 
 
@@ -62,7 +62,6 @@ my $t = new t09::p1::t09p1() ;
 {
 	ok($t->{name}, "p1") ;
 	ok($t->get_prop(1), 'c:\program files') ;
-	ok($t->get_prop(2), '"') ;
 	ok($t->get_prop(3), 42) ;
 	ok($t09::p2::t09p2::name . $t09::p3::t09p3::name, "p2p3") ;
 	ok($t09::p2::t09p2::name . $t09::p3::t09p3::name, "p2p3") ;

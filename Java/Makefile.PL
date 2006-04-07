@@ -8,10 +8,10 @@ require "Portable.pm" ;
 # The file we just produced in the parent Makefile.PL
 require "default_j2sdk.pl" ;
 
-
-# Some shortcuts while developing
-my $jdk_dir = undef ;
-my $build_jni = ($jdk_dir ? 1 : 0) ;
+my $build_jni = $main::build_jni ;
+my $build_perl_natives = $main::build_perl_natives ;
+my $build_perl_interpreter = $main::build_perl_interpreter ;
+my $jvm_lib_type = $main::jvm_lib_type ;
 
 my $jvm_lib = Inline::Java::Portable::portable('JVM_LIB') ;
 my $jvm_so = Inline::Java::Portable::portable('JVM_SO') ;
@@ -50,22 +50,26 @@ foreach my $f (@files){
 }
 
 
-print
-	"\nInline::Java can use a JNI extension that allows the Java Virtual Machine\n" .
-	"(JVM) to be dynamically linked with Perl instead of running as a separate\n" .
-	"process. The use of this extension is optional, and building it still\n" .
-	"allows Inline::Java to run the JVM in the default (separate process)\n" .
-	"fashion.\n" .
-	"Note: You need a C compiler to build the extension.\n" .
-	"Note: You must build the extension if you wish to use PerlNatives or\n" .
-	"      PerlInterpreter.\n" ;
-
 my $build_jni_by_dflt = Inline::Java::Portable::portable("BUILD_JNI_BY_DFLT") ;
-if (($build_jni || AskYN("Do you wish to build the JNI extension?", 
-	($build_jni_by_dflt ? 'y' : 'n')))){
+if (! defined($build_jni)){
+	print
+		"\nInline::Java can use a JNI extension that allows the Java Virtual Machine\n" .
+		"(JVM) to be dynamically linked with Perl instead of running as a separate\n" .
+		"process. The use of this extension is optional, and building it still\n" .
+		"allows Inline::Java to run the JVM in the default (separate process)\n" .
+		"fashion.\n" .
+		"Note: You need a C compiler to build the extension.\n" .
+		"Note: You must build the extension if you wish to use PerlNatives or\n" .
+		"      PerlInterpreter.\n" ;
+	if (AskYN("Do you wish to build the JNI extension?", 
+		($build_jni_by_dflt ? 'y' : 'n'))){
+		$build_jni = 1 ;
+	}
+}
+if ($build_jni){
 	print "\nBuilding JNI extension.\n\n" ;
 
-	$jdk_dir = Inline::Java::get_default_j2sdk() ;
+	my $jdk_dir = Inline::Java::get_default_j2sdk() ;
 
 	my $symlink = Inline::Java::Portable::portable("GOT_SYMLINK") ;
 	find(
@@ -100,8 +104,20 @@ if (($build_jni || AskYN("Do you wish to build the JNI extension?",
 		elsif ($cnt == 1){
 			$files->{$f}->{selected} = $files->{$f}->{choices}->[0] ;
 		}
-		else{
-			Choose($f) ;
+		else {
+			my $choose = 1 ;
+			if (($f eq $jvm_lib)&&(defined($jvm_lib_type))){
+				my @matches = grep {/$jvm_lib_type/} @{$files->{$f}->{choices}} ;
+				if (! scalar(@matches)){
+					print "WARNING: No $f type matching '$jvm_lib_type' found.\n\n" ;
+				}
+				elsif (scalar(@matches) == 1){
+					print "Automatically selecting '$matches[0]' for $f type.\n\n" ;
+					$files->{$f}->{selected} = $matches[0] ;
+					$choose = 0 ;
+				}
+			}
+			Choose($f) if $choose ;
 		}
 	}
 	if (! $done){
@@ -133,27 +149,37 @@ if (($build_jni || AskYN("Do you wish to build the JNI extension?",
 					"-L" . $files->{$jvm_lib}->{selected})) ;
 
 			my $DIR = [] ;
-			print <<TXT;
+			if (! defined($build_perl_natives)){
+				print <<TXT;
 The PerlNatives extension allows for callbacks to be defined as native
 Java methods. It is still EXPERIMENTAL and may not build or work properly
 on all platforms. See documentation for more details.
 Note: PerlNatives requires J2SDK 1.4 or greater.
 TXT
-			if (AskYN("Do you wish to build the PerlNatives extension?", 'n')){
+				if (AskYN("Do you wish to build the PerlNatives extension?", 'n')){
+					$build_perl_natives = 1 ;
+				}
+				print "\n" ;
+			}
+			if ($build_perl_natives){
 				push @{$DIR}, 'PerlNatives' ;
 			}
-			print "\n" ;
 
-			print <<TXT;
+			if (! defined($build_perl_interpreter)){
+				print <<TXT;
 The PerlInterpreter extension allows Inline::Java to be loaded directly from
 Java using an embedded Perl interpreter. It is still EXPERIMENTAL and 
 may not build or work properly on all platforms. See documentation for 
 more details.
 TXT
-			if (AskYN("Do you wish to build the PerlInterpreter extension?", 'n')){
+				if (AskYN("Do you wish to build the PerlInterpreter extension?", 'n')){
+					$build_perl_interpreter = 1 ;
+				}
+				print "\n" ;
+			}
+			if ($build_perl_interpreter){
 				push @{$DIR}, 'PerlInterpreter' ;
 			}
-			print "\n" ;
 
 			WriteMakefile(
 				NAME => 'Inline::Java::JNI',

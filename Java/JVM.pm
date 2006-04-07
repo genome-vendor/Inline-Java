@@ -9,7 +9,7 @@ use IO::Socket ;
 use Text::ParseWords ;
 use Inline::Java::Portable ;
 
-$Inline::Java::JVM::VERSION = '0.50_92' ;
+$Inline::Java::JVM::VERSION = '0.50_93' ;
 
 my %SIGS = () ;
 
@@ -72,6 +72,9 @@ sub new {
 		$this->{port} = $o->get_java_config('PORT') ;
 		$this->{host} = $o->get_java_config('HOST') ;
 
+		# Used to limit the bind of the JVM server
+		$this->{'bind'} = $o->get_java_config('BIND') ;
+
 		# Grab the next free port number and release it.
 		if ((! $this->{shared})&&($this->{port} < 0)){
 			if (Inline::Java::Portable::portable("GOT_NEXT_FREE_PORT")){
@@ -122,7 +125,7 @@ sub new {
 		my $shared = ($this->{shared} ? "true" : "false") ;
 		my $priv = ($this->{private} ? "true" : "false") ;
 		my $native_doubles = ($o->get_java_config('NATIVE_DOUBLES') ? "true" : "false") ;
-		my $cmd = Inline::Java::Portable::portable("SUB_FIX_CMD_QUOTES", "\"$java\" $args org.perl.inline.java.InlineJavaServer $debug $this->{port} $shared $priv $native_doubles") ;
+		my $cmd = Inline::Java::Portable::portable("SUB_FIX_CMD_QUOTES", "\"$java\" $args org.perl.inline.java.InlineJavaServer $debug $this->{bind} $this->{port} $shared $priv $native_doubles") ;
 		Inline::Java::debug(2, $cmd) ;
 		if ($o->get_config('UNTAINT')){
 			($cmd) = $cmd =~ /(.*)/ ;

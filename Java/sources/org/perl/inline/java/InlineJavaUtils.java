@@ -7,7 +7,17 @@ import java.util.* ;
 	Creates a string representing a method signature
 */
 class InlineJavaUtils { 
-	static int debug = 0 ;
+	private static int debug = 0 ;
+
+
+	public synchronized static void set_debug(int d){
+		debug = d ;
+	}
+
+
+	public static int get_debug(){
+		return debug ;
+	}
 
 
 	static String CreateSignature(Class param[]){

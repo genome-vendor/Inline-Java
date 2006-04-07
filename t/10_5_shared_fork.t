@@ -47,7 +47,7 @@ for (my $i = 0 ; $i < $nb ; $i++){
 
 # Wait for kids to finish
 for (my $i = 0 ; $i < $nb ; $i++){
-	sleep(1) ;
+	wait() ;
 	ok(1) ;
 }
 

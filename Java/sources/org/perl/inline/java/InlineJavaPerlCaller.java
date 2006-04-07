@@ -10,7 +10,7 @@ import java.io.* ;
 public class InlineJavaPerlCaller {
 	private InlineJavaServer ijs = InlineJavaServer.GetInstance() ;
 	private Thread creator = null ;
-	static private HashMap thread_callback_queues = new HashMap() ;
+	static private Map thread_callback_queues = Collections.synchronizedMap(new HashMap()) ;
 	static private ResourceBundle resources = null ;
 	static private boolean inited = false ;
 

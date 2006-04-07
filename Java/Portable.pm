@@ -9,7 +9,7 @@ use Config ;
 use File::Find ;
 use File::Spec ;
 
-$Inline::Java::Portable::VERSION = '0.50_92' ;
+$Inline::Java::Portable::VERSION = '0.50_93' ;
 
 # Here is some code to figure out if we are running on command.com
 # shell under Windows.
@@ -162,6 +162,7 @@ sub portable {
 		PERL_PARSE_DUP_ENV	=>  '-DPERL_PARSE_DUP_ENV',
 		BUILD_JNI_BY_DFLT	=>  1,
 		J2SDK_BIN			=>  'bin',
+		DEFAULT_J2SDK_DIR	=>  undef,
 		OTHERLDFLAGS		=>  '',
 	} ;
 
@@ -234,6 +235,7 @@ sub portable {
 			POST_WHOLE_ARCHIVE	=>  '-Wl',
 		    GOT_SYMLINK			=>	1,
             J2SDK_BIN        	=>  'Commands',
+			DEFAULT_J2SDK_DIR   =>  '/System/Library/Frameworks/JavaVM.framework/Versions/CurrentJDK',
 			# Tim Bunce:
 			OTHERLDFLAGS		=>  '',
 		},

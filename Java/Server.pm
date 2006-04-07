@@ -13,7 +13,7 @@ require Inline::Java ;
 use File::Spec ;
 
 
-$Inline::Java::Server::VERSION = '0.50_92' ;
+$Inline::Java::Server::VERSION = '0.50_93' ;
 
 
 # Create a dummy Inline::Java object in order to 
@@ -37,6 +37,8 @@ sub import {
 		push @actions, $a ;
 	}
 
+	my $host = $IJ->get_java_config("HOST") ;
+	my $bind = $IJ->get_java_config("BIND") ;
 	my $port = $IJ->get_java_config("PORT") ;
 	foreach $a (@actions){
 		if ($a eq 'sleep'){
@@ -48,29 +50,29 @@ sub import {
 
 		if ($a eq 'start'){
 			if ($status){
-				print "SHARED_JVM server on port $port is already running\n" ;
+				print "SHARED_JVM server on port $bind:$port is already running\n" ;
 			}
 			else{
 				Inline::Java::Server::start() ;
 				my $pid = Inline::Java::__get_JVM()->{pid} ;
-				print "SHARED_JVM server on port $port started with pid $pid\n" ;
+				print "SHARED_JVM server on port $bind:$port started with pid $pid\n" ;
 			}
 		}
 		elsif ($a eq 'stop'){
 			if (! $status){
-				print "SHARED_JVM server on port $port is not running\n" ;
+				print "SHARED_JVM server on port $host:$port is not running\n" ;
 			}
 			else {
 				Inline::Java::Server::stop() ;
-				print "SHARED_JVM server on port $port stopped\n" ;
+				print "SHARED_JVM server on port $host:$port stopped\n" ;
 			}
 		}
 		elsif ($a eq 'status'){
 			if ($status){
-				print "SHARED_JVM on port $port is running\n" ;
+				print "SHARED_JVM on port $host:$port is running\n" ;
 			}
 			else {
-				print "SHARED_JVM on port $port is not running\n" ;
+				print "SHARED_JVM on port $host:$port is not running\n" ;
 			}
 		}
 		else{
@@ -88,7 +90,7 @@ sub status {
 
 	eval {
 	    $socket = Inline::Java::JVM::setup_socket(
-	        "localhost",
+			$IJ->get_java_config("HOST"),
 			$IJ->get_java_config("PORT"),
 			0,
 			1

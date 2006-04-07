@@ -105,7 +105,7 @@ class InlineJavaPerlInterpreterTests implements Runnable {
 			int debug = 0 ;
 			if (args.length > 0){
 				debug = Integer.parseInt(args[0]) ;
-				InlineJavaUtils.debug = debug ;
+				InlineJavaUtils.set_debug(debug) ;
 			}
 
 			InlineJavaPerlInterpreter.init("test") ;

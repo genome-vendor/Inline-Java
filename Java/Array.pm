@@ -4,7 +4,7 @@ package Inline::Java::Array ;
 use strict ;
 use Carp ;
 
-$Inline::Java::Array::VERSION = '0.50_92' ;
+$Inline::Java::Array::VERSION = '0.50_93' ;
 
 # Here we store as keys the knots and as values our blessed objects
 my $OBJECTS = {} ;
