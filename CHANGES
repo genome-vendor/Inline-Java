@@ -1,6 +1,6 @@
 Revision history for Perl extension Inline::Java
 ------------------------------------------------
-0.51
+0.51  Tue May 23 20:40:07 EDT 2006
     - Several major speed optimizations.
     - Introduction of support for I/O mapping between Perl and Java (Inline::Java::Handle)
     - Applied patches by Andrew Bruno and Tim Bunce for MAC OSX

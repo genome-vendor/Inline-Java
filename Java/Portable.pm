@@ -9,7 +9,7 @@ use Config ;
 use File::Find ;
 use File::Spec ;
 
-$Inline::Java::Portable::VERSION = '0.50_93' ;
+$Inline::Java::Portable::VERSION = '0.51' ;
 
 # Here is some code to figure out if we are running on command.com
 # shell under Windows.
@@ -130,11 +130,9 @@ sub find_classes_in_dir {
 }
 
 
-sub portable {
-	my $key = shift ;
-	my $val = shift ;
 
-	my $defmap = {
+my $map = {
+	_DEFAULT_ => {
 		EXE_EXTENSION		=>	$Config{exe_ext},
 		GOT_ALARM			=>  $Config{d_alarm} || 0,
 		GOT_FORK			=>	$Config{d_fork} || 0,
@@ -164,130 +162,102 @@ sub portable {
 		J2SDK_BIN			=>  'bin',
 		DEFAULT_J2SDK_DIR	=>  undef,
 		OTHERLDFLAGS		=>  '',
-	} ;
+	},
+	MSWin32 => {
+		ENV_VAR_PATH_SEP_CP	=>	';',
+		# 2>&1 doesn't work under command.com
+		IO_REDIR			=>  ($COMMAND_COM ? '' : undef),
+		MAKE				=>	'nmake',
+		DEV_NULL			=>  'nul',
+		COMMAND_COM			=>	$COMMAND_COM,
+		SUB_FIX_MAKE_QUOTES	=>	sub {
+			my $arg = shift ;
+			$arg = qq{"$arg"} ;
+			return $arg ;
+		},
+		SO_LIB_PATH_VAR		=>	'PATH',
+		DETACH_OK			=>	0,
+		JVM_LIB				=>	'jvm.lib',
+		JVM_SO				=>	'jvm.dll',
+		GOT_NEXT_FREE_PORT	=>	0,
+		GOT_SYMLINK			=>	0,
+		GOT_SAFE_SIGNALS	=>	0,
+		PRE_WHOLE_ARCHIVE	=>  '',
+		POST_WHOLE_ARCHIVE	=>  '',
+	},
+	cygwin => {
+		ENV_VAR_PATH_SEP_CP	=>	';',
+		SUB_FIX_JAVA_PATH	=>	sub {
+			my $arg = shift ;
+			if (defined($arg)&&($arg)){
+				$arg = `cygpath -w \"$arg\"` ;
+				chomp($arg) ;
+			}
+			return $arg ;
+		},
+		JVM_LIB				=>	'jvm.lib',
+		JVM_SO				=>	'jvm.dll',
+		BUILD_JNI_BY_DFLT	=>  0,
+	},
+	hpux => {
+		GOT_NEXT_FREE_PORT  =>  0,
+	},
+	solaris => {
+		GOT_NEXT_FREE_PORT  =>  0,
+		PRE_WHOLE_ARCHIVE	=>  '-Wl,-zallextract',
+		POST_WHOLE_ARCHIVE	=>  '-Wl,-zdefaultextract',
+	},
+	aix => {
+		JVM_LIB				=>	"libjvm$Config{lib_ext}",
+		JVM_SO				=>	"libjvm$Config{lib_ext}",
+	},
+	darwin => {
+		# Suggested by Ken Williams, mailing list 2004/07/07
+		SO_EXT				=>	$Config{so},
+		# Andrew Bruno
+		JVM_LIB				=>	"libjvm.dylib",
+		JVM_SO				=>	"libjvm.dylib",
+		PRE_WHOLE_ARCHIVE	=>  '-Wl',
+		POST_WHOLE_ARCHIVE	=>  '-Wl',
+	    GOT_SYMLINK			=>	1,
+           J2SDK_BIN        	=>  'Commands',
+		DEFAULT_J2SDK_DIR   =>  '/System/Library/Frameworks/JavaVM.framework/Versions/CurrentJDK',
+		# Tim Bunce:
+		OTHERLDFLAGS		=>  '',
+	},
+} ;
 
-	my $map = {
-		MSWin32 => {
-			ENV_VAR_PATH_SEP_CP	=>	';',
-			# 2>&1 doesn't work under command.com
-			IO_REDIR			=>  ($COMMAND_COM ? '' : undef),
-			MAKE				=>	'nmake',
-			DEV_NULL			=>  'nul',
-			COMMAND_COM			=>	$COMMAND_COM,
-			SO_LIB_PATH_VAR		=>	'PATH',
-			DETACH_OK			=>	0,
-			JVM_LIB				=>	'jvm.lib',
-			JVM_SO				=>	'jvm.dll',
-			GOT_NEXT_FREE_PORT	=>	0,
-			GOT_SYMLINK			=>	0,
-			GOT_SAFE_SIGNALS	=>	0,
+sub portable {
+	my $key = shift ;
+	my $arg = shift ;
 
-# Can't remember what this was supposed to fix, but it breaks
-# when there are spaces in the J2SDK directory...
-#
-#			SUB_FIX_CMD_QUOTES	=>	($COMMAND_COM ? undef : sub {
-#				my $val = shift ;
-#				$val = qq{"$val"} ;
-#				return $val ;
-#			}),
-#
-			SUB_FIX_MAKE_QUOTES	=>	sub {
-				my $val = shift ;
-				$val = qq{"$val"} ;
-				return $val ;
-			},
-			PRE_WHOLE_ARCHIVE	=>  '',
-			POST_WHOLE_ARCHIVE	=>  '',
-		},
-		cygwin => {
-			ENV_VAR_PATH_SEP_CP	=>	';',
-			SUB_FIX_JAVA_PATH	=>	sub {
-				my $val = shift ;
-				if (defined($val)&&($val)){
-					$val = `cygpath -w \"$val\"` ;
-					chomp($val) ;
-				}
-				return $val ;
-			},
-			JVM_LIB				=>	'jvm.lib',
-			JVM_SO				=>	'jvm.dll',
-			BUILD_JNI_BY_DFLT	=>  0,
-		},
-		hpux => {
-			GOT_NEXT_FREE_PORT  =>  0,
-		},
-		solaris => {
-			GOT_NEXT_FREE_PORT  =>  0,
-			PRE_WHOLE_ARCHIVE	=>  '-Wl,-zallextract',
-			POST_WHOLE_ARCHIVE	=>  '-Wl,-zdefaultextract',
-		},
-		aix => {
-			JVM_LIB				=>	"libjvm$Config{lib_ext}",
-			JVM_SO				=>	"libjvm$Config{lib_ext}",
-		},
-		darwin => {
-			# Suggested by Ken Williams, mailing list 2004/07/07
-			SO_EXT				=>	$Config{so},
-			# Andrew Bruno
-			JVM_LIB				=>	"libjvm.dylib",
-			JVM_SO				=>	"libjvm.dylib",
-			PRE_WHOLE_ARCHIVE	=>  '-Wl',
-			POST_WHOLE_ARCHIVE	=>  '-Wl',
-		    GOT_SYMLINK			=>	1,
-            J2SDK_BIN        	=>  'Commands',
-			DEFAULT_J2SDK_DIR   =>  '/System/Library/Frameworks/JavaVM.framework/Versions/CurrentJDK',
-			# Tim Bunce:
-			OTHERLDFLAGS		=>  '',
-		},
-	} ;
-
-	if (! exists($defmap->{$key})){
+	if (! exists($map->{_DEFAULT_}->{$key})){
 		croak "Portability issue $key not defined!" ;
 	}
 
+	my $val = undef ;
 	if ((defined($map->{$^O}))&&(defined($map->{$^O}->{$key}))){
-		if ($key =~ /^RE_/){
-			if (defined($val)){
-				my $f = $map->{$^O}->{$key}->[0] ;
-				my $t = $map->{$^O}->{$key}->[1] ;
-				$val =~ s/$f/$t/g ;
-				Inline::Java::Portable::debug(4, "portable: $key => $val for $^O is '$val'") ;
-				return $val ;
-			}
-			else{
-				Inline::Java::Portable::debug(4, "portable: $key for $^O is 'undef'") ;
-				return undef ;
-			}
+		$val = $map->{$^O}->{$key} ;
+	}
+	else {
+		$val = $map->{_DEFAULT_}->{$key} ;
+	}
+
+	if ($key =~ /^SUB_/){
+		my $sub = $val ;
+		if (defined($sub)){
+			$arg = $sub->($arg) ;
+			Inline::Java::Portable::debug(4, "portable: $key => $arg for $^O is '$arg'") ;
+			return $arg ;
 		}
-		elsif ($key =~ /^SUB_/){
-			my $sub = $map->{$^O}->{$key} ;
-			if (defined($sub)){
-				$val = $sub->($val) ;
-				Inline::Java::Portable::debug(4, "portable: $key => $val for $^O is '$val'") ;
-				return $val ;
-			}
-			else{
-				return $val ;
-			}
-		}
-		else{
-			Inline::Java::Portable::debug(4, "portable: $key for $^O is '$map->{$^O}->{$key}'") ;
-			return $map->{$^O}->{$key} ;
+		else {
+			Inline::Java::Portable::debug(4, "portable: $key => $arg for $^O is default '$arg'") ;
+			return $arg ;
 		}
 	}
-	else{
-		if ($key =~ /^RE_/){
-			Inline::Java::Portable::debug(4, "portable: $key => $val for $^O is default '$val'") ;
-			return $val ;
-		}
-		if ($key =~ /^SUB_/){
-			Inline::Java::Portable::debug(4, "portable: $key => $val for $^O is default '$val'") ;
-			return $val ;
-		}
-		else{
-			Inline::Java::Portable::debug(4, "portable: $key for $^O is default '$defmap->{$key}'") ;
-			return $defmap->{$key} ;
-		}
+	else {
+		Inline::Java::Portable::debug(4, "portable: $key for $^O is '$val'") ;
+		return $val ;
 	}
 }
 

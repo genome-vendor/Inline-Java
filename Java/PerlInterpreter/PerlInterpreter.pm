@@ -3,7 +3,7 @@ package Inline::Java::PerlInterpreter ;
 use strict ;
 use Inline::Java ;
 
-$Inline::Java::PerlInterpreter::VERSION = '0.50_93' ;
+$Inline::Java::PerlInterpreter::VERSION = '0.51' ;
 
 
 use Inline (

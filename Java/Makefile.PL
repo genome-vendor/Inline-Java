@@ -139,14 +139,10 @@ if ($build_jni){
 			map {print "  $_\n"; } @main::SO_DIRS ;
 			print "See README.JNI for more information.\n\n" ;
 
-			@main::I = (
-				Inline::Java::Portable::portable('SUB_FIX_MAKE_QUOTES', 
-					"-I" . $files->{'jni.h'}->{selected}), 
-				Inline::Java::Portable::portable('SUB_FIX_MAKE_QUOTES', 
-					"-I" . $files->{'jni_md.h'}->{selected})) ; 
-			@main::L = (
-				Inline::Java::Portable::portable('SUB_FIX_MAKE_QUOTES', 
-					"-L" . $files->{$jvm_lib}->{selected})) ;
+			@main::I = map { Inline::Java::Portable::portable('SUB_FIX_MAKE_QUOTES', "-I$_") } 
+				($files->{'jni.h'}->{selected}, $files->{'jni_md.h'}->{selected}) ;
+			@main::L = map { Inline::Java::Portable::portable('SUB_FIX_MAKE_QUOTES', "-L$_") }
+				($files->{$jvm_lib}->{selected}) ;
 
 			my $DIR = [] ;
 			if (! defined($build_perl_natives)){

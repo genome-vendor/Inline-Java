@@ -9,7 +9,7 @@ use IO::Socket ;
 use Text::ParseWords ;
 use Inline::Java::Portable ;
 
-$Inline::Java::JVM::VERSION = '0.50_93' ;
+$Inline::Java::JVM::VERSION = '0.51' ;
 
 my %SIGS = () ;
 
