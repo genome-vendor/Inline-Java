@@ -1,4 +1,5 @@
 CODE:
+- Localize $@ where required
 - Finish PerlInterpreter test suite
 - Finish PerlHandle stuff and document
 

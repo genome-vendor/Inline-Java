@@ -1,5 +1,11 @@
 Revision history for Perl extension Inline::Java
 ------------------------------------------------
+0.52  Sun Dec 17 20:46:51 EST 2006
+    - Fixed JNI on cygwin (many thanks to Eric Rybski for the patch)
+    - Improved installation. 'make java' is now performed automatically.
+    - Fixed problems with disappearing exceptions by localizing $@.
+    - Other minor bug fixes
+
 0.51  Tue May 23 20:40:07 EDT 2006
     - Several major speed optimizations.
     - Introduction of support for I/O mapping between Perl and Java (Inline::Java::Handle)

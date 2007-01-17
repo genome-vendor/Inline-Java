@@ -2,8 +2,15 @@ use strict ;
 
 use Test ;
 use File::Spec ;
+use Config ;
 
 BEGIN {
+    if ($^O eq 'cygwin'){
+		# Stand-alone Java interpreter cannot load Cygwin DLL directly
+        plan(tests => 0) ;
+        exit ;
+	}
+
     plan(tests => 12) ;
 }
 

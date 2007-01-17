@@ -5,7 +5,7 @@ use strict ;
 use Inline::Java::Protocol ;
 use Carp ;
 
-$Inline::Java::Object::VERSION = '0.51' ;
+$Inline::Java::Object::VERSION = '0.52' ;
 
 # Here we store as keys the knots and as values our blessed private objects
 my $PRIVATES = {} ;
@@ -199,7 +199,7 @@ sub __validate_prototype {
 			}
 			$msg .= "I chose the one indicated by a star (*). To force " .
 				"the use of another signature or to disable this warning, use " .
-				"the casting functionnality described in the documentation." ;
+				"the casting functionality described in the documentation." ;
 			carp $msg ;		
 		}
 	}
@@ -351,27 +351,16 @@ sub DESTROY {
 			my $class = $this->__get_private()->{class} ;
 			Inline::Java::debug(2, "destroying object in java ($class):") ;
 
-			# This one is very tricky:
-			# Here we want to be careful since this can be called
-			# at scope end, but the scope end might be triggered
-			# by another croak, so we need to record and propagate 
-			# the current $@
-			my $prev_dollar_at = $@ ;
-			eval {
-				$this->__get_private()->{proto}->DeleteJavaObject($this) ;
-			} ;
-			if ($@){
-				# We croaked here. Was there already a pending $@?
-				my $name = $this->__get_private()->{class} ;
-				my $msg = "In method DESTROY of class $name: $@" ;
-				if ($prev_dollar_at){
-					$msg = "$prev_dollar_at\n$msg" ;
+			{
+				local $@ ;
+				eval {
+					$this->__get_private()->{proto}->DeleteJavaObject($this) ;
+				} ;
+				if ($@){
+					# We croaked here. Was there already a pending $@?
+					my $name = $this->__get_private()->{class} ;
+					croak "In method DESTROY of class $name: $@" ;
 				}
-				croak $msg ;
-			}
-			else{
-				# Put back the previous $@
-				$@ = $prev_dollar_at ;
 			}
 
 			# Here we have a circular reference so we need to break it

@@ -2,6 +2,9 @@
 #include "perl.h"
 #include "XSUB.h"
 
+#ifdef __CYGWIN__
+	#include "w32api/basetyps.h"
+#endif
 
 /* Include the JNI header file */
 #include "jni.h"

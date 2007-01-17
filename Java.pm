@@ -8,7 +8,7 @@ package Inline::Java ;
 use strict ;
 require 5.006 ;
 
-$Inline::Java::VERSION = '0.51' ;
+$Inline::Java::VERSION = '0.52' ;
 
 
 # DEBUG is set via the DEBUG config
@@ -1018,6 +1018,11 @@ sub get_DONE {
 
 sub set_DONE {
 	$DONE = 1 ;
+}
+
+
+sub __get_INLINES {
+	return \@INLINES ;
 }
 
 

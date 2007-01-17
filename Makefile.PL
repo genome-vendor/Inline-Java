@@ -76,7 +76,7 @@ $perl_jdk_dir =~ s/'/\'/g ;
 my $jdk_bin = Inline::Java::Portable::portable("J2SDK_BIN") ;
 my $ext = Inline::Java::Portable::portable('EXE_EXTENSION') ;
 foreach my $f ('javac', 'jar', 'java'){
-	if (! -x File::Spec->catfile($jdk_dir, $jdk_bin, $f . $ext)){
+	if (! -f File::Spec->catfile($jdk_dir, $jdk_bin, $f . $ext)){
 		my $bf = File::Spec->catfile($jdk_bin, $f . $ext) ;
 		print "Can't locate file '$bf' anywhere under '$jdk_dir'\n" ;
 	}
@@ -134,7 +134,7 @@ sub MY::top_targets {
 
 	my $make = <<MAKE ;
 # Added by Inline::Java installation
-# pure_all :: java
+pure_all :: java
 MAKE
 
 	return $make . $this->MM::top_targets() ;
@@ -146,13 +146,20 @@ my $INST_ARCHLIB = '' ;
 sub MY::postamble {
 	my $this = shift ;
 
+	my $java_src = join(' ', glob($src), File::Spec->catfile($obj_dir, 'InlineJava.properties')) ;
+
 	my $make = <<MAKE ;
 # Added by Inline::Java installation
-java ::
+JAVA_SRC=$java_src 
+
+java.ts: \$(JAVA_SRC)
 	\@\$(MKPATH) $obj_dir
 	"$javac" -deprecation -g -d $obj_dir $src
 	"$jar" cf $server_arch -C $obj_dir org -C $obj_dir InlineJava.properties
 	"$jar" cf $user_arch -C $obj_dir InlineJavaUserClassLink.class
+	\@\$(TOUCH) java.ts
+
+java :: java.ts
 MAKE
 
 	# Used for PerlNatives
@@ -193,7 +200,7 @@ WriteMakefile(
 		$server_arch => File::Spec->catfile('$(INST_LIBDIR)', $server_arch),
 		$user_arch => File::Spec->catfile('$(INST_LIBDIR)', $user_arch),
 	},
-	clean => {FILES => "$def_jdk _Inline_test $natives_test $perlinterp_test $obj_dir $server_arch $user_arch"},
+	clean => {FILES => "$def_jdk _Inline_test $natives_test $perlinterp_test $obj_dir $server_arch $user_arch java.ts"},
 ) ;
 
 
@@ -223,15 +230,19 @@ close(J2SDK) ;
 my @perlnatives_so_parts = ("auto", "Inline", "Java", "PerlNatives", 
 	"PerlNatives." . Inline::Java::Portable::portable('SO_EXT')) ;
 my $install_perlnatives_so = File::Spec->catfile($INSTALLSITEARCH, @perlnatives_so_parts) ;
+$install_perlnatives_so = Inline::Java::Portable::portable("SUB_FIX_JAVA_PATH", $install_perlnatives_so) ;
 $install_perlnatives_so =~ s/\\/\\\\/g ;
 my $test_perlnatives_so = File::Spec->rel2abs(File::Spec->catfile($INST_ARCHLIB, @perlnatives_so_parts)) ;
+$test_perlnatives_so = Inline::Java::Portable::portable("SUB_FIX_JAVA_PATH", $test_perlnatives_so) ;
 $test_perlnatives_so =~ s/\\/\\\\/g ;
 
 my @perlinterpreter_so_parts = ("auto", "Inline", "Java", "PerlInterpreter",
     "PerlInterpreter." . Inline::Java::Portable::portable('SO_EXT')) ;
 my $install_perlinterpreter_so = File::Spec->catfile($INSTALLSITEARCH, @perlinterpreter_so_parts) ;
+$install_perlinterpreter_so = Inline::Java::Portable::portable("SUB_FIX_JAVA_PATH", $install_perlinterpreter_so) ;
 $install_perlinterpreter_so =~ s/\\/\\\\/g ;
 my $test_perlinterpreter_so = File::Spec->rel2abs(File::Spec->catfile($INST_ARCHLIB, @perlinterpreter_so_parts)) ;
+$test_perlinterpreter_so = Inline::Java::Portable::portable("SUB_FIX_JAVA_PATH", $test_perlinterpreter_so) ;
 $test_perlinterpreter_so =~ s/\\/\\\\/g ;
 
 my $libperl = $Config{libperl} ;
@@ -271,7 +282,6 @@ if (Inline::Java::Portable::portable('COMMAND_COM')){
 
 my $make = Inline::Java::Portable::portable('MAKE') ;
 print "\nYou can continue the installation with the following commands:\n" ;
-print "  % $make java\n" ;
 print "  % $make\n" ;
 print "  % $make test\n" ;
 print "  % $make install\n" ; 

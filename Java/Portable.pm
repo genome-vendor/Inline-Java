@@ -9,7 +9,7 @@ use Config ;
 use File::Find ;
 use File::Spec ;
 
-$Inline::Java::Portable::VERSION = '0.51' ;
+$Inline::Java::Portable::VERSION = '0.52' ;
 
 # Here is some code to figure out if we are running on command.com
 # shell under Windows.
@@ -162,6 +162,7 @@ my $map = {
 		J2SDK_BIN			=>  'bin',
 		DEFAULT_J2SDK_DIR	=>  undef,
 		OTHERLDFLAGS		=>  '',
+		dynamic_lib			=>  {}
 	},
 	MSWin32 => {
 		ENV_VAR_PATH_SEP_CP	=>	';',
@@ -197,7 +198,8 @@ my $map = {
 		},
 		JVM_LIB				=>	'jvm.lib',
 		JVM_SO				=>	'jvm.dll',
-		BUILD_JNI_BY_DFLT	=>  0,
+		BUILD_JNI_BY_DFLT	=>  1,
+		dynamic_lib			=>  { OTHERLDFLAGS => '-Wl,-add-stdcall-alias' },
 	},
 	hpux => {
 		GOT_NEXT_FREE_PORT  =>  0,
@@ -223,7 +225,7 @@ my $map = {
            J2SDK_BIN        	=>  'Commands',
 		DEFAULT_J2SDK_DIR   =>  '/System/Library/Frameworks/JavaVM.framework/Versions/CurrentJDK',
 		# Tim Bunce:
-		OTHERLDFLAGS		=>  '',
+		OTHERLDFLAGS		=>  '-framework JavaVM',
 	},
 } ;
 

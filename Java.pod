@@ -138,7 +138,7 @@ make use of the same JVM.
 Specifies the starting port number for the server. If many
 C<Inline::Java> blocks are declared, the port number is
 incremented each time. Default is 0 (next available port number),
-default for SHARED_JVM mode is 7890.
+default for SHARED_JVM mode is 7891.
 
    Ex: PORT => 4567
 
@@ -185,7 +185,7 @@ make use of the same JVM.
 =item CLASSPATH
 
 Adds the specified CLASSPATH. This CLASSPATH will only be available
-threw the user classloader. To set the CLASSPATH globally (which is
+through the user classloader. To set the CLASSPATH globally (which is
 most probably what you want to do anyways), use the CLASSPATH 
 environment variable.
 
@@ -1093,6 +1093,18 @@ the PERL_INLINE_JAVA_DIRECTORY environment variable.
 In addition, you may also wish to set the START_JVM option to 0 in your scripts 
 to prevent them from trying to start their own JVM if they can't find one,
 thereby causing problems.
+
+=item 4
+
+Because of problems with modules C<Inline::Java> depends on, the usage of paths
+containing spaces is not fully supported on all platforms. This applies to the
+installation directory as well as the path for J2SDK and CLASSPATH elements.
+
+=item 5
+
+Even though it in run through a profiler regularly, C<Inline::Java> is relatively 
+slow compared to native Perl or Java.
+
 
 =back
 

@@ -42,15 +42,16 @@ INSTALLATION:
 To install Inline::Java do this:
 
   % perl Makefile.PL J2SDK=/your/java/dir   (see Note 1)
-  % make java                               (see Note 2)
-  % make
+  % make                                    (see Note 2)
   % make test                               (see Note 3, 4)
   % make install
 
 You have to 'make install' before you can run it successfully. 
 
 Note 1: Under Win95/98/Me, you may need to do 'cd ..' to get back to the
-your original directory after the command has completed.
+your original directory after the command has completed. Also, you may set
+either the JAVA_HOME or the PERL_INLINE_JAVA_J2SDK environment variable to 
+/your/java/dir instead of using the J2SDK Makefile.PL parameter.
 
 Note 2: Use nmake on Win32.
 
@@ -66,23 +67,11 @@ second time you test loading of an already built module.
 -------------------------------------------------------------------------------
 FEATURES FOR THIS VERSION:
 
-Inline::Java version 0.51 is a major upgrade that includes:
-    - Several major speed optimizations.
-    - Introduction of support for I/O mapping between Perl and Java (Inline::Java::Handle)
-    - Applied patches by Andrew Bruno and Tim Bunce for MAC OSX
-    - JNI fix for system property passing
-        (thanks to Brian Gugliemetti and Jason Stelzer)
-    - Added NATIVE_DOUBLES configuration option to avoid loss of precision
-      when passing double values between Perl and Java
-    - New interface for processing callbacks from java to perl.
-    - Added support for java.lang.CharSequence as a primitive type. Any
-      Perl scalar passed as a java.lang.CharSequence will instantiate
-      a java.lang.String on the Java side
-    - Added BUILD_JNI, BUILD_PERL_NATIVES, BUILD_PERL_INTERPRETER and JVM_LIB_TYPE build
-      configuration options to help with automated builds
-    - Added BIND configuration option. See docs for details.
-      Note: The Java JVM server noe listens on localhost by default (instead of 0.0.0.0).
-    - Other minor bug fixes
+Inline::Java version 0.52 is a minor upgrade that includes:
+    - Fixed JNI on cygwin (many thanks to Eric Rybski for the patch)
+    - Improved installation. 'make java' is now performed automatically.
+    - Fixed problems with disappearing exceptions by localizing $@.
+    - Other minor bug fixes.
 
 See CHANGES for a full change list.
 

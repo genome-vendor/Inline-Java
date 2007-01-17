@@ -21,6 +21,7 @@ WriteMakefile(
 	CCFLAGS => "$ccopts $dupenv",
 	LDDLFLAGS => "$pre $ldopts $post $Config{lddlflags}",
 	INC => join(' ', @main::I),
+	dynamic_lib => Inline::Java::Portable::portable("dynamic_lib"),
 	# CCFLAGS => '-D_REENTRANT',
 ) ;
 

@@ -38,6 +38,7 @@ public class InlineJavaServer {
 
 	// This constructor is used in server mode
 	// Normally one would then call RunMainLoop()
+	/* Note: Consider http://groups.google.com/group/perl.inline/tree/browse_frm/thread/aa7f5ce236f6d576/3db48a308a8175fb?rnum=1&hl=en&q=Congratulations+with+Inline%3A%3AJava+0.51&_done=%2Fgroup%2Fperl.inline%2Fbrowse_frm%2Fthread%2Faa7f5ce236f6d576%2Fd2de9cf38429c09c%3Flnk%3Dst%26q%3DCongratulations+with+Inline%3A%3AJava+0.51%26rnum%3D1%26hl%3Den%26#doc_3db48a308a8175fb before changing this prototype */
 	public InlineJavaServer(int debug, String _host, int _port, boolean _shared_jvm, boolean _priv, boolean _native_doubles){
 		init(debug, _native_doubles) ;
 

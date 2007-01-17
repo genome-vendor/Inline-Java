@@ -125,6 +125,14 @@ if ($build_jni){
 
 		CleanSoDirs() ;
 
+		# Cygwin: create gcc-compatible library wrapper for jvm.dll
+		if ($^O eq 'cygwin') {
+			my $dll = File::Spec->catfile($jdk_dir, 'lib', 'libjvm.dll.a') ;
+			print "Creating '$dll' for cygwin.\n\n" ;
+			system("/usr/bin/dlltool --input-def jvm.def --kill-at --dllname jvm.dll --output-lib '$dll'") 
+				and print "Error attempting to create '$jdk_dir/lib/libjvm.dll.a'\n" ;
+		}
+
 		print "Building with:\n" ;
 		map { print "  " . File::Spec->catfile($files->{$_}->{selected}, $_) . "\n" ;} @files ;
 

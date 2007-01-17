@@ -5,7 +5,7 @@ use strict ;
 use Symbol ;
 use Carp ;
 
-$Inline::Java::Handle::VERSION = '0.51' ;
+$Inline::Java::Handle::VERSION = '0.52' ;
 
 
 # Here we store as keys the knots and as values our blessed objects
@@ -115,12 +115,15 @@ sub __close {
 
 	my $obj = $this->__get_object() ;
 
-	my $ret = undef  ;
-	eval {
-		$ret = $obj->__get_private()->{proto}->CloseJavaHandle() ;
-		$obj->__get_private()->{closed} = 1 ;
-	} ;
-	croak $@ if $@ ;
+	my $ret = undef ;
+	{
+		local $@ ;
+		eval {
+			$ret = $obj->__get_private()->{proto}->CloseJavaHandle() ;
+			$obj->__get_private()->{closed} = 1 ;
+		} ;
+		croak $@ if $@ ;
+	}
 
 	return $ret ;
 }
