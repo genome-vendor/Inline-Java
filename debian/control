@@ -1,0 +1,24 @@
+Source: libinline-java-perl
+Section: perl
+Priority: optional
+Build-Depends: debhelper (>= 7), perl/libinline-perl (>= 0.44), perl
+Maintainer: Randy Hancock <rhancock@>
+Standards-Version: 3.8.3
+Homepage: http://search.cpan.org/dist/Inline-Java/
+
+Package: libinline-java-perl
+Architecture: any
+Depends: ${perl:Depends}, ${shlibs:Depends}, ${misc:Depends},
+  perl/libinline-perl (>= 0.44)
+Description: Write Perl classes in Java.
+ The Inline::Java module allows you to put Java source code directly "inline"
+ in a Perl script or module. A Java compiler is launched and the Java code is
+ compiled. Then Perl asks the Java classes what public methods have been
+ defined. These classes and methods are available to the Perl program as if
+ they had been written in Perl.
+ .
+ The process of interrogating the Java classes for public methods occurs the
+ first time you run your Java code. The namespace is cached, and subsequent
+ calls use the cached version.
+ .
+ This description was automagically extracted from the module by dh-make-perl.
