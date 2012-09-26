@@ -1,15 +1,14 @@
 Source: libinline-java-perl
 Section: perl
 Priority: optional
-Build-Depends: debhelper (>= 7), libinline-perl (>= 0.44), perl
+Build-Depends: debhelper (>= 7), libinline-perl (>= 0.44), perl, openjdk-7-jdk
 Maintainer: Randy Hancock <rhancock@>
 Standards-Version: 3.8.3
 Homepage: http://search.cpan.org/dist/Inline-Java/
 
 Package: libinline-java-perl
 Architecture: any
-Depends: ${perl:Depends}, ${shlibs:Depends}, ${misc:Depends},
-  libinline-perl (>= 0.44)
+Depends: ${perl:Depends}, ${shlibs:Depends}, ${misc:Depends}, openjdk-7-jre, libinline-perl (>= 0.44)
 Description: Write Perl classes in Java.
  The Inline::Java module allows you to put Java source code directly "inline"
  in a Perl script or module. A Java compiler is launched and the Java code is

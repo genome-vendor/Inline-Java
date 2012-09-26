@@ -3,4 +3,7 @@
 %:
 	dh $@
 
+override_dh_auto_configure:
+	perl Makefile.PL INSTALL_BASE=/usr J2SDK=/usr/lib/jvm/java-1.7.0-openjdk-amd64
+
 override_dh_auto_test:

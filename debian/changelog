@@ -1,3 +1,9 @@
+libinline-java-perl (0.52-2~Ubuntu~precise) unstable; urgency=low
+
+  * Recompile for precise
+
+ -- Anthony Brummett <abrummet@genome.wustl.edu>  Wed, 26 Sep 2012 14:58:00 -0500
+
 libinline-java-perl (0.52-1) unstable; urgency=low
 
   * Initial Release.
